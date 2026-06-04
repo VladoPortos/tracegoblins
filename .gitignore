@@ -1,0 +1,49 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# ---- Node / frontend ----
+node_modules/
+dist/
+.vite/
+*.local
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+
+# ---- Docker / data ----
+pgdata/
+*.dump
+
+# ---- Editor / OS ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ---- Test artifacts ----
+playwright-report/
+test-results/
+coverage/
+htmlcov/
+.playwright-mcp/
+
+# ---- Local-only (NEVER pushed to the remote): tests, planning/design docs,
+#      AI/assistant instructions, the e2e-only compose. Kept on disk. ----
+backend/tests/
+docs/
+reference/
+CLAUDE.md
+docker-compose.e2e.yml
+.gitleaks.toml
+.planning/
+.claude/

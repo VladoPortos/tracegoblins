@@ -1,0 +1,33 @@
+services:
+  app:
+    # Prebuilt image (pull it) OR build locally. `docker compose pull` fetches the published
+    # image; `docker compose up --build` builds from source. TG_TAG pins a version (default latest).
+    image: ghcr.io/vladoportos/tracegoblins:${TG_TAG:-latest}
+    build: { context: ., dockerfile: Dockerfile }
+    env_file: .env
+    environment:
+      GUNICORN_CMD_ARGS: "--forwarded-allow-ips=${FORWARDED_ALLOW_IPS:-172.16.0.0/12}"
+      DB_HOST: db
+      DB_PORT: "5432"
+    depends_on:
+      db: { condition: service_healthy }
+    ports: ["8000:8000"]
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-bookworm
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tracegoblins}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-tracegoblins}
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tracegoblins} -d ${POSTGRES_DB:-tracegoblins}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  pgdata:

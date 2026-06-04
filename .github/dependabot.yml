@@ -1,0 +1,40 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: pip # uv-managed Python deps (backend/pyproject.toml + uv.lock)
+    directory: "/backend"
+    schedule:
+      interval: weekly
+    groups:
+      python:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: npm
+    directory: "/frontend"
+    schedule:
+      interval: weekly
+    groups:
+      npm:
+        update-types: ["minor", "patch"]
+    ignore:
+      # openapi-typescript 7.x peers `typescript@^5`; TS 6 breaks `npm ci`. Hold the major
+      # until openapi-typescript supports TS 6.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: docker # root Dockerfile base images
+    directory: "/"
+    schedule:
+      interval: weekly
+    ignore:
+      # The project pins requires-python ">=3.12,<3.13", so a newer Python runtime base is
+      # incompatible. Hold the Python base major; node base majors are still proposed.
+      - dependency-name: "python"
+        update-types: ["version-update:semver-major"]

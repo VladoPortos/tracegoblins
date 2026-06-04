@@ -1,0 +1,30 @@
+.git
+.gitignore
+.vscode
+.idea
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+frontend/node_modules/
+frontend/dist/
+.vite/
+reference/
+docs/
+# Keep the runtime image free of tests/fixtures (which can hold captured secrets),
+# the e2e-only compose, and assistant/planning files.
+backend/tests/
+docker-compose.e2e.yml
+CLAUDE.md
+.gitleaks.toml
+.planning/
+.claude/
+.github/
+.env
+.env.*
+!.env.example
+pgdata/
+playwright-report/
+test-results/
