@@ -34,7 +34,8 @@ updates:
     schedule:
       interval: weekly
     ignore:
-      # The project pins requires-python ">=3.12,<3.13", so a newer Python runtime base is
-      # incompatible. Hold the Python base major; node base majors are still proposed.
+      # The project pins requires-python ">=3.12,<3.13", so ANY newer Python runtime base
+      # (3.13+, including minor bumps such as 3.14) is incompatible — hold both minor and
+      # major and stay on the 3.12 line (patches still flow). Node base majors are still proposed.
       - dependency-name: "python"
-        update-types: ["version-update:semver-major"]
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
