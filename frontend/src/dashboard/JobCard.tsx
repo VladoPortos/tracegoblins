@@ -20,6 +20,9 @@ export function JobCard({ run }: { run: RunCard }) {
   // Duration from elapsed field if present on the card; otherwise not shown.
   // The plan notes job_events give real durations — surfaced here when available.
   const elapsed = run.elapsed ?? null
+  // "When" prefers the AWX launch time, then finish/log time — matching the table view
+  // and the server's default sort (coalesce(launched_at, log_time, created_at)).
+  const when = run.launched_at || run.log_time
 
   return (
     <button className="card" onClick={() => nav('/runs/' + run.id)}
@@ -43,7 +46,7 @@ export function JobCard({ run }: { run: RunCard }) {
             </div>
             <div className="row gap2 mono" style={{ fontSize: 11.5, color: 'var(--text-3)' }}>
               <Glyph name="clock" size={12} />
-              {run.log_time ? shortTime(run.log_time) : 'uploaded ' + shortTime(run.created_at)}
+              {when ? shortTime(when) : 'uploaded ' + shortTime(run.created_at)}
               {elapsed != null && (
                 <>
                   <span style={{ opacity: 0.4 }}>·</span>
