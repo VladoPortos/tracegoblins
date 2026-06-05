@@ -1,27 +1,16 @@
 import { useState } from 'react'
-import { useSearchParams } from 'react-router'
 import { Glyph } from '../components/atoms/Glyph'
 import { RunsList } from './RunsList'
 import { UploadModal } from '../upload/UploadModal'
 import { useMe } from '../api/queries'
-
-type Tab = 'mine' | 'shared' | 'team'
-const TABS: Tab[] = ['mine', 'shared', 'team']
+import { useLogsState, useLogsPersistence, type Tab } from './useLogsState'
 
 export function Dashboard() {
-  const [params, setParams] = useSearchParams()
-  const raw = params.get('tab')
-  const tab: Tab = (TABS as string[]).includes(raw ?? '') ? (raw as Tab) : 'mine'
+  useLogsPersistence()
+  const { tab, setTab } = useLogsState()
   const [upload, setUpload] = useState(false)
   const me = useMe()
   const tabs = [['mine', 'My logs', 'folder'], ['shared', 'Shared with me', 'inbox'], ['team', 'Team workspace', 'users']] as const
-
-  const setTab = (t: Tab) => {
-    const next = new URLSearchParams(params)
-    next.set('tab', t)
-    if (t !== 'team') next.delete('src')   // source chip (added later) only meaningful in team scope
-    setParams(next, { replace: false })
-  }
 
   return (
     <div className="col scroll" style={{ height: '100%' }}>
