@@ -196,6 +196,7 @@ async def sync_controller(db: AsyncSession, controller: AwxController) -> SyncRe
                     awx_workflow_name=job.workflow_name,
                 )
                 run.elapsed = job.elapsed  # float seconds from AWX; None when AWX omits it
+                run.launched_at = _parse_iso(job.started)  # AWX launch time; None if AWX omits it
                 try:
                     db.add(run)
                     await db.flush()  # assign run.id (may trip the unique constraint here)
