@@ -2,7 +2,14 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+
+def _require_nonblank_body(cls, v: str) -> str:
+    if not v or not v.strip():
+        raise ValueError("body must not be blank")
+    return v
+
 
 TAG_VALUES = frozenset({"needs-fix", "known-issue", "resolved", "note"})
 ALLOWED_URL_SCHEMES = frozenset({"http", "https", "mailto"})
@@ -104,10 +111,14 @@ class CommentCreate(BaseModel):
     parent_id: str | None = Field(default=None, max_length=_ID_MAX)
     annotation_id: str | None = Field(default=None, max_length=_ID_MAX)
 
+    _body_nonblank = field_validator("body")(classmethod(_require_nonblank_body))
+
 
 class CommentUpdate(BaseModel):
     body: str = Field(max_length=_BODY_MAX)
     mentions: list[str] = Field(default=[], max_length=_MENTIONS_MAX)  # re-validated run-visible (C5)
+
+    _body_nonblank = field_validator("body")(classmethod(_require_nonblank_body))
 
 
 # --- mention autocomplete ---

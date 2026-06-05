@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, FastAPI, Response, status
 from sqlalchemy import text
 
 from app.core.config import settings, validate_runtime_secrets
@@ -28,20 +28,26 @@ def create_app() -> FastAPI:
         title=settings.app_name,
         lifespan=lifespan,
         docs_url="/api/docs" if settings.environment != "production" else None,
-        openapi_url="/api/openapi.json",
+        # Disable the OpenAPI schema endpoint in production too (mirrors docs_url): a security-
+        # first, internet-facing app shouldn't disclose its full API surface unauthenticated.
+        # The SPA build generates its client from a dev server / scripts/export_openapi.py.
+        openapi_url="/api/openapi.json" if settings.environment != "production" else None,
     )
 
     meta = APIRouter(prefix="/api", tags=["meta"])
 
     @meta.get("/health")
-    async def health() -> dict[str, str]:
+    async def health(response: Response) -> dict[str, str]:
         db_ok = "ok"
         try:
             async with SessionLocal() as session:
                 await session.execute(text("SELECT 1"))
         except Exception:
             db_ok = "error"
-        return {"status": "ok", "db": db_ok}
+            # 503 so the Docker HEALTHCHECK (curl -fsS) actually fails when the DB is
+            # unreachable, instead of reporting the container healthy with a dead database.
+            response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return {"status": "ok" if db_ok == "ok" else "error", "db": db_ok}
 
     app.include_router(meta)
     from app.api import (

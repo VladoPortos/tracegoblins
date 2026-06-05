@@ -14,6 +14,10 @@ _TERMINAL = {
 _ITEM = {"runner_item_on_ok": "ok", "runner_item_on_failed": "failed", "runner_item_on_skipped": "skipped"}
 _ITEM_RANK = {"skipped": 0, "ok": 1, "changed": 2, "failed": 3}
 
+# Cap a single task's serialized result blob (output/error). A hostile or pathological AWX
+# result dict could otherwise store unbounded JSON per task; 64k is far above any real message.
+_MAX_BLOB_CHARS = 64_000
+
 
 def _norm(s: str) -> str:
     s = s or ""
@@ -44,7 +48,12 @@ def _ts(ev: dict) -> datetime | None:
 
 
 def _res_blob(res: dict | None) -> str:
-    return json.dumps(res, ensure_ascii=False) if res else ""
+    if not res:
+        return ""
+    s = json.dumps(res, ensure_ascii=False)
+    if len(s) > _MAX_BLOB_CHARS:
+        s = s[:_MAX_BLOB_CHARS] + "…[truncated]"
+    return s
 
 
 def parse_job_events(events: list[dict]) -> ParsedRun:

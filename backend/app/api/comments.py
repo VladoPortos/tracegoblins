@@ -31,11 +31,15 @@ async def _load_visible_comment(cid: uuid.UUID, user: User, db) -> tuple[Comment
 
 @router.patch("/{cid}", response_model=CommentOut)
 async def update_comment(
-    cid: uuid.UUID, payload: CommentUpdate, db: DbSession, user: GatedUser,
+    cid: uuid.UUID, payload: CommentUpdate, request: Request, db: DbSession, user: GatedUser,
 ):
     c, run = await _load_visible_comment(cid, user, db)
     if c.author_user_id != user.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Author only")
+    # A soft-deleted comment is a tombstone; editing it would resurrect a body (DELETE stays
+    # idempotent, but an edit must not undo a delete).
+    if c.deleted_at is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="Cannot edit a deleted comment")
 
     # Re-validate submitted mentions[] against run-visible users; drop the rest silently.
     # Capture previous set before reassignment so C5 can notify only newly-added ids.
@@ -49,6 +53,10 @@ async def update_comment(
     newly_added = [uid for uid in survivors if uid not in previous]
     await create_mention_notifications(
         db, comment=c, mention_ids=newly_added, actor_id=user.id
+    )
+    await write_audit(
+        db, action="comment_update", actor_id=user.id,
+        target_type="run", target_id=str(run.id), ip=client_ip(request),
     )
     await db.commit()
     await db.refresh(c)

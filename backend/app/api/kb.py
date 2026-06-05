@@ -3,13 +3,13 @@ from __future__ import annotations
 import uuid
 
 import sqlalchemy as sa
-from fastapi import APIRouter, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.collab_schemas import AnnotationLink
-from app.api.deps import AdminUser, CurrentUser, DbSession, GatedUser
+from app.api.deps import AdminUser, CurrentUser, DbSession, GatedUser, require_password_current
 from app.api.http_utils import client_ip
 from app.api.kb_schemas import (
     KB_STATUS_VALUES,
@@ -19,7 +19,7 @@ from app.api.kb_schemas import (
     SignatureUpdate,
     SuggestOut,
 )
-from app.kb.service import backfill_signature, visible_occurrence_count
+from app.kb.service import backfill_signature, visible_occurrence_count, visible_occurrence_counts
 from app.kb.signature import extract_signature
 from app.models import KbSignature, Run, Task, Team, TeamMember, User
 from app.services.audit import write_audit
@@ -110,11 +110,9 @@ async def list_signatures(
     stmt = stmt.order_by(KbSignature.updated_at.desc()).limit(200)
 
     rows = (await db.execute(stmt)).scalars().all()
-    out: list[SignatureOut] = []
-    for sig in rows:
-        n = await visible_occurrence_count(db, sig.id, user)
-        out.append(signature_to_out(sig, occurrence_count=n))
-    return out
+    # Batched: ONE grouped count query for all listed signatures (avoids an N+1 over the list).
+    counts = await visible_occurrence_counts(db, [s.id for s in rows], user)
+    return [signature_to_out(sig, occurrence_count=counts.get(sig.id, 0)) for sig in rows]
 
 
 @router.get("/signatures/{sig_id}", response_model=SignatureOut)
@@ -352,13 +350,19 @@ async def promote_signature(
     return signature_to_out(sig, occurrence_count=n)
 
 
-@router.post("/signatures/{sig_id}/promote-global", response_model=SignatureOut)
+@router.post(
+    "/signatures/{sig_id}/promote-global",
+    response_model=SignatureOut,
+    dependencies=[Depends(require_password_current)],  # same forced-change gate as sibling mutations
+)
 async def promote_signature_global(
     sig_id: uuid.UUID, request: Request, db: DbSession, user: AdminUser,
 ):
-    sig = await db.get(KbSignature, sig_id)
-    if sig is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Signature not found")
+    # A1: admin role grants NO read path — go through the same visibility gate every other KB
+    # mutation uses (raw db.get() would let a non-member admin act on, and leak, a team's
+    # private KB entry). For a team signature this requires the admin to be a member of that
+    # team; missing/invisible -> 404 (never 403).
+    sig = await _get_visible_signature(db, sig_id, user)
     if sig.team_id is None:
         # Already global: idempotent no-op (count + return). No second global row created.
         n = await visible_occurrence_count(db, sig.id, user)

@@ -82,14 +82,34 @@ async def enable(data: CodeIn, request: Request, user: CurrentUser, db: DbSessio
     return RecoveryOut(recovery_codes=codes)
 
 
+def _mfa_mgmt_keys(request: Request, user) -> tuple[str, str]:
+    """Rate-limit keys for the authenticated 2FA-management surface (disable / regenerate).
+
+    Namespaced 'mfa-mgmt' so it is independent of the pre-session login-verify budget, but
+    shares the same brute-force ceiling — a session-only attacker must not be able to grind
+    the 6-digit code to remove 2FA or mint fresh recovery codes."""
+    ip = client_ip(request)
+    return (f"ip:{ip or 'unknown'}", f"mfa-mgmt:{user.id}")
+
+
 @router.post("/disable", status_code=204)
 async def disable(data: CodeIn, request: Request, user: CurrentUser, db: DbSession):
     if not user.totp_enabled:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="2FA is not enabled")
+    keys = _mfa_mgmt_keys(request, user)
+    decision = await mfa_verify_limiter.check(*keys)
+    if not decision.allowed:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many attempts. Try again later.",
+            headers={"Retry-After": str(decision.retry_after)},
+        )
     secret = _active_secret(user)
     ok = totp.verify_totp(secret, data.code) is not None or await consume_recovery_code(db, user, data.code)
     if not ok:
+        await mfa_verify_limiter.record_failure(*keys)
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Invalid code")
+    await mfa_verify_limiter.reset(*keys)
     user.totp_secret = None
     user.totp_enabled = False
     user.totp_confirmed_at = None
@@ -103,8 +123,18 @@ async def disable(data: CodeIn, request: Request, user: CurrentUser, db: DbSessi
 async def regenerate(data: CodeIn, request: Request, user: CurrentUser, db: DbSession):
     if not user.totp_enabled:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="2FA is not enabled")
+    keys = _mfa_mgmt_keys(request, user)
+    decision = await mfa_verify_limiter.check(*keys)
+    if not decision.allowed:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many attempts. Try again later.",
+            headers={"Retry-After": str(decision.retry_after)},
+        )
     if totp.verify_totp(_active_secret(user), data.code) is None:
+        await mfa_verify_limiter.record_failure(*keys)
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Invalid code")
+    await mfa_verify_limiter.reset(*keys)
     codes = await issue_recovery_codes(db, user, n=10)
     await write_audit(db, action="mfa_recovery_regenerated", actor_id=user.id, ip=client_ip(request))
     await db.commit()

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import datetime
 from typing import Annotated
@@ -30,6 +31,23 @@ import logging
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/runs", tags=["runs"])
+
+
+async def _read_body_capped(request: Request, cap: int) -> bytes:
+    """Stream the raw request body with a HARD byte cap, independent of Content-Length.
+
+    request.json() buffers the whole body before any size check, so a chunked / missing-
+    Content-Length body could OOM the worker before the 8 MB guard runs. Accumulating from
+    the raw stream and aborting the moment the cap is exceeded bounds memory regardless of
+    how the client frames the request."""
+    chunks: list[bytes] = []
+    total = 0
+    async for chunk in request.stream():
+        total += len(chunk)
+        if total > cap:
+            raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, detail="Upload too large.")
+        chunks.append(chunk)
+    return b"".join(chunks)
 
 
 async def get_visible_run(run_id: uuid.UUID, user: CurrentUser, db: DbSession) -> Run:
@@ -88,7 +106,12 @@ async def create_run(
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail="file is required")
         if file.size is not None and file.size > MAX_UPLOAD_BYTES:
             raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, detail="Log exceeds 8 MB")
-        raw_bytes = await file.read()
+        # Bounded read: read(n) never pulls more than cap+1 into memory even if file.size was
+        # unavailable (a chunked multipart part can leave it unset). _guard_and_decode stays
+        # authoritative on the exact 8 MB limit for the decoded text.
+        raw_bytes = await file.read(MAX_UPLOAD_BYTES + 1)
+        if len(raw_bytes) > MAX_UPLOAD_BYTES:
+            raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, detail="Log exceeds 8 MB")
         tmpl = template
         team_raw = team_id
     else:
@@ -98,8 +121,11 @@ async def create_run(
         cl = request.headers.get("content-length")
         if cl and cl.isdigit() and int(cl) > MAX_UPLOAD_BYTES + 1_048_576:  # +1MB JSON envelope slack
             raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, detail="Upload too large.")
+        # Authoritative cap for bodies that slip past the Content-Length check (chunked / no CL):
+        # stream with a hard byte ceiling so request.json() can't buffer an unbounded body.
+        raw = await _read_body_capped(request, MAX_UPLOAD_BYTES + 1_048_576)
         try:
-            body = await request.json()
+            body = json.loads(raw)
         except Exception:
             raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
                                 detail="Expected multipart file or JSON {text}")
@@ -137,10 +163,12 @@ async def create_run(
 
 def _runs_extra_conditions(
     *, controller, organization, template, awx_user, status_csv,
-    launch_type, launched_after, launched_before, search,
+    launch_type, launched_after, launched_before, search, source=None,
 ):
     """Build the AND-combined list of filter conditions applied AFTER the visibility scope."""
     extra = []
+    if source is not None:
+        extra.append(Run.source == source)
     if controller is not None:
         try:
             extra.append(Run.controller_id == uuid.UUID(controller))
@@ -179,6 +207,7 @@ async def list_runs(
     awx_user: str | None = Query(None),
     status: str | None = Query(None),
     launch_type: str | None = Query(None),
+    source: str | None = Query(None, pattern="^(upload|awx)$"),  # source chips: server-side scoping
     launched_after: datetime | None = Query(None),
     launched_before: datetime | None = Query(None),
     search: str | None = Query(None),
@@ -186,7 +215,7 @@ async def list_runs(
 ):
     extra = _runs_extra_conditions(
         controller=controller, organization=organization, template=template,
-        awx_user=awx_user, status_csv=status, launch_type=launch_type,
+        awx_user=awx_user, status_csv=status, launch_type=launch_type, source=source,
         launched_after=launched_after, launched_before=launched_before, search=search,
     )
 
@@ -561,6 +590,11 @@ async def create_annotation(
     await _require_task(db, run.id, seq)
     tags = validate_tags(payload.tags)
     links = validate_links(payload.links)
+    # Reject a fully-empty annotation (no note, no tags, no links) — it carries no content.
+    # A tag-only or link-only annotation is still allowed.
+    if not payload.note.strip() and not tags and not links:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+                            detail="Annotation must have a note, a tag, or a link")
     a = Annotation(
         run_id=run.id, task_seq=seq, author_user_id=user.id,
         note=payload.note, tags=tags, links=links,
@@ -637,12 +671,14 @@ async def create_comment(
         except (ValueError, AttributeError):
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Invalid parent_id")
         parent = await db.get(Comment, parent_uuid)
-        # parent must be on THIS run + THIS task + be a root (single-level threading, M3-D6).
+        # parent must be on THIS run + THIS task, be a root (single-level threading, M3-D6),
+        # and not be soft-deleted (can't reply to a tombstone).
         if (
             parent is None
             or parent.run_id != run.id
             or parent.task_seq != seq
             or parent.parent_id is not None
+            or parent.deleted_at is not None
         ):
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Invalid parent_id")
 

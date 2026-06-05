@@ -27,14 +27,20 @@ function Grid({ items }: { items: RunCard[] }) {
 
 export function RunsList({ scope = 'mine', onUpload }: { scope?: 'mine' | 'shared' | 'team'; onUpload?: () => void }) {
   const [filters, setFilters] = useState<RunFilters>({})
-  const runs = useInfiniteRuns(scope, filters)
+  const [src] = useSourceSelection()
+  // Push the source-chip selection into the SERVER query (not just a client filter over the
+  // already-loaded pages) so selecting a controller / uploads paginates correctly, instead of
+  // falsely showing "no matching runs" when the matches sit on a not-yet-loaded page.
+  const effFilters: RunFilters = scope === 'team' && src !== 'all'
+    ? (src === 'uploads' ? { ...filters, source: 'upload' } : { ...filters, controller: src })
+    : filters
+  const runs = useInfiniteRuns(scope, effFilters)
   const facetsQuery = useRunFilters(scope === 'team' ? 'team' : scope === 'shared' ? 'shared' : 'mine')
   const syncCtl = useSyncController()
   // Only the team grouped view needs controller metadata (sync chips / names). On
   // mine/shared this query is unused, so skip it to avoid a wasted request + 1.5s poll.
   const controllersQuery = useControllers({ enabled: scope === 'team' })
   const [q, setQ] = useState('')
-  const [src] = useSourceSelection()
 
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const all = (runs.data?.pages ?? []).flatMap((p) => p.items)
@@ -67,10 +73,8 @@ export function RunsList({ scope = 'mine', onUpload }: { scope?: 'mine' | 'share
   const items = all.filter((r) => !q.trim() ||
     ((r.template_name || '') + ' ' + (r.job_id || '') + ' ' + (r.team_name || '') + ' ' + r.recap.map((x) => x.host).join(' ')).toLowerCase().includes(q.toLowerCase()))
 
-  // Source chip scoping — narrows to a specific controller or uploads-only
-  const scoped = scope === 'team' && src !== 'all'
-    ? items.filter((r) => src === 'uploads' ? !r.controller_id : r.controller_id === src)
-    : items
+  // Source scoping is now server-side (effFilters above); `items` already holds only the
+  // selected source's runs, so no extra client-side narrowing by controller is needed here.
 
   // Team scope: group by controller first (AWX runs), then by team for uploads
   const showGrouped = scope === 'team'
@@ -125,15 +129,15 @@ export function RunsList({ scope = 'mine', onUpload }: { scope?: 'mine' | 'share
         <input className="input" placeholder="Search runs, hosts, IDs…" value={q} onChange={(e) => setQ(e.target.value)} style={{ paddingLeft: 34 }} />
       </div>
 
-      {/* Team scope with a specific source selected — flat grid, no grouping */}
+      {/* Team scope with a specific source selected — flat grid, no grouping (server-scoped) */}
       {showGrouped && src !== 'all' && (
-        scoped.length === 0
+        items.length === 0
           ? (
             <div className="card">
               <EmptyState icon={empty.icon} title="No matching runs" sub="Try a different source or adjust filters." />
             </div>
           )
-          : <Grid items={scoped} />
+          : <Grid items={items} />
       )}
 
       {/* Team scope 'all' — existing grouped view */}
@@ -191,7 +195,7 @@ export function RunsList({ scope = 'mine', onUpload }: { scope?: 'mine' | 'share
       )}
 
       {/* Non-team scopes — flat grid */}
-      {!showGrouped && <Grid items={scoped} />}
+      {!showGrouped && <Grid items={items} />}
 
       {total > all.length && <div ref={sentinelRef} style={{ height: 1 }} />}
       <div className="muted" style={{ fontSize: 12, textAlign: 'center', padding: '8px 0' }}>

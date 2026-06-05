@@ -11,7 +11,10 @@ services:
       DB_PORT: "5432"
     depends_on:
       db: { condition: service_healthy }
-    ports: ["8000:8000"]
+    # Bind to localhost only: the app is designed to sit BEHIND a TLS-terminating reverse proxy
+    # (on the same host), not be exposed directly on every interface. Change to "8000:8000" only
+    # if you deliberately want it reachable from the network without a proxy in front.
+    ports: ["127.0.0.1:8000:8000"]
     restart: unless-stopped
 
   db:

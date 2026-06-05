@@ -34,9 +34,9 @@ async def _load_visible_annotation(
 
 @router.patch("/{aid}", response_model=AnnotationOut)
 async def update_annotation(
-    aid: uuid.UUID, payload: AnnotationUpdate, db: DbSession, user: GatedUser,
+    aid: uuid.UUID, payload: AnnotationUpdate, request: Request, db: DbSession, user: GatedUser,
 ):
-    a, _run = await _load_visible_annotation(aid, user, db)
+    a, run = await _load_visible_annotation(aid, user, db)
     if a.author_user_id != user.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Author only")
     if payload.note is not None:
@@ -47,6 +47,8 @@ async def update_annotation(
         a.links = validate_links(payload.links)
     if payload.resolved is not None:
         a.resolved = payload.resolved
+    await write_audit(db, action="annotation_update", actor_id=user.id,
+                      target_type="run", target_id=str(run.id), ip=client_ip(request))
     await db.commit()
     await db.refresh(a)
     # Re-load author display_name for denormalized response
