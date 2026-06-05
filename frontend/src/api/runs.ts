@@ -33,9 +33,14 @@ export function useRuns(scope: 'mine' | 'shared' | 'team' = 'mine', filters: Run
 }
 const PAGE = 100
 
-export function useInfiniteRuns(scope: 'mine' | 'shared' | 'team' = 'mine', filters: RunFilters = {}) {
+export function useInfiniteRuns(
+  scope: 'mine' | 'shared' | 'team' = 'mine',
+  filters: RunFilters = {},
+  sort: string = 'when',
+  dir: string = 'desc',
+) {
   return useInfiniteQuery({
-    queryKey: [...runsKey, 'infinite', { scope, filters }],
+    queryKey: [...runsKey, 'infinite', { scope, filters, sort, dir }],
     initialPageParam: 0,
     queryFn: ({ pageParam }) => {
       const qs = new URLSearchParams()
@@ -52,6 +57,8 @@ export function useInfiniteRuns(scope: 'mine' | 'shared' | 'team' = 'mine', filt
       if (filters.launched_after) qs.set('launched_after', filters.launched_after)
       if (filters.launched_before) qs.set('launched_before', filters.launched_before)
       if (filters.search) qs.set('search', filters.search)
+      qs.set('sort', sort)
+      qs.set('dir', dir)
       return apiFetch<RunListResponse>(`/runs?${qs.toString()}`)
     },
     getNextPageParam: (lastPage, allPages) => {
