@@ -46,6 +46,8 @@ export const ICONS: Record<string, (p: IconProps) => JSX.Element> = {
   dots: stroke([], () => <><circle cx={5} cy={12} r={1.4} fill="currentColor" /><circle cx={12} cy={12} r={1.4} fill="currentColor" /><circle cx={19} cy={12} r={1.4} fill="currentColor" /></>),
   spinner: stroke('M12 3a9 9 0 1 0 9 9'),
   layers: stroke(['m12 3 9 5-9 5-9-5z', 'm3 13 9 5 9-5', 'm3 17 9 5 9-5']),
+  grid: stroke([], () => <><rect x={4} y={4} width={7} height={7} rx={1.5} /><rect x={13} y={4} width={7} height={7} rx={1.5} /><rect x={4} y={13} width={7} height={7} rx={1.5} /><rect x={13} y={13} width={7} height={7} rx={1.5} /></>),
+  rows: stroke(['M4 7h16', 'M4 12h16', 'M4 17h16']),
   map:    stroke(['M9 4 3 6.5v13L9 17l6 2.5 6-2.5v-13L15 6.5 9 4z', 'M9 4v13', 'M15 6.5v13']),
   upload: stroke(['M12 15V4', 'm7 9 5-5 5 5', 'M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2']),
   filter: stroke('M3 5h18l-7 8v6l-4-2v-4z'),
