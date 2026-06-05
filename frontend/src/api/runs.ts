@@ -8,7 +8,7 @@ export const taskKey = (id: string, seq: number) => ['runs', id, 'tasks', seq] a
 
 export interface RunFilters {
   controller?: string; organization?: number; template?: string; awx_user?: string
-  status?: string[]; launch_type?: string; launched_after?: string; launched_before?: string; search?: string
+  status?: string[]; launch_type?: string; source?: string; launched_after?: string; launched_before?: string; search?: string
 }
 
 export function useRuns(scope: 'mine' | 'shared' | 'team' = 'mine', filters: RunFilters = {}, limit = 100, offset = 0) {
@@ -22,6 +22,7 @@ export function useRuns(scope: 'mine' | 'shared' | 'team' = 'mine', filters: Run
   if (filters.awx_user) qs.set('awx_user', filters.awx_user)
   if (filters.status && filters.status.length) qs.set('status', filters.status.join(','))
   if (filters.launch_type) qs.set('launch_type', filters.launch_type)
+  if (filters.source) qs.set('source', filters.source)
   if (filters.launched_after) qs.set('launched_after', filters.launched_after)
   if (filters.launched_before) qs.set('launched_before', filters.launched_before)
   if (filters.search) qs.set('search', filters.search)
@@ -47,6 +48,7 @@ export function useInfiniteRuns(scope: 'mine' | 'shared' | 'team' = 'mine', filt
       if (filters.awx_user) qs.set('awx_user', filters.awx_user)
       if (filters.status && filters.status.length) qs.set('status', filters.status.join(','))
       if (filters.launch_type) qs.set('launch_type', filters.launch_type)
+      if (filters.source) qs.set('source', filters.source)
       if (filters.launched_after) qs.set('launched_after', filters.launched_after)
       if (filters.launched_before) qs.set('launched_before', filters.launched_before)
       if (filters.search) qs.set('search', filters.search)

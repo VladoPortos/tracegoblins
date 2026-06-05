@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.api.collab_schemas import AnnotationLink
 
@@ -17,6 +18,21 @@ _REP_MAX = 8_000
 _PROSE_MAX = 20_000
 _ID_MAX = 64
 _LINKS_MAX = 50
+# match_patterns is reserved/free-form JSONB. Cap its serialized size so it can't be used to
+# stuff unbounded JSON into the column (storage abuse) — the other KB fields are all capped.
+_MATCH_PATTERNS_MAX_CHARS = 10_000
+
+
+def _validate_match_patterns(cls, v):
+    if v is None:
+        return v
+    try:
+        size = len(json.dumps(v))
+    except (TypeError, ValueError):
+        raise ValueError("match_patterns must be JSON-serializable")
+    if size > _MATCH_PATTERNS_MAX_CHARS:
+        raise ValueError(f"match_patterns too large (max {_MATCH_PATTERNS_MAX_CHARS} serialized chars)")
+    return v
 
 
 class SignatureCreate(BaseModel):
@@ -32,6 +48,8 @@ class SignatureCreate(BaseModel):
     match_patterns: dict | None = None
     links: list[AnnotationLink] = Field(default=[], max_length=_LINKS_MAX)
 
+    _cap_match_patterns = field_validator("match_patterns")(classmethod(_validate_match_patterns))
+
 
 class SignatureUpdate(BaseModel):        # all optional (PATCH semantics)
     title: str | None = Field(default=None, max_length=_TITLE_MAX)
@@ -43,6 +61,8 @@ class SignatureUpdate(BaseModel):        # all optional (PATCH semantics)
     where_it_lives: str | None = Field(default=None, max_length=_PROSE_MAX)
     match_patterns: dict | None = None
     links: list[AnnotationLink] | None = Field(default=None, max_length=_LINKS_MAX)
+
+    _cap_match_patterns = field_validator("match_patterns")(classmethod(_validate_match_patterns))
 
 
 class SignatureOut(BaseModel):

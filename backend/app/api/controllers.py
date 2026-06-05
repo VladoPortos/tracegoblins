@@ -53,18 +53,21 @@ async def list_controllers(user: CurrentUser, db: DbSession):
         rows = (await db.execute(
             select(AwxController).order_by(AwxController.created_at)
         )).scalars().all()
-    else:
-        team_ids = await my_team_ids(db, user)
-        if not team_ids:
-            return []
-        rows = (await db.execute(
-            select(AwxController)
-            .where(AwxController.id.in_(
-                select(ControllerTeam.controller_id).where(ControllerTeam.team_id.in_(team_ids))
-            ))
-            .order_by(AwxController.created_at)
-        )).scalars().all()
-    return [await controller_to_out(db, c) for c in rows]
+        return [await controller_to_out(db, c) for c in rows]
+
+    team_ids = await my_team_ids(db, user)
+    if not team_ids:
+        return []
+    rows = (await db.execute(
+        select(AwxController)
+        .where(AwxController.id.in_(
+            select(ControllerTeam.controller_id).where(ControllerTeam.team_id.in_(team_ids))
+        ))
+        .order_by(AwxController.created_at)
+    )).scalars().all()
+    # Non-admin: redact the token mask and filter assignments to the viewer's own teams so a
+    # member can't enumerate other teams' names/ids/org scopes or read token metadata (H6).
+    return [await controller_to_out(db, c, viewer_team_ids=team_ids) for c in rows]
 
 
 def _validate_sync(sync_mode: str, interval: int | None) -> None:

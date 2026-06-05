@@ -1,14 +1,54 @@
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
+from urllib.parse import urlsplit
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_TIMEOUT = httpx.Timeout(30.0, connect=10.0)
 PAGE_SIZE = 200
 FINISHED_FILTER = "&not__status=running&not__status=pending&not__status=waiting&not__status=new"
+# Safety backstop: never accumulate more than this many job_events for a single job. A normal
+# job has hundreds-to-low-thousands of events; a pathological/hostile job could otherwise OOM
+# the worker. On overflow we stop paging and log (the parse is best-effort from what we have).
+MAX_JOB_EVENTS = 200_000
+
+_DEFAULT_PORTS = {"http": 80, "https": 443}
+
+
+def _origin(url: str) -> tuple[str, str, int | None]:
+    """(scheme, lowercased host, effective port) for same-origin comparison."""
+    p = urlsplit(url)
+    port = p.port or _DEFAULT_PORTS.get(p.scheme)
+    return (p.scheme, (p.hostname or "").lower(), port)
+
+
+def _safe_next(base: str, next_url: str | None) -> str | None:
+    """Validate a DRF ``next`` pagination URL before following it.
+
+    AWX returns ``next`` as an absolute URL, and the shared httpx client carries the
+    ``Authorization: Bearer`` header on EVERY request it makes — including to a different
+    host. So a malicious or misconfigured AWX that points ``next`` at another origin would
+    exfiltrate the controller token. Only follow ``next`` when it is same-origin as
+    ``base_url`` (a relative ``next`` is inherently same-origin once httpx resolves it).
+    Anything off-origin raises AwxError rather than leaking the token.
+    """
+    if not next_url:
+        return None
+    parts = urlsplit(next_url)
+    if not parts.scheme and not parts.netloc:
+        return next_url  # relative -> httpx resolves against base_url (same origin)
+    if _origin(next_url) != _origin(base):
+        raise AwxError(
+            f"AWX pagination 'next' pointed off-origin "
+            f"({parts.scheme}://{parts.netloc}); refusing to send the token there"
+        )
+    return next_url
 
 
 class AwxError(Exception):
@@ -139,8 +179,7 @@ class AwxClient:
                 first = False
             for job in data.get("results") or []:
                 yield _to_summary(job)
-            next_url = data.get("next")
-            url = next_url if next_url else None
+            url = _safe_next(self._base, data.get("next"))
 
     async def get_job_events(self, job_id: int) -> list[dict]:
         """Paginate GET /api/v2/jobs/{job_id}/job_events/?page_size=200&order_by=counter,
@@ -150,6 +189,12 @@ class AwxClient:
         while url is not None:
             data = await self._get_json(url)
             events.extend(data.get("results") or [])
-            next_url = data.get("next")
-            url = next_url if next_url else None
+            if len(events) >= MAX_JOB_EVENTS:
+                logger.warning(
+                    "job %s exceeded MAX_JOB_EVENTS (%d); truncating event stream",
+                    job_id, MAX_JOB_EVENTS,
+                )
+                del events[MAX_JOB_EVENTS:]
+                break
+            url = _safe_next(self._base, data.get("next"))
         return events

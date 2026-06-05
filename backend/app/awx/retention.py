@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -34,12 +34,17 @@ async def run_retention_sweep(db: AsyncSession | None = None) -> int:
         db = SessionLocal()
     try:
         cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        # Age by the job's ACTUAL run time (log_time), falling back to import time when AWX
+        # omitted it — matching how the rest of the app computes "when a run happened"
+        # (runs.py uses coalesce(log_time, created_at)). Using created_at alone would keep a
+        # freshly-imported but ancient job around for a full retention window after import.
+        run_age = func.coalesce(Run.log_time, Run.created_at)
         total = 0
         while True:
             ids = (
                 await db.scalars(
                     select(Run.id)
-                    .where(Run.source == "awx", Run.created_at < cutoff)
+                    .where(Run.source == "awx", run_age < cutoff)
                     .limit(_BATCH)
                 )
             ).all()

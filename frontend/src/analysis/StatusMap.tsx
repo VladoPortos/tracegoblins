@@ -73,7 +73,14 @@ export function StatusMap({ tasks, filters, selected, onSelect, jumpTo }:
   const playGroups = useMemo(() => plays.map((p) => ({ pi: p.pi, name: p.name,
     tasks: p.groups.flatMap((g) => g.items.flatMap((it) => it.type === 'task' ? [{ ...it.task, _role: g.role }] : it.tasks.map((t) => ({ ...t, _role: g.role })))) })), [plays])
 
-  const scrollToSeq = (seq: number) => { const el = document.getElementById('smrow-' + seq); if (el && scrollRef.current) scrollRef.current.scrollTo({ top: el.offsetTop - 120, behavior: 'smooth' }) }
+  const scrollToSeq = (seq: number) => {
+    const el = document.getElementById('smrow-' + seq)
+    if (el && scrollRef.current) {
+      // Respect the user's reduced-motion preference (jump instead of animate).
+      const reduce = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
+      scrollRef.current.scrollTo({ top: el.offsetTop - 120, behavior: reduce ? 'auto' : 'smooth' })
+    }
+  }
   const jump = (seq: number) => { onSelect(seq); scrollToSeq(seq) }
   useEffect(() => { if (jumpTo) scrollToSeq(jumpTo.seq) }, [jumpTo?.nonce])
 
@@ -82,6 +89,8 @@ export function StatusMap({ tasks, filters, selected, onSelect, jumpTo }:
     const hs = Object.entries(task.hosts)
     return (
       <div id={'smrow-' + task.seq} onClick={() => onSelect(task.seq)} className="row gap2"
+        role="button" tabIndex={0} aria-label={task.name} aria-pressed={sel}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(task.seq) } }}
         style={{ padding: '5px 10px', paddingLeft: 12 + depth * 14, cursor: 'pointer', borderRadius: 7,
           background: sel ? 'var(--accent-weak)' : 'transparent', boxShadow: sel ? 'inset 2px 0 0 var(--accent)' : 'none' }}
         onMouseEnter={(e) => { if (!sel) e.currentTarget.style.background = 'var(--surface-2)' }}

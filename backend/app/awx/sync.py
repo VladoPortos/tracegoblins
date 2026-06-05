@@ -23,6 +23,30 @@ logger = logging.getLogger(__name__)
 
 _LOCK_NAMESPACE = 0x41575835  # "AWX5"
 _TERMINAL_STATUSES = frozenset({"successful", "failed", "error", "canceled"})
+# Cap the stored raw log for one AWX run. Concatenated job-event stdout is otherwise
+# unbounded; a single huge/hostile job could bloat the DB and the /raw API payload. 16M chars
+# is generous (≈2× the 8 MB manual-upload cap) — real logs sit well under it.
+MAX_RUNRAW_CHARS = 16_000_000
+
+
+def _join_stdout_capped(events: list[dict]) -> str:
+    """Concatenate per-event stdout, bounded by MAX_RUNRAW_CHARS (truncation is marked)."""
+    parts: list[str] = []
+    size = 0
+    truncated = False
+    for ev in events:
+        s = ev.get("stdout") or ""
+        if not s:
+            continue
+        parts.append(s)
+        size += len(s)
+        if size >= MAX_RUNRAW_CHARS:
+            truncated = True
+            break
+    content = "".join(parts)
+    if truncated:
+        content = content[:MAX_RUNRAW_CHARS] + "\n…[truncated: raw log exceeded storage cap]\n"
+    return content
 
 
 def controller_lock_key(controller_id: uuid.UUID | str) -> int:
@@ -178,8 +202,7 @@ async def sync_controller(db: AsyncSession, controller: AwxController) -> SyncRe
                     for t in tasks:
                         t.run_id = run.id
                     db.add_all(tasks)
-                    content = "".join(ev.get("stdout") or "" for ev in events)
-                    db.add(RunRaw(run_id=run.id, content=content))
+                    db.add(RunRaw(run_id=run.id, content=_join_stdout_capped(events)))
                     await db.commit()
                 except IntegrityError:
                     # A concurrent insert already wrote this (controller_id, awx_job_id) and
@@ -241,6 +264,30 @@ async def sync_controller(db: AsyncSession, controller: AwxController) -> SyncRe
         controller.sync_done = None
         controller.sync_current_job = None
         await db.commit()
+        return SyncResult(
+            controller_id=str(controller.id), status="error",
+            imported=imported, skipped=skipped, last_synced_job_id=max_id, error=str(e),
+        )
+    except Exception as e:
+        # Any UNEXPECTED failure (parser / DB / runtime) must NOT leave the controller pinned
+        # at last_sync_status="running" — that pins manual sync at a permanent 409 (M4-D10) and
+        # only an auto-mode controller could ever self-heal. Reset to 'error', log the
+        # traceback, and return an error result (consistent with the AwxError path above).
+        logger.exception("unexpected error during sync of controller %s", controller.id)
+        try:
+            await db.rollback()
+            await db.refresh(controller)
+            controller.last_sync_status = "error"
+            controller.last_sync_error = f"Unexpected sync failure: {type(e).__name__}"[:1000]
+            controller.status = "error"
+            controller.last_sync_at = datetime.now(timezone.utc)
+            controller.sync_total = None
+            controller.sync_done = None
+            controller.sync_current_job = None
+            await db.commit()
+        except Exception:
+            # Don't let a failure while recording the error status mask the original error.
+            logger.exception("failed to record error status for controller %s", controller.id)
         return SyncResult(
             controller_id=str(controller.id), status="error",
             imported=imported, skipped=skipped, last_synced_job_id=max_id, error=str(e),

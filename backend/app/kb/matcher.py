@@ -36,11 +36,18 @@ async def match_error(
     # Scope predicate reused by both lookups: global ∪ the run's audience teams.
     scope = (KbSignature.team_id.is_(None)) | (KbSignature.team_id.in_(team_ids))
 
-    # Exact: team_id IS NOT NULL sorts first so a team entry beats global on a tie.
+    # Exact: team_id IS NOT NULL sorts first so a team entry beats global on a tie. When the
+    # caller spans multiple teams that each defined the same signature_key, add a DETERMINISTIC
+    # tiebreaker (most-recently-updated, then id) so the chosen match is stable across requests
+    # rather than whatever order the DB happens to return.
     exact_row = await db.scalar(
         select(KbSignature)
         .where(scope, KbSignature.signature_key == sig.signature_key)
-        .order_by(KbSignature.team_id.isnot(None).desc())
+        .order_by(
+            KbSignature.team_id.isnot(None).desc(),
+            KbSignature.updated_at.desc(),
+            KbSignature.id,
+        )
         .limit(1)
     )
     if exact_row is not None:
@@ -63,7 +70,8 @@ async def match_error(
     row = (await db.execute(
         select(KbSignature, similarity.label("score"))
         .where(scope, KbSignature.representative_text.op("%")(sig.representative_text))
-        .order_by(similarity.desc())
+        # Deterministic tiebreaker (updated_at, id) so equal-similarity matches are stable.
+        .order_by(similarity.desc(), KbSignature.updated_at.desc(), KbSignature.id)
         .limit(1)
     )).first()
     if row is None:

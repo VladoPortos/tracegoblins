@@ -125,7 +125,7 @@ cd frontend && npm run dev                                       # SPA  (termina
 |------|------|
 | **Backend** | Python · FastAPI · SQLAlchemy 2.0 (async) · Alembic · Pydantic v2 · APScheduler |
 | **Database** | PostgreSQL 16 — JSONB + `pg_trgm` / full-text |
-| **Frontend** | Vite · React 18 · TypeScript · TanStack Query · self-hosted IBM Plex |
+| **Frontend** | Vite · React 19 · TypeScript · TanStack Query · self-hosted IBM Plex |
 | **Packaging** | One multi-stage Docker image (Node builds the SPA → Python serves API + static) |
 | **Auth** | argon2id · revocable sessions · CSRF · TOTP 2FA |
 
@@ -137,7 +137,9 @@ advisory-lock leader. Two containers, that's it.
 - argon2id password hashing; httpOnly/Secure, server-side **revocable** sessions
 - CSRF double-submit, login rate-limiting, strict CSP + security headers
 - AWX tokens **encrypted at rest**; TOTP secret encrypted; one-time hashed recovery codes
-- full **audit log**; admin-invite-only (no public signup); SSRF-guarded AWX URLs
+- full **audit log**; admin-invite-only (no public signup); AWX base URLs validated to http(s)
+  and pagination is pinned to the controller's origin so the token can't be sent off-host
+  (AWX itself usually lives on a trusted private network — that is intended, not blocked)
 - supply-chain CI: **CodeQL** + Trivy + OpenSSF Scorecard + Dependabot, SHA-pinned actions
 
 Designed to sit on the internet behind a TLS-terminating reverse proxy. Configuration is

@@ -50,9 +50,15 @@ async def get_valid_session(db: AsyncSession, session_id: str) -> Session | None
 
 
 async def touch_session(db: AsyncSession, sess: Session) -> None:
+    # Must COMMIT, not just flush: current_user() runs this on every authenticated request,
+    # but read-only routes (GETs) never call db.commit(), so a flushed-only last_seen_at is
+    # discarded when the request session closes. Active users doing mostly GETs would then
+    # still idle out. Committing here (throttled to once per touch_throttle_seconds) makes the
+    # idle-window refresh durable. It only persists this row's last_seen_at — current_user runs
+    # before the route body, so nothing else is pending in the session at this point.
     if (_now() - sess.last_seen_at).total_seconds() >= settings.touch_throttle_seconds:
         sess.last_seen_at = _now()
-        await db.flush()
+        await db.commit()
 
 
 async def revoke_session(db: AsyncSession, session_id: str) -> None:

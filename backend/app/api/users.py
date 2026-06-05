@@ -11,6 +11,7 @@ from app.api.deps import AdminUser, CurrentUser, DbSession, require_password_cur
 from app.api.http_utils import client_ip
 from app.models import MfaRecoveryCode, TeamMember, User
 from app.services.audit import write_audit
+from app.services.sessions import revoke_all_for_user
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
@@ -63,6 +64,9 @@ async def reset_2fa(user_id: uuid.UUID, request: Request, db: DbSession, admin: 
     target.totp_confirmed_at = None
     target.totp_last_used_step = None
     await db.execute(delete(MfaRecoveryCode).where(MfaRecoveryCode.user_id == target.id))
+    # Incident response: revoke the target's existing sessions so an attacker who already holds
+    # one can't persist past the 2FA reset — they must re-authenticate (and re-enroll).
+    await revoke_all_for_user(db, target.id)
     await write_audit(db, action="mfa_admin_reset", actor_id=admin.id,
                       target_type="user", target_id=str(target.id), ip=client_ip(request))
     await db.commit()

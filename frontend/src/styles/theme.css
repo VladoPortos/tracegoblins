@@ -211,7 +211,15 @@ body {
 @keyframes spin360 { to { transform: rotate(360deg); } }
 @keyframes errpulse { 0%,100%{ box-shadow:0 0 0 0 var(--unreachable); filter:brightness(1); } 50%{ box-shadow:0 0 7px 1.5px var(--unreachable); filter:brightness(1.25); } }
 @keyframes errpulse-cell { 0%,100%{ box-shadow:0 0 0 0 transparent; } 50%{ box-shadow:0 0 0 2px var(--unreachable-line), 0 0 9px 0 var(--unreachable); } }
-@media (prefers-reduced-motion: reduce){ .errpulse, .errpulse-cell { animation:none !important; } }
+@media (prefers-reduced-motion: reduce){
+  .errpulse, .errpulse-cell { animation:none !important; }
+  /* Neutralize ALL decorative motion (pop/sheet/modal/pulse/ping/spin/indeterminate/…) and
+     smooth scrolling for users who asked for reduced motion — not just the error pulse. */
+  *, *::before, *::after {
+    animation-duration:.001ms !important; animation-iteration-count:1 !important;
+    transition-duration:.001ms !important; scroll-behavior:auto !important;
+  }
+}
 .spin { display:inline-flex; animation: spin360 1s linear infinite; }
 
 .anim-pop { animation: pop .22s cubic-bezier(.2,.7,.3,1) both; }

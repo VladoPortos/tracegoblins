@@ -231,6 +231,31 @@ async def visible_occurrence_count(
     return int(n or 0)
 
 
+async def visible_occurrence_counts(
+    db: AsyncSession, signature_ids: list[uuid.UUID], user: User
+) -> dict[uuid.UUID, int]:
+    """Batched visibility-scoped DISTINCT-run occurrence counts for many signatures (ONE query).
+
+    Same semantics as visible_occurrence_count() but for a set of signatures at once, so the
+    KB list view doesn't fire one COUNT per signature (N+1). Signatures with zero visible
+    occurrences are simply absent from the result — callers default to 0.
+    """
+    if not signature_ids:
+        return {}
+    cond = await _run_visible_cond(db, user)
+    rows = (await db.execute(
+        select(
+            KbOccurrence.signature_id,
+            func.count(func.distinct(KbOccurrence.run_id)),
+        )
+        .select_from(KbOccurrence)
+        .join(Run, Run.id == KbOccurrence.run_id)
+        .where(KbOccurrence.signature_id.in_(signature_ids), cond)
+        .group_by(KbOccurrence.signature_id)
+    )).all()
+    return {sig_id: int(n or 0) for sig_id, n in rows}
+
+
 async def recent_visible_occurrences(
     db: AsyncSession, signature_id: uuid.UUID, user: User, *, limit: int = 5
 ) -> list[tuple[KbOccurrence, Run]]:
