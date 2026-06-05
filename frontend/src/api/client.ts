@@ -76,6 +76,7 @@ export interface RunCounts { ok: number; changed: number; unreachable: number; f
 export interface RunCard {
   id: string; job_id: string | null; template_name: string | null
   status: string; log_time: string | null
+  launched_at?: string | null
   host_count: number; task_count: number; warnings_count: number
   counts: RunCounts; recap: HostRecap[]; created_at: string
   team_id: string | null; team_name: string | null

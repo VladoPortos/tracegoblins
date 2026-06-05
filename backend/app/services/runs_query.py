@@ -19,7 +19,8 @@ def _counts_from_recap(recap: list[dict]) -> RunCounts:
 def run_to_card(run: Run, team_name: str | None = None, controller_name: str | None = None) -> RunCard:
     return RunCard(
         id=str(run.id), job_id=run.awx_job_id, template_name=run.template_name,
-        status=run.status, log_time=run.log_time, host_count=run.host_count,
+        status=run.status, log_time=run.log_time, launched_at=run.launched_at,
+        host_count=run.host_count,
         task_count=run.task_count, warnings_count=run.warnings_count,
         counts=_counts_from_recap(run.recap),
         recap=[HostRecap(**r) for r in (run.recap or [])],

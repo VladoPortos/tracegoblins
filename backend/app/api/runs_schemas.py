@@ -30,6 +30,7 @@ class RunCard(BaseModel):
     template_name: str | None
     status: str
     log_time: datetime | None
+    launched_at: datetime | None = None
     host_count: int
     task_count: int
     warnings_count: int
