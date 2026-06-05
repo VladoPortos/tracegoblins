@@ -34,6 +34,7 @@ class Run(Base):
     awx_workflow_name: Mapped[str | None] = mapped_column(Text, default=None)
     template_name: Mapped[str | None] = mapped_column(Text, default=None)
     log_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+    launched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
     status: Mapped[str] = mapped_column(String(16))
     host_count: Mapped[int] = mapped_column(Integer, default=0)
     task_count: Mapped[int] = mapped_column(Integer, default=0)

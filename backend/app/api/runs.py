@@ -7,7 +7,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile, status
 from fastapi.responses import PlainTextResponse
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import BigInteger, and_, case, cast, func, nulls_last, or_, select
 from sqlalchemy.exc import IntegrityError
 
 from app.api.collab_schemas import AnnotationCreate, AnnotationOut, CommentCreate, CommentOut, MentionableUser, ShareCreate, ShareOut
@@ -161,6 +161,44 @@ async def create_run(
     return RunCreated(id=str(run.id))
 
 
+def _when_expr():
+    """The run's effective timestamp: prefer AWX launch, then finish/log, then import."""
+    return func.coalesce(Run.launched_at, Run.log_time, Run.created_at)
+
+
+def _job_id_num():
+    """awx_job_id as a sortable bigint; non-numeric / empty / NULL / >18 digits -> NULL (sorts last).
+
+    awx_job_id can come from uploaded log content (the 'Job Id:' line), so a pathologically
+    long digit string would overflow the bigint cast and 500 the sort query. Guard the length
+    first; bigint comfortably holds 18 digits.
+    """
+    digits = func.nullif(func.regexp_replace(Run.awx_job_id, r"\D", "", "g"), "")
+    return case((func.length(digits) <= 18, digits), else_=None)
+
+
+def _runs_order_by(sort: str, direction: str):
+    """ORDER BY expressions for the run list. Nulls always last; stable id tiebreaker."""
+    if sort == "job_id":
+        col = cast(_job_id_num(), BigInteger)
+    elif sort == "hosts":
+        col = Run.host_count
+    elif sort == "duration":
+        col = Run.elapsed
+    elif sort == "status":
+        col = case(
+            (Run.status == "unreachable", 0),
+            (Run.status == "failed", 1),
+            (Run.status == "changed", 2),
+            (Run.status == "ok", 3),
+            else_=4,
+        )
+    else:  # "when"
+        col = _when_expr()
+    ordered = col.asc() if direction == "asc" else col.desc()
+    return [nulls_last(ordered), Run.id.asc()]
+
+
 def _runs_extra_conditions(
     *, controller, organization, template, awx_user, status_csv,
     launch_type, launched_after, launched_before, search, source=None,
@@ -186,7 +224,7 @@ def _runs_extra_conditions(
             extra.append(Run.status.in_(wanted))
     if launch_type:
         extra.append(Run.awx_launch_type == launch_type)
-    when = func.coalesce(Run.log_time, Run.created_at)
+    when = _when_expr()
     if launched_after is not None:
         extra.append(when >= launched_after)
     if launched_before is not None:
@@ -211,6 +249,8 @@ async def list_runs(
     launched_after: datetime | None = Query(None),
     launched_before: datetime | None = Query(None),
     search: str | None = Query(None),
+    sort: str = Query("when", pattern="^(when|job_id|hosts|duration|status)$"),
+    dir: str = Query("desc", pattern="^(asc|desc)$"),
     limit: int = Query(20, ge=1, le=100), offset: int = Query(0, ge=0),
 ):
     extra = _runs_extra_conditions(
@@ -224,7 +264,7 @@ async def list_runs(
         cond = and_(base, *extra)
         total = await db.scalar(select(func.count()).select_from(Run).where(cond))
         rows = (await db.execute(
-            select(Run).where(cond).order_by(Run.created_at.desc()).limit(limit).offset(offset)
+            select(Run).where(cond).order_by(*_runs_order_by(sort, dir)).limit(limit).offset(offset)
         )).scalars().all()
         return RunList(items=[run_to_card(r) for r in rows], total=total or 0)
 
@@ -236,7 +276,7 @@ async def list_runs(
         cond = and_(base, *extra)
         total = await db.scalar(select(func.count()).select_from(Run).where(cond))
         rows = (await db.execute(
-            select(Run).where(cond).order_by(Run.created_at.desc()).limit(limit).offset(offset)
+            select(Run).where(cond).order_by(*_runs_order_by(sort, dir)).limit(limit).offset(offset)
         )).scalars().all()
         return RunList(items=[run_to_card(r) for r in rows], total=total or 0)
 
@@ -248,7 +288,7 @@ async def list_runs(
     cond = and_(base, *extra)
     total = await db.scalar(select(func.count()).select_from(Run).where(cond))
     rows = (await db.execute(
-        select(Run).where(cond).order_by(Run.created_at.desc()).limit(limit).offset(offset)
+        select(Run).where(cond).order_by(*_runs_order_by(sort, dir)).limit(limit).offset(offset)
     )).scalars().all()
 
     # Batch-resolve controller names (avoid N+1 across AWX rows).

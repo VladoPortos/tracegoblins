@@ -1,26 +1,13 @@
-import { useSearchParams } from 'react-router'
 import { Glyph } from '../components/atoms/Glyph'
 import { LastSyncChip } from '../components/atoms/LastSyncChip'
 import { SyncProgress } from '../components/atoms/SyncProgress'
 import { useControllers, useSyncController } from '../api/controllers'
-
-/** Source value: 'all' | 'uploads' | a controller id. Backed by ?src=. */
-export function useSourceSelection(): [string, (v: string) => void] {
-  const [params, setParams] = useSearchParams()
-  const src = params.get('src') || 'all'
-  const setSrc = (v: string) => {
-    const next = new URLSearchParams(params)
-    if (v === 'all') next.delete('src')
-    else next.set('src', v)
-    setParams(next, { replace: false })
-  }
-  return [src, setSrc]
-}
+import { useLogsState } from './useLogsState'
 
 export function SourceChips() {
   const controllers = useControllers()
   const syncCtl = useSyncController()
-  const [src, setSrc] = useSourceSelection()
+  const { src, setSrc } = useLogsState()
   const list = controllers.data ?? []
 
   const chip = (value: string, label: string, icon?: string) => (
