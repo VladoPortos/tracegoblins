@@ -12,6 +12,7 @@ export function SetupWizard() {
   const [email, setEmail] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   if (setup.isPending) return <FullScreenSpinner />
@@ -21,6 +22,7 @@ export function SetupWizard() {
     e.preventDefault()
     setError(null)
     if (password.length < 12) { setError('Password must be at least 12 characters.'); return }
+    if (password !== confirm) { setError('Passwords do not match.'); return }
     run.mutate({ email, display_name: displayName, password }, {
       onSuccess: () => nav('/', { replace: true }),
       onError: () => setError('Setup failed. It may already be completed.'),
@@ -33,6 +35,7 @@ export function SetupWizard() {
         <Field label="Email" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required />
         <Field label="Display name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
         <Field label="Password" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} hint="At least 12 characters." required />
+        <Field label="Confirm password" type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
         {error && <div className="tag tag-needs-fix" style={{ alignSelf: 'flex-start' }}>{error}</div>}
         <button className="btn btn-primary" type="submit" disabled={run.isPending} style={{ justifyContent: 'center', padding: 10 }}>
           {run.isPending ? 'Creating…' : 'Create admin'}
