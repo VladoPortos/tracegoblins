@@ -5,13 +5,13 @@ import { Glyph } from '../components/atoms/Glyph'
 import { Badge } from '../components/atoms/Badge'
 import { StatusDot } from '../components/atoms/StatusDot'
 import { isErr } from '../components/atoms/status'
+import { roleLabel } from '../components/atoms/format'
 import { AnnotationsBlock } from './AnnotationsBlock'
 import { DiscussionBlock } from './DiscussionBlock'
 import { KbSuggestion } from './KbSuggestion'
 import { PromoteKbModal } from '../modals/PromoteKbModal'
 import { OutputViewer } from './OutputViewer'
 
-const roleLabel = (r: string | null) => (r ? r.replace(/^dxc\.xaas\./, '') : 'play tasks')
 function prettyJson(raw: string) { try { return JSON.stringify(JSON.parse(raw), null, 2) } catch { return raw } }
 
 function JsonBlock({ raw }: { raw: string }) {

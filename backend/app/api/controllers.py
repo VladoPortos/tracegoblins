@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import uuid
-from urllib.parse import urlsplit
 
 from fastapi import (
     APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status,
@@ -25,6 +24,7 @@ from app.core.crypto import decrypt_token, encrypt_token
 from app.db.session import SessionLocal
 from app.models import AwxController, ControllerTeam, Team
 from app.scheduler import reconcile_controller
+from app.security.urls import is_http_url
 from app.services.audit import write_audit
 from app.services.controllers_query import controller_to_out
 from app.services.visibility import my_team_ids
@@ -34,11 +34,6 @@ router = APIRouter(
     tags=["controllers"],
     dependencies=[Depends(require_password_current)],
 )
-
-
-def _valid_http_url(value: str) -> bool:
-    parts = urlsplit(value.strip())
-    return parts.scheme in {"http", "https"} and bool(parts.netloc)
 
 
 async def _assigned_team_ids(db: DbSession, controller_id: uuid.UUID) -> set[uuid.UUID]:
@@ -115,7 +110,7 @@ async def _apply_assignments(db: DbSession, controller_id: uuid.UUID, assignment
 async def create_controller(
     payload: ControllerCreate, request: Request, db: DbSession, user: AdminUser,
 ):
-    if not _valid_http_url(payload.base_url):
+    if not is_http_url(payload.base_url):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
                             detail="base_url must be an http(s) URL")
     _validate_sync(payload.sync_mode, payload.sync_interval_minutes)
@@ -182,7 +177,7 @@ async def update_controller(
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Controller not found")
 
     if payload.base_url is not None:
-        if not _valid_http_url(payload.base_url):
+        if not is_http_url(payload.base_url):
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
                                 detail="base_url must be an http(s) URL")
         controller.base_url = payload.base_url.strip()
@@ -246,7 +241,7 @@ async def test_connection_adhoc(
     and token must be supplied in the payload. The token is used in-memory only and is
     never persisted by this path."""
     base_url = payload.base_url or ""
-    if not _valid_http_url(base_url):
+    if not is_http_url(base_url):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
                             detail="base_url must be an http(s) URL")
     if not payload.token:
@@ -278,7 +273,7 @@ async def test_connection(
 
     base_url = payload.base_url if payload.base_url is not None else controller.base_url
     # SSRF guard: an ad-hoc base_url must be http(s) with a netloc — same check create/update use.
-    if not _valid_http_url(base_url):
+    if not is_http_url(base_url):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
                             detail="base_url must be an http(s) URL")
     verify_ssl = payload.verify_ssl if payload.verify_ssl is not None else controller.verify_ssl

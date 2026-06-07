@@ -6,14 +6,8 @@ import { Field } from '../components/atoms/Field'
 import { Glyph } from '../components/atoms/Glyph'
 import { useMfaSetup, useMfaEnable } from '../api/mfa'
 import { meKey } from '../api/queries'
+import { errorMessage } from '../api/client'
 import type { Me } from '../api/client'
-
-function errorMessage(e: unknown): string {
-  if (!e) return ''
-  if (typeof e === 'string') return e
-  if (e instanceof Error) return e.message
-  return 'An error occurred.'
-}
 
 export function MfaSetupRequired() {
   const nav = useNavigate()

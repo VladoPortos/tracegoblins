@@ -9,9 +9,9 @@ import {
   KB_STATUS_VALUES, type KbSignatureOut, type KbStatus, type KbLink,
 } from '../api/kb'
 
-type Scope = 'all' | 'team' | 'global'
+import { runWord } from '../components/atoms/format'
 
-const runWord = (n: number) => (n === 1 ? 'run' : 'runs')
+type Scope = 'all' | 'team' | 'global'
 
 function DetailView({ sig, isAdmin, myTeamIds, onClose }: {
   sig: KbSignatureOut; isAdmin: boolean; myTeamIds: Set<string>; onClose: () => void

@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -24,7 +24,7 @@ def mount_spa(app: FastAPI, static_dir: str) -> None:
     root = dist.resolve(strict=True)
 
     @app.get("/{full_path:path}", include_in_schema=False)
-    async def spa_fallback(full_path: str, request: Request):
+    async def spa_fallback(full_path: str):
         if full_path.startswith("api/") or full_path == "openapi.json":
             return JSONResponse({"detail": "Not Found"}, status_code=404)
         # Resolve the user-supplied path and confirm it is contained within the

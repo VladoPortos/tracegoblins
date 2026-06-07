@@ -1,9 +1,8 @@
 import { useMemo, useRef, useState, useEffect } from 'react'
 import type { TaskLean } from '../api/client'
 import { STATUS, isErr, stCls } from '../components/atoms/status'
+import { roleLabel } from '../components/atoms/format'
 import { HostBar } from '../components/atoms/HostBar'
-
-const roleLabel = (r: string | null) => (r ? r.replace(/^dxc\.xaas\./, '') : 'play tasks')
 
 // Compact per-task duration from job_events: sub-minute -> "1.2s" / "3s", else "2m 5s".
 function fmtDur(seconds: number): string {

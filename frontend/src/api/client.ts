@@ -9,6 +9,14 @@ export class ApiError extends Error {
   }
 }
 
+// Human-readable message from an unknown thrown value (ApiError carries the server detail).
+export function errorMessage(e: unknown): string {
+  if (!e) return ''
+  if (typeof e === 'string') return e
+  if (e instanceof Error) return e.message
+  return 'An error occurred.'
+}
+
 function readCookie(name: string): string | null {
   const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'))
   return m ? decodeURIComponent(m[1]) : null

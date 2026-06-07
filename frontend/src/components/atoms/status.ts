@@ -8,12 +8,5 @@ export const STATUS: Record<Status, { label: string; cls: string; glyph: string 
   unreachable: { label: 'Unreachable', cls: 'st-unreachable', glyph: 'alert' },
   failed:      { label: 'Failed',      cls: 'st-failed',      glyph: 'alert' },
 }
-export const STATUS_ORDER: Status[] = ['unreachable', 'failed', 'changed', 'ok', 'included', 'skipped']
 export const isErr = (s: string): boolean => s === 'unreachable' || s === 'failed'
 export const stCls = (s: string): string => 'st-' + (s === 'skipped' ? 'skipped' : s)
-
-export function dominantStatus(statuses: Record<string, string>): Status {
-  const vals = Object.values(statuses)
-  for (const s of STATUS_ORDER) if (vals.includes(s)) return s
-  return 'ok'
-}

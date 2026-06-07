@@ -20,11 +20,6 @@ export interface KbOccurrenceRun {
 export interface KbDrawerSuggestion {
   signature: KbSignatureOut; exact: boolean; score: number; recent_runs: KbOccurrenceRun[]
 }
-export interface KbSignatureCreate {
-  signature_key: string; representative_text: string; title: string; status?: KbStatus
-  team_id?: string | null; category?: string | null; description?: string | null
-  is_problem?: string | null; where_it_lives?: string | null; links?: KbLink[]
-}
 export interface KbSignatureUpdate {
   title?: string | null; status?: KbStatus | null; representative_text?: string | null
   category?: string | null; description?: string | null; is_problem?: string | null
@@ -48,14 +43,6 @@ export function useKbSignatures(scope: 'team' | 'global' | 'all', status?: strin
   return useQuery<KbSignatureOut[]>({
     queryKey: [...kbKey, { scope, status: status ?? null, q: q ?? null }],
     queryFn: () => apiFetch<KbSignatureOut[]>(`/kb/signatures?${qs.toString()}`),
-  })
-}
-
-export function useKbSignature(id: string) {
-  return useQuery<KbSignatureOut>({
-    queryKey: kbSignatureKey(id),
-    queryFn: () => apiFetch<KbSignatureOut>(`/kb/signatures/${id}`),
-    enabled: !!id,
   })
 }
 
@@ -83,14 +70,6 @@ export function usePromoteKb() {
       void qc.invalidateQueries({ queryKey: kbKey })
       void qc.invalidateQueries({ queryKey: taskKbKey(vars.run_id, vars.task_seq) })
     },
-  })
-}
-
-export function useCreateKbSignature() {
-  const qc = useQueryClient()
-  return useMutation<KbSignatureOut, unknown, KbSignatureCreate>({
-    mutationFn: (body) => apiFetch<KbSignatureOut>('/kb/signatures', { method: 'POST', body: JSON.stringify(body) }),
-    onSuccess: () => { void qc.invalidateQueries({ queryKey: kbKey }) },
   })
 }
 

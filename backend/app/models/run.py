@@ -75,7 +75,6 @@ class Task(Base):
     play_name: Mapped[str] = mapped_column(Text)
     role: Mapped[str | None] = mapped_column(Text, default=None)
     name: Mapped[str] = mapped_column(Text)
-    module: Mapped[str | None] = mapped_column(String(64), default=None)  # null in M2
     status: Mapped[str] = mapped_column(String(16))
     hosts: Mapped[dict[str, str]] = mapped_column(JSONB, default=dict)
     items_count: Mapped[int] = mapped_column(Integer, default=0)

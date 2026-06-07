@@ -13,7 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from app.api.collab_schemas import AnnotationCreate, AnnotationOut, CommentCreate, CommentOut, MentionableUser, ShareCreate, ShareOut
 from app.api.deps import CurrentUser, DbSession, GatedUser
 from app.api.http_utils import client_ip
-from app.api.kb_schemas import KbSuggestionOut, OccurrenceRunBrief, SignatureOut
+from app.api.kb_schemas import KbSuggestionOut, OccurrenceRunBrief
 from app.api.runs_schemas import FacetController, FacetOrg, FacetsOut, RunCreated, RunDetail, RunList, TaskFull, TaskLean
 from app.models import Annotation, AwxController, Comment, ControllerTeam, KbOccurrence, KbSignature, Run, RunRaw, RunShare, Task, Team, TeamMember, User
 from app.services.audit import write_audit

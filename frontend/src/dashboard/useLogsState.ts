@@ -7,9 +7,9 @@ export type View = 'cards' | 'table'
 export type SortKey = 'when' | 'job_id' | 'hosts' | 'duration' | 'status'
 export type SortDir = 'asc' | 'desc'
 
-export const TABS: Tab[] = ['mine', 'shared', 'team']
-export const VIEWS: View[] = ['cards', 'table']
-export const SORT_KEYS: SortKey[] = ['when', 'job_id', 'hosts', 'duration', 'status']
+const TABS: Tab[] = ['mine', 'shared', 'team']
+const VIEWS: View[] = ['cards', 'table']
+const SORT_KEYS: SortKey[] = ['when', 'job_id', 'hosts', 'duration', 'status']
 const DIRS: SortDir[] = ['asc', 'desc']
 
 export interface LogsState {
@@ -25,7 +25,7 @@ export interface LogsState {
 const LS_KEY = 'tg:logs'
 
 /** Every URL param this view owns — used for bare-load detection + localStorage mirroring. */
-export const LOGS_PARAM_KEYS = [
+const LOGS_PARAM_KEYS = [
   'tab', 'view', 'sort', 'dir', 'src', 'q',
   'template', 'status', 'org', 'awx_user', 'launch_type', 'after', 'before',
 ] as const
@@ -33,7 +33,7 @@ export const LOGS_PARAM_KEYS = [
 const oneOf = <T extends string>(v: string | null, allowed: T[], dflt: T): T =>
   (allowed as string[]).includes(v ?? '') ? (v as T) : dflt
 
-export function parseLogsParams(p: URLSearchParams): LogsState {
+function parseLogsParams(p: URLSearchParams): LogsState {
   const filters: RunFilters = {}
   const template = p.get('template'); if (template) filters.template = template
   const statusCsv = p.get('status')
@@ -54,7 +54,7 @@ export function parseLogsParams(p: URLSearchParams): LogsState {
   }
 }
 
-export function serializeLogsParams(s: LogsState): URLSearchParams {
+function serializeLogsParams(s: LogsState): URLSearchParams {
   const p = new URLSearchParams()
   if (s.tab !== 'mine') p.set('tab', s.tab)
   if (s.view !== 'cards') p.set('view', s.view)

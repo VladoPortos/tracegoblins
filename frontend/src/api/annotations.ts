@@ -2,7 +2,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from './client'
 
 export const TAG_VALUES = ['needs-fix', 'known-issue', 'resolved', 'note'] as const
-export type AnnotationTag = (typeof TAG_VALUES)[number]
 
 export interface AnnotationLink { label: string; url: string }
 export interface Annotation {

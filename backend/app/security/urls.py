@@ -19,5 +19,7 @@ def is_safe_url(value: str) -> bool:
     return True
 
 
-def sanitize_url(value: str) -> str | None:
-    return value.strip() if is_safe_url(value) else None
+def is_http_url(value: str) -> bool:
+    """True for absolute http(s) URLs — controller base URLs (no mailto, no length cap)."""
+    parts = urlsplit(value.strip())
+    return parts.scheme in {"http", "https"} and bool(parts.netloc)

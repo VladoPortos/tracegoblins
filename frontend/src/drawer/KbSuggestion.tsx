@@ -3,8 +3,7 @@ import { Glyph } from '../components/atoms/Glyph'
 import { KbStatusBadge } from '../components/atoms/KbStatusBadge'
 import { KbLinkRow } from '../components/atoms/KbLinkRow'
 import { useTaskKbSuggestion } from '../api/kb'
-
-const runWord = (n: number) => (n === 1 ? 'run' : 'runs')
+import { runWord } from '../components/atoms/format'
 
 export function KbSuggestion({ runId, seq, onPromote }: { runId: string; seq: number; onPromote: () => void }) {
   const q = useTaskKbSuggestion(runId, seq, true)

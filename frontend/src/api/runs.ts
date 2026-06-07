@@ -11,26 +11,6 @@ export interface RunFilters {
   status?: string[]; launch_type?: string; source?: string; launched_after?: string; launched_before?: string; search?: string
 }
 
-export function useRuns(scope: 'mine' | 'shared' | 'team' = 'mine', filters: RunFilters = {}, limit = 100, offset = 0) {
-  const qs = new URLSearchParams()
-  qs.set('scope', scope)
-  qs.set('limit', String(limit))
-  qs.set('offset', String(offset))
-  if (filters.controller) qs.set('controller', filters.controller)
-  if (filters.organization != null) qs.set('organization', String(filters.organization))
-  if (filters.template) qs.set('template', filters.template)
-  if (filters.awx_user) qs.set('awx_user', filters.awx_user)
-  if (filters.status && filters.status.length) qs.set('status', filters.status.join(','))
-  if (filters.launch_type) qs.set('launch_type', filters.launch_type)
-  if (filters.source) qs.set('source', filters.source)
-  if (filters.launched_after) qs.set('launched_after', filters.launched_after)
-  if (filters.launched_before) qs.set('launched_before', filters.launched_before)
-  if (filters.search) qs.set('search', filters.search)
-  return useQuery<RunListResponse>({
-    queryKey: [...runsKey, { scope, filters, limit, offset }],
-    queryFn: () => apiFetch<RunListResponse>(`/runs?${qs.toString()}`),
-  })
-}
 const PAGE = 100
 
 export function useInfiniteRuns(

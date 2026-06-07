@@ -64,11 +64,9 @@ class JobSummary:
     id: int                         # job.id (the cursor key)
     name: str                       # job.name == template name (summary_fields.job_template.name)
     status: str                     # successful|failed|error|canceled
-    created: str | None             # ISO
-    started: str | None             # ISO
+    started: str | None             # ISO -> Run.launched_at
     finished: str | None            # ISO -> Run.log_time
     elapsed: float | None           # seconds (job.elapsed)
-    playbook: str | None
     launch_type: str | None         # manual|scheduled|sync|workflow
     organization_id: int | None     # summary_fields.organization.id (fallback top-level job.organization)
     organization_name: str | None   # summary_fields.organization.name (e.g. "DXC")
@@ -92,11 +90,9 @@ def _to_summary(job: dict) -> JobSummary:
         id=job["id"],
         name=jt.get("name") or job.get("name") or "",
         status=job["status"],
-        created=job.get("created"),
         started=job.get("started"),
         finished=job.get("finished"),
         elapsed=job.get("elapsed"),
-        playbook=job.get("playbook"),
         launch_type=job.get("launch_type"),
         organization_id=org_id,
         organization_name=org_name,

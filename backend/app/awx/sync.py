@@ -4,18 +4,18 @@ from __future__ import annotations
 import hashlib
 import logging
 import uuid
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
 
-from app.awx.client import AwxClient, AwxError, JobSummary
+from app.awx.client import AwxClient, AwxError
 from app.core.crypto import TokenCryptoError, decrypt_token
 from app.kb.service import match_run
 from app.logparser.job_events import parse_job_events
-from app.models import AwxController, Run, RunRaw, Task
+from app.models import AwxController, Run, RunRaw
 from app.services.audit import write_audit
 from app.services.ingestion import build_run_from_parsed
 

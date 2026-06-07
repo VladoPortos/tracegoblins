@@ -6,13 +6,7 @@ import { Glyph } from '../components/atoms/Glyph'
 import { useMe, meKey } from '../api/queries'
 import { useMfaSetup, useMfaEnable, useMfaDisable, useRegenRecovery } from '../api/mfa'
 import { FullScreenSpinner } from '../components/atoms/FullScreenSpinner'
-
-function errorMessage(e: unknown): string {
-  if (!e) return ''
-  if (typeof e === 'string') return e
-  if (e instanceof Error) return e.message
-  return 'An error occurred.'
-}
+import { errorMessage } from '../api/client'
 
 // ── Recovery codes display (shown once after enable or regen) ─────────────────
 function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () => void }) {

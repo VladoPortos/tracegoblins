@@ -3,12 +3,12 @@
 // If any imported symbol or field drifts from the Canonical Contract (§6), tsc fails.
 import type {
   KbLink, KbStatus, KbSignatureOut, KbSuggest, KbOccurrenceRun,
-  KbDrawerSuggestion, KbSignatureCreate, KbPromote, KbSignatureUpdate,
+  KbDrawerSuggestion, KbPromote, KbSignatureUpdate,
 } from '../kb'
 import {
   kbKey, kbSignatureKey, taskKbKey,
-  useKbSignatures, useKbSignature, useTaskKbSuggestion, useKbSuggest,
-  usePromoteKb, useCreateKbSignature, useUpdateKbSignature,
+  useKbSignatures, useTaskKbSuggestion, useKbSuggest,
+  usePromoteKb, useUpdateKbSignature,
   useDeleteKbSignature, usePromoteKbGlobal,
 } from '../kb'
 
@@ -26,11 +26,6 @@ const _occRun: KbOccurrenceRun = {
   run_id: '', template_name: null, status: 'failed', log_time: null, task_seq: 0, host: null,
 }
 const _drawer: KbDrawerSuggestion = { signature: _sig, exact: true, score: 1, recent_runs: [_occRun] }
-const _create: KbSignatureCreate = {
-  signature_key: '', representative_text: '', title: '', status: 'needs-fix',
-  team_id: null, category: null, description: null, is_problem: null,
-  where_it_lives: null, links: [_link],
-}
 const _promote: KbPromote = {
   run_id: '', task_seq: 0, team_id: null, title: '', status: 'needs-fix',
   description: null, is_problem: null, where_it_lives: null, links: [_link],
@@ -38,13 +33,13 @@ const _promote: KbPromote = {
 const _update: KbSignatureUpdate = { title: '', status: 'resolved' }
 
 export const _guardE1 = {
-  _link, _status, _sig, _suggest, _occRun, _drawer, _create, _promote, _update,
+  _link, _status, _sig, _suggest, _occRun, _drawer, _promote, _update,
   kbKey,
   kbSignatureKey: kbSignatureKey('id'),
   taskKbKey: taskKbKey('r', 0),
   hooks: [
-    useKbSignatures, useKbSignature, useTaskKbSuggestion, useKbSuggest,
-    usePromoteKb, useCreateKbSignature, useUpdateKbSignature,
+    useKbSignatures, useTaskKbSuggestion, useKbSuggest,
+    usePromoteKb, useUpdateKbSignature,
     useDeleteKbSignature, usePromoteKbGlobal,
   ] as const,
 }

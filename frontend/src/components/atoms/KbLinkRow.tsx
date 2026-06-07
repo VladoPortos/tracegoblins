@@ -4,7 +4,7 @@ import type { KbLink } from '../../api/kb'
 // Belt-and-suspenders over the server allowlist: re-check the scheme client-side
 // and render plain text (no anchor) if it isn't http/https/mailto. Plain text only —
 // never dangerouslySetInnerHTML.
-export function isSafeKbUrl(url: string): boolean {
+function isSafeKbUrl(url: string): boolean {
   try {
     const scheme = new URL(url, window.location.origin).protocol.replace(':', '').toLowerCase()
     return scheme === 'http' || scheme === 'https' || scheme === 'mailto'

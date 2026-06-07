@@ -14,7 +14,7 @@ from app.api.collab_schemas import (
     ShareTargetTeam,
     ShareTargetUser,
 )
-from app.models import Annotation, Comment, Notification, Run, RunShare, Task, Team, User
+from app.models import Annotation, Comment, Notification, Run, RunShare, Team, User
 
 
 def share_to_out(

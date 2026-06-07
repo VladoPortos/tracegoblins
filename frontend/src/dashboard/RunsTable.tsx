@@ -3,15 +3,7 @@ import type { RunCard } from '../api/client'
 import type { SortKey, SortDir } from './useLogsState'
 import { Badge } from '../components/atoms/Badge'
 import { stCls } from '../components/atoms/status'
-import { shortTime } from '../components/atoms/format'
-
-function fmtDuration(s: number | null | undefined): string {
-  if (s == null) return '—'
-  if (s < 60) return `${Math.round(s)}s`
-  const m = Math.floor(s / 60)
-  const r = Math.round(s % 60)
-  return r > 0 ? `${m}m ${r}s` : `${m}m`
-}
+import { fmtDuration, shortTime } from '../components/atoms/format'
 
 interface Col { key: string; label: string; sort?: SortKey; align?: 'right' }
 

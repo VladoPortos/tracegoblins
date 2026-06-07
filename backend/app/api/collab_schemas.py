@@ -12,7 +12,6 @@ def _require_nonblank_body(cls, v: str) -> str:
 
 
 TAG_VALUES = frozenset({"needs-fix", "known-issue", "resolved", "note"})
-ALLOWED_URL_SCHEMES = frozenset({"http", "https", "mailto"})
 
 # Shared input caps: keep the API from accepting absurd payloads (DoS / storage abuse) and
 # from overflowing bounded DB columns. Generous on purpose — real content fits comfortably.

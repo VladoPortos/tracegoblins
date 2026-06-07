@@ -24,7 +24,7 @@ import {
 import type { DirectoryUser } from '../users'
 import { userSearchKey, useUserSearch } from '../users'
 import type { RunCard } from '../client'
-import { useRuns, useUploadRun } from '../runs'
+import { useUploadRun } from '../runs'
 
 // --- field-shape pins (assignment proves the property exists with the right type) ---
 const _u: ShareTargetUser = { id: '', display_name: '', email: '' }
@@ -116,6 +116,6 @@ export const _guard = {
     useRunAnnotations, useCreateAnnotation, useUpdateAnnotation, useDeleteAnnotation,
     useTaskComments, useCreateComment, useUpdateComment, useDeleteComment, useMentionable,
     useNotifications, useUnreadCount, useMarkRead, useUserSearch,
-    useRuns, useUploadRun,
+    useUploadRun,
   ] as const,
 }

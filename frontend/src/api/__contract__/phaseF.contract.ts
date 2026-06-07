@@ -40,7 +40,6 @@ export const _guardF1 = {
 import type { FacetOrg, FacetController, RunFacets } from '../runFilters'
 import { runFiltersKey, useRunFilters } from '../runFilters'
 import type { RunFilters } from '../runs'
-import { useRuns } from '../runs'
 import type { RunCard } from '../client'
 
 const _fOrg: FacetOrg = { id: 0, name: null }
@@ -67,9 +66,7 @@ const _cardAwx: RunCard = {
 export const _guardF2 = {
   _fOrg, _fCtrl, _facets, _filters, _cardAwx,
   runFiltersKey: runFiltersKey('team'),
-  hooks: [useRunFilters, useRuns] as const,
-  // useRuns must accept (scope, filters, limit, offset):
-  call: () => useRuns('team', _filters, 50, 0),
+  hooks: [useRunFilters] as const,
 }
 
 // --- F3: server glyph + LastSyncChip atom ---

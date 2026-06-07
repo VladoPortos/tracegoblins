@@ -119,8 +119,7 @@ async def login(data: LoginIn, request: Request, response: Response, db: DbSessi
         # Do NOT stamp last_login_at here — the login isn't complete until the second factor
         # is verified (login_verify stamps it on success). Otherwise an abandoned/failed 2FA
         # attempt would record a successful-looking login time.
-        from app.api.http_utils import MFA_PENDING_COOKIE
-        from app.core.config import settings as _cfg
+        from app.api.http_utils import set_pending_cookie
         from app.services.pending_login import create_pending
         pending = await create_pending(
             db, user_id=user.id, remember=data.remember, ip=ip,
@@ -131,17 +130,8 @@ async def login(data: LoginIn, request: Request, response: Response, db: DbSessi
         # JSONResponse is the actual response object; set the cookie directly on it so
         # httpx sees it (FastAPI only merges the injected `response` headers for dict/model
         # returns, not when the route returns a Response subclass directly).
-        from app.security.cookies import sign_pending_id
         jr = JSONResponse({"mfa_required": True})
-        jr.set_cookie(
-            key=MFA_PENDING_COOKIE,
-            value=sign_pending_id(str(pending.id)),
-            max_age=_cfg.mfa_pending_ttl_minutes * 60,
-            httponly=True,
-            secure=_cfg.cookie_secure,
-            samesite=_cfg.cookie_samesite,
-            path="/",
-        )
+        set_pending_cookie(request, jr, str(pending.id))
         return jr
 
     # No 2FA: the password IS the completed login — stamp last_login_at now. (Python datetime,

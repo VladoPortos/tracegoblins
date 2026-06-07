@@ -4,14 +4,7 @@ import { Glyph } from '../components/atoms/Glyph'
 import { Badge } from '../components/atoms/Badge'
 import { HostBar } from '../components/atoms/HostBar'
 import { stCls } from '../components/atoms/status'
-import { shortTime } from '../components/atoms/format'
-
-function fmtDuration(seconds: number): string {
-  if (seconds < 60) return `${Math.round(seconds)}s`
-  const m = Math.floor(seconds / 60)
-  const s = Math.round(seconds % 60)
-  return s > 0 ? `${m}m ${s}s` : `${m}m`
-}
+import { fmtDuration, shortTime } from '../components/atoms/format'
 
 export function JobCard({ run }: { run: RunCard }) {
   const nav = useNavigate()
