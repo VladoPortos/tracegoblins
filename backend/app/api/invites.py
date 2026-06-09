@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import secrets
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, Field
@@ -14,6 +14,7 @@ from app.api.deps import AdminUser, DbSession, require_password_current
 from app.api.http_utils import client_ip
 from app.api.login_flow import complete_login
 from app.api.validation import parse_uuid_or_422
+from app.core.clock import utcnow
 from app.core.config import settings
 from app.models import Invite, Team, TeamMember, User
 from app.security.passwords import hash_password, validate_password
@@ -34,7 +35,7 @@ async def _load_valid_invite(db, token: str, *, for_update: bool = False) -> Inv
     if for_update:
         stmt = stmt.with_for_update()  # row-lock so accept stays single-use under concurrency
     invite = await db.scalar(stmt)
-    now = datetime.now(timezone.utc)
+    now = utcnow()
     if invite is None or invite.accepted_at is not None or now >= invite.expires_at:
         return None
     return invite
@@ -46,7 +47,12 @@ class InviteCreateIn(BaseModel):
     team_ids: list[str] = Field(default=[], max_length=100)
 
 
-@admin_router.post("/invites", status_code=status.HTTP_201_CREATED)
+class InviteCreatedOut(BaseModel):
+    link: str
+    expires_at: datetime
+
+
+@admin_router.post("/invites", status_code=201, response_model=InviteCreatedOut)
 async def create_invite(data: InviteCreateIn, request: Request, admin: AdminUser, db: DbSession):
     if data.role not in ("user", "admin"):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail="role must be user|admin")
@@ -54,10 +60,9 @@ async def create_invite(data: InviteCreateIn, request: Request, admin: AdminUser
     # so a bad id can't FK-crash invite acceptance later.
     team_uuids: list[str] = []
     for t in data.team_ids:
-        # Detail strings stay this route's lowercase f-strings (NOT resolve_team_or_422's).
-        tid = parse_uuid_or_422(t, detail=f"invalid team id: {t}")
+        tid = parse_uuid_or_422(t, detail=f"Invalid team id: {t}")
         if await db.get(Team, tid) is None:
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail=f"unknown team: {t}")
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail=f"Unknown team: {t}")
         team_uuids.append(str(tid))
     raw = secrets.token_urlsafe(32)
     invite = Invite(
@@ -66,25 +71,27 @@ async def create_invite(data: InviteCreateIn, request: Request, admin: AdminUser
         target_role=data.role,
         target_team_ids=team_uuids,
         invited_by=admin.id,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=settings.invite_expire_hours),
+        expires_at=utcnow() + timedelta(hours=settings.invite_expire_hours),
     )
     db.add(invite)
     await write_audit(db, action="user_invite", actor_id=admin.id, target_type="invite",
                       target_id=str(invite.id), ip=client_ip(request), metadata={"email": data.email})
     await db.commit()
     base = str(request.base_url).rstrip("/")
-    return {
-        "link": f"{base}/invite/{raw}",
-        "expires_at": invite.expires_at.isoformat(),
-    }
+    return InviteCreatedOut(link=f"{base}/invite/{raw}", expires_at=invite.expires_at)
 
 
-@public_router.get("/{token}")
+class InviteInfoOut(BaseModel):
+    email: str
+    valid: bool
+
+
+@public_router.get("/{token}", response_model=InviteInfoOut)
 async def get_invite(token: str, db: DbSession):
     invite = await _load_valid_invite(db, token)
     if invite is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Invalid or expired invite")
-    return {"email": invite.email, "valid": True}
+    return InviteInfoOut(email=invite.email, valid=True)
 
 
 class InviteAcceptIn(BaseModel):
@@ -92,7 +99,7 @@ class InviteAcceptIn(BaseModel):
     password: str = Field(max_length=1024)
 
 
-@public_router.post("/{token}/accept", status_code=status.HTTP_201_CREATED, response_model=MeOut)
+@public_router.post("/{token}/accept", status_code=201, response_model=MeOut)
 async def accept_invite(
     token: str, data: InviteAcceptIn, request: Request, response: Response, db: DbSession
 ):
@@ -130,7 +137,7 @@ async def accept_invite(
     for tid in target_ids:
         db.add(TeamMember(team_id=tid, user_id=user.id))
 
-    invite.accepted_at = datetime.now(timezone.utc)
+    invite.accepted_at = utcnow()
     # stamp_last_login=False: invite acceptance never recorded a last_login_at (account birth).
     return await complete_login(
         db, request, response, user, remember=False,

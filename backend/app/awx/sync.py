@@ -12,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
 
 from app.awx.client import AwxClient, AwxError
+from app.core.clock import utcnow
 from app.core.crypto import TokenCryptoError, decrypt_token
 from app.kb.service import match_run
 from app.logparser.job_events import parse_job_events
@@ -249,7 +250,7 @@ async def sync_controller(db: AsyncSession, controller: AwxController) -> SyncRe
         final_cursor = _durable_cursor()
         controller.last_synced_job_id = final_cursor
         controller.last_sync_status = "ok"
-        controller.last_sync_at = datetime.now(timezone.utc)
+        controller.last_sync_at = utcnow()
         controller.last_sync_error = None
         controller.status = "connected"
         controller.sync_total = None
@@ -274,7 +275,7 @@ async def sync_controller(db: AsyncSession, controller: AwxController) -> SyncRe
         controller.last_sync_status = "error"
         controller.last_sync_error = str(e)[:1000]
         controller.status = "error"
-        controller.last_sync_at = datetime.now(timezone.utc)
+        controller.last_sync_at = utcnow()
         controller.sync_total = None
         controller.sync_done = None
         controller.sync_current_job = None
@@ -295,7 +296,7 @@ async def sync_controller(db: AsyncSession, controller: AwxController) -> SyncRe
             controller.last_sync_status = "error"
             controller.last_sync_error = f"Unexpected sync failure: {type(e).__name__}"[:1000]
             controller.status = "error"
-            controller.last_sync_at = datetime.now(timezone.utc)
+            controller.last_sync_at = utcnow()
             controller.sync_total = None
             controller.sync_done = None
             controller.sync_current_job = None

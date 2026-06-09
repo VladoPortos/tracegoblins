@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import (
-    APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status,
+    APIRouter, BackgroundTasks, Depends, HTTPException, Request, status,
 )
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -167,7 +167,7 @@ async def delete_controller(
     await db.commit()
     reconcile_controller(str(controller_id), sync_mode="manual",
                          sync_interval_minutes=None, deleted=True)
-    return Response(status_code=204)
+    return None
 
 
 @router.patch("/{controller_id}", response_model=ControllerOut)

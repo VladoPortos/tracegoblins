@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -58,14 +59,14 @@ class ControllerOut(BaseModel):
     sync_interval_minutes: int | None
     status: str                                    # unconfigured|connected|error
     last_sync_status: str                          # never|running|ok|error
-    last_sync_at: str | None
+    last_sync_at: datetime | None
     last_sync_error: str | None
     sync_total: int | None = None
     sync_done: int | None = None
     sync_current_job: str | None = None
     token_masked: str                              # mask_token(decrypt_token(...)) — NEVER the token
     team_assignments: list[ControllerTeamOut]
-    created_at: str
+    created_at: datetime
 
 
 class TestConnectionIn(BaseModel):

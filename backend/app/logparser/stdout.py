@@ -68,11 +68,16 @@ def parse_stdout(text: str) -> ParsedRun:
 
         m = RE_PLAY.match(line)
         if m:
-            close_task(); in_meta_task = in_recap = False
-            cur_play = Play(name=m.group("name"), tasks=[]); plays.append(cur_play)
+            close_task()
+            in_meta_task = in_recap = False
+            cur_play = Play(name=m.group("name"), tasks=[])
+            plays.append(cur_play)
             continue
         if RE_PLAY_RECAP.match(line):
-            close_task(); in_meta_task = False; in_recap = True; cur_play = None
+            close_task()
+            in_meta_task = False
+            in_recap = True
+            cur_play = None
             continue
 
         m = RE_TASK.match(line)
@@ -82,7 +87,8 @@ def parse_stdout(text: str) -> ParsedRun:
             role, name = full.split(" : ", 1) if " : " in full else (None, full)
             cur_task = ParsedTask(name=name, role=role, full=full, line=lineno)
             if cur_play is None:
-                cur_play = Play(name="", tasks=[]); plays.append(cur_play)
+                cur_play = Play(name="", tasks=[])
+                plays.append(cur_play)
             cur_play.tasks.append(cur_task)
             in_meta_task = name == META_TASK_NAME
             continue

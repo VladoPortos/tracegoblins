@@ -27,12 +27,16 @@ async def _user_count(db) -> int:
     return await db.scalar(select(func.count()).select_from(User))
 
 
-@router.get("/status")
-async def setup_status(db: DbSession) -> dict[str, bool]:
-    return {"needs_setup": (await _user_count(db)) == 0}
+class SetupStatusOut(BaseModel):
+    needs_setup: bool
 
 
-@router.post("", status_code=status.HTTP_201_CREATED, response_model=MeOut)
+@router.get("/status", response_model=SetupStatusOut)
+async def setup_status(db: DbSession) -> SetupStatusOut:
+    return SetupStatusOut(needs_setup=(await _user_count(db)) == 0)
+
+
+@router.post("", status_code=201, response_model=MeOut)
 async def run_setup(data: SetupIn, request: Request, response: Response, db: DbSession):
     # Throttle this unauthenticated, CSRF-exempt window (race-to-create-admin + argon2 DoS guard).
     ip = client_ip(request)

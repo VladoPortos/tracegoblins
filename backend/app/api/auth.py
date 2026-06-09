@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, DbSession
 from app.core.config import settings
-from app.api.http_utils import clear_session_cookie, client_ip
+from app.api.http_utils import clear_session_cookie, client_ip, set_pending_cookie
 from app.models import Team, TeamMember, User
 from app.security.passwords import hash_password, needs_rehash, validate_password, verify_password
 from app.security.ratelimit import login_limiter, too_many_attempts
@@ -71,10 +71,14 @@ class LoginIn(BaseModel):
     remember: bool = False
 
 
-@router.get("/csrf")
-async def csrf_bootstrap() -> dict[str, bool]:
+class OkOut(BaseModel):
+    ok: bool
+
+
+@router.get("/csrf", response_model=OkOut)
+async def csrf_bootstrap() -> OkOut:
     # The CSRF middleware (Task 9) sets the csrf cookie on this safe response.
-    return {"ok": True}
+    return OkOut(ok=True)
 
 
 @router.post("/login")
@@ -113,7 +117,6 @@ async def login(data: LoginIn, request: Request, response: Response, db: DbSessi
         # Do NOT stamp last_login_at here — the login isn't complete until the second factor
         # is verified (login_verify stamps it on success). Otherwise an abandoned/failed 2FA
         # attempt would record a successful-looking login time.
-        from app.api.http_utils import set_pending_cookie
         from app.services.pending_login import create_pending
         pending = await create_pending(
             db, user_id=user.id, remember=data.remember, ip=ip,

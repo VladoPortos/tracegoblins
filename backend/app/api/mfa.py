@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Cookie, HTTPException, Request, Response, status
 from pydantic import BaseModel
 
 from app.api.deps import CurrentUser, DbSession
+from app.core.clock import utcnow
 from app.core.config import settings
 from app.api.http_utils import MFA_PENDING_COOKIE, clear_pending_cookie, client_ip
 from app.core.crypto import decrypt_token, encrypt_token
@@ -65,7 +65,7 @@ async def enable(data: CodeIn, request: Request, user: CurrentUser, db: DbSessio
     if step is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Invalid code")
     user.totp_enabled = True
-    user.totp_confirmed_at = datetime.now(timezone.utc)
+    user.totp_confirmed_at = utcnow()
     # Burn the enrollment code's timestep into the replay guard so it can't be reused at the
     # very next login within its ±30s window (NIST SP 800-63B: consume the confirmation OTP).
     user.totp_last_used_step = step

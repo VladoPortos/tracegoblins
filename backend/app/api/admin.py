@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
@@ -34,8 +35,8 @@ class UserOut(BaseModel):
     display_name: str
     role: str
     is_active: bool
-    created_at: str
-    last_login_at: str | None
+    created_at: datetime
+    last_login_at: datetime | None
     teams: list[TeamBrief]
     totp_enabled: bool = False
     initials: str | None = None
@@ -59,8 +60,8 @@ async def _teams_for(db: AsyncSession, user_id: uuid.UUID) -> list[TeamBrief]:
 async def _user_out(db: AsyncSession, user: User) -> UserOut:
     return UserOut(
         id=str(user.id), email=user.email, display_name=user.display_name, role=user.role,
-        is_active=user.is_active, created_at=user.created_at.isoformat(),
-        last_login_at=user.last_login_at.isoformat() if user.last_login_at else None,
+        is_active=user.is_active, created_at=user.created_at,
+        last_login_at=user.last_login_at,
         teams=await _teams_for(db, user.id),
         totp_enabled=user.totp_enabled,
         initials=user.initials,
@@ -95,10 +96,10 @@ async def _active_admin_count(db: AsyncSession, *, exclude_id: uuid.UUID | None 
 @router.patch("/users/{user_id}/role", response_model=UserOut)
 async def change_role(user_id: uuid.UUID, body: RoleIn, request: Request, admin: AdminUser, db: DbSession):
     if body.role not in ("admin", "user"):
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail="role must be admin|user")
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail="role must be user|admin")
     user = await db.get(User, user_id)
     if user is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND)
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="User not found")
     # Don't let the platform lose its last admin (no recovery path: invite-only + setup self-locks).
     # Lock the invariant before the count so concurrent demotions can't both slip through.
     if user.role == "admin" and body.role == "user":
@@ -116,7 +117,7 @@ async def change_role(user_id: uuid.UUID, body: RoleIn, request: Request, admin:
 async def deactivate_user(user_id: uuid.UUID, request: Request, admin: AdminUser, db: DbSession):
     user = await db.get(User, user_id)
     if user is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND)
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="User not found")
     if user.id == admin.id:
         raise HTTPException(status.HTTP_409_CONFLICT, detail="You cannot deactivate yourself")
     if user.role == "admin":
@@ -135,7 +136,7 @@ async def deactivate_user(user_id: uuid.UUID, request: Request, admin: AdminUser
 async def activate_user(user_id: uuid.UUID, request: Request, admin: AdminUser, db: DbSession):
     user = await db.get(User, user_id)
     if user is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND)
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="User not found")
     user.is_active = True
     await write_audit(db, action="user_activate", actor_id=admin.id, target_type="user",
                       target_id=str(user.id), ip=client_ip(request))
@@ -218,7 +219,7 @@ async def list_teams(admin: AdminUser, db: DbSession):
     return [await _team_out(db, t) for t in teams]
 
 
-@router.post("/teams", status_code=status.HTTP_201_CREATED, response_model=TeamOut)
+@router.post("/teams", status_code=201, response_model=TeamOut)
 async def create_team(body: TeamCreateIn, request: Request, admin: AdminUser, db: DbSession):
     name, slug = await _validated_name_and_slug(db, body.name)
     team = Team(name=name, slug=slug, is_default=False, created_by=admin.id)
@@ -238,7 +239,7 @@ async def create_team(body: TeamCreateIn, request: Request, admin: AdminUser, db
 async def rename_team(team_id: uuid.UUID, body: TeamRenameIn, request: Request, admin: AdminUser, db: DbSession):
     team = await db.get(Team, team_id)
     if team is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND)
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Team not found")
     # Slug kept consistent with the renamed team (it was previously left stale), collision-safe.
     name, slug = await _validated_name_and_slug(db, body.name, exclude_id=team_id)
     team.name = name
@@ -258,8 +259,10 @@ async def rename_team(team_id: uuid.UUID, body: TeamRenameIn, request: Request, 
 async def add_team_member(team_id: uuid.UUID, body: MemberIn, request: Request, admin: AdminUser, db: DbSession):
     team = await db.get(Team, team_id)
     user = await db.get(User, body.user_id)
-    if team is None or user is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    if team is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Team not found")
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="User not found")
     if await add_member(db, team_id, user.id):
         await write_audit(db, action="membership_add", actor_id=admin.id, target_type="team",
                           target_id=str(team_id), ip=client_ip(request), metadata={"user_id": str(body.user_id)})
@@ -281,7 +284,7 @@ async def remove_team_member(team_id: uuid.UUID, user_id: uuid.UUID, request: Re
 async def delete_team_route(team_id: uuid.UUID, request: Request, admin: AdminUser, db: DbSession):
     team = await db.get(Team, team_id)
     if team is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND)
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Team not found")
     try:
         await delete_team(db, team)
     except DefaultTeamError:

@@ -63,6 +63,8 @@ async def update_comment(
     return await _comment_out_with_names(c, db)
 
 
+# Deliberately returns 200 + the tombstone CommentOut (soft-delete echo), not 204:
+# the client re-renders the thread with the "deleted" placeholder from this response.
 @router.delete("/{cid}", response_model=CommentOut)
 async def delete_comment(
     cid: uuid.UUID, request: Request, db: DbSession, user: GatedUser,

@@ -1,9 +1,10 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.clock import utcnow
 from app.db.base import Base
 
 
@@ -18,11 +19,11 @@ class Session(Base):
     # Python-side defaults so the in-memory object is populated immediately after flush
     # (get_valid_session reads last_seen_at right after create; avoids `None + timedelta`).
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now()
+        DateTime(timezone=True), default=utcnow, server_default=func.now()
     )
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     last_seen_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now()
+        DateTime(timezone=True), default=utcnow, server_default=func.now()
     )
     ip: Mapped[str | None] = mapped_column(String(64), default=None)
     user_agent: Mapped[str | None] = mapped_column(String(512), default=None)

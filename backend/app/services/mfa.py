@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
 from sqlalchemy import delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.clock import utcnow
 from app.models import MfaRecoveryCode, User
 from app.security import totp
 
@@ -35,7 +34,7 @@ async def consume_recovery_code(db: AsyncSession, user: User, code: str) -> bool
             MfaRecoveryCode.code_hash == h,
             MfaRecoveryCode.used_at.is_(None),
         )
-        .values(used_at=datetime.now(timezone.utc))
+        .values(used_at=utcnow())
     )
     await db.flush()
     return (result.rowcount or 0) > 0

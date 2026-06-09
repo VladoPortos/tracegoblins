@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import PlainTextResponse
 from sqlalchemy import BigInteger, and_, case, cast, func, nulls_last, or_, select, text
 from sqlalchemy.exc import IntegrityError
@@ -516,7 +516,7 @@ async def delete_run(run: OwnedRun, request: Request, db: DbSession, user: Gated
     await write_audit(db, action="run_delete", actor_id=user.id,
                       target_type="run", target_id=str(run.id), ip=client_ip(request))
     await db.commit()
-    return Response(status_code=204)
+    return None
 
 
 @router.post("/{run_id}/shares", status_code=201, response_model=ShareOut)
@@ -585,7 +585,7 @@ async def delete_share(
                       target_type="run_share", target_id=str(share_id), ip=client_ip(request),
                       metadata={"run_id": str(run.id)})
     await db.commit()
-    return Response(status_code=204)
+    return None
 
 
 @router.get("/{run_id}/annotations", response_model=list[AnnotationOut])

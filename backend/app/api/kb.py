@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 
 import sqlalchemy as sa
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -88,7 +88,8 @@ async def list_signatures(
         scope_cond = KbSignature.team_id.is_(None)
     elif scope == "team":
         # sa.false() (a SQL FALSE), NOT a Python `False`, so an empty-team caller yields an
-        # empty result set cleanly inside .where(...) — matching C8's _run_visible_cond.
+        # empty result set cleanly inside .where(...) — matching run_visible_cond
+        # (app/services/visibility.py).
         scope_cond = (
             KbSignature.team_id.in_(team_ids) if team_ids else sa.false()
         )
@@ -290,7 +291,7 @@ async def delete_signature(
         metadata={"signature_key": sig.signature_key},
     )
     await db.commit()
-    return Response(status_code=204)
+    return None
 
 
 @router.post("/promote", status_code=201, response_model=SignatureOut)

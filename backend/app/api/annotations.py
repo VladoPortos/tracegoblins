@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, HTTPException, Request, Response, status
+from fastapi import APIRouter, HTTPException, Request, status
 
 from app.api.collab_schemas import AnnotationOut, AnnotationUpdate
 from app.api.deps import DbSession, GatedUser
@@ -68,4 +68,4 @@ async def delete_annotation(
     await write_audit(db, action="annotation_delete", actor_id=user.id,
                       target_type="run", target_id=str(run.id), ip=client_ip(request))
     await db.commit()
-    return Response(status_code=204)
+    return None

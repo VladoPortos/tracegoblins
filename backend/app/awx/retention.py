@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.clock import utcnow
 from app.core.config import settings
 from app.models import Run
 from app.services.audit import write_audit
@@ -33,7 +34,7 @@ async def run_retention_sweep(db: AsyncSession | None = None) -> int:
 
         db = SessionLocal()
     try:
-        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        cutoff = utcnow() - timedelta(days=days)
         # Age by the job's ACTUAL run time (log_time), falling back to import time when AWX
         # omitted it — matching how the rest of the app computes "when a run happened"
         # (runs.py uses coalesce(log_time, created_at)). Using created_at alone would keep a

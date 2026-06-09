@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,10 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.controllers_schemas import ControllerOut, ControllerTeamOut
 from app.core.crypto import decrypt_token, mask_token
 from app.models import AwxController, ControllerTeam, Team
-
-
-def _iso(dt: datetime | None) -> str | None:
-    return dt.isoformat() if dt is not None else None
 
 
 async def controller_to_out(
@@ -49,12 +44,12 @@ async def controller_to_out(
         sync_interval_minutes=c.sync_interval_minutes,
         status=c.status,
         last_sync_status=c.last_sync_status,
-        last_sync_at=_iso(c.last_sync_at),
+        last_sync_at=c.last_sync_at,
         last_sync_error=c.last_sync_error,
         sync_total=c.sync_total,
         sync_done=c.sync_done,
         sync_current_job=c.sync_current_job,
         token_masked=token_masked,
         team_assignments=assignments,
-        created_at=c.created_at.isoformat(),
+        created_at=c.created_at,
     )
