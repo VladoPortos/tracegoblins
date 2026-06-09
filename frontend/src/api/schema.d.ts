@@ -157,6 +157,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/2fa/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Setup */
+        post: operations["setup_api_auth_2fa_setup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/2fa/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Enable */
+        post: operations["enable_api_auth_2fa_enable_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/2fa/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Disable */
+        post: operations["disable_api_auth_2fa_disable_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/2fa/recovery-codes/regenerate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Regenerate */
+        post: operations["regenerate_api_auth_2fa_recovery_codes_regenerate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/login/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Login Verify */
+        post: operations["login_verify_api_auth_login_verify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/invites": {
         parameters: {
             query?: never;
@@ -399,6 +484,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/runs/{run_id}/diff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Run Diff
+         * @description Diff this run against its last green baseline (same template, older, visible to U).
+         */
+        get: operations["get_run_diff_api_runs__run_id__diff_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/runs/{run_id}/tasks": {
         parameters: {
             query?: never;
@@ -596,6 +701,23 @@ export interface paths {
         get: operations["search_users_api_users_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/{user_id}/reset-2fa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reset 2Fa */
+        post: operations["reset_2fa_api_users__user_id__reset_2fa_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -877,6 +999,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/analytics/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Template Stats */
+        get: operations["get_template_stats_api_analytics_templates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -964,6 +1103,11 @@ export interface components {
             /** New Password */
             new_password: string;
         };
+        /** CodeIn */
+        CodeIn: {
+            /** Code */
+            code: string;
+        };
         /** CommentCreate */
         CommentCreate: {
             /** Body */
@@ -998,8 +1142,6 @@ export interface components {
             body: string | null;
             /** Mentions */
             mentions: string[];
-            /** Mention Names */
-            mention_names: string[];
             /**
              * Created At
              * Format: date-time
@@ -1069,13 +1211,20 @@ export interface components {
             last_sync_at: string | null;
             /** Last Sync Error */
             last_sync_error: string | null;
-            /** Last Synced Job Id */
-            last_synced_job_id: number | null;
+            /** Sync Total */
+            sync_total?: number | null;
+            /** Sync Done */
+            sync_done?: number | null;
+            /** Sync Current Job */
+            sync_current_job?: string | null;
             /** Token Masked */
             token_masked: string;
             /** Team Assignments */
             team_assignments: components["schemas"]["ControllerTeamOut"][];
-            /** Created At */
+            /**
+             * Created At
+             * Format: date-time
+             */
             created_at: string;
         };
         /** ControllerTeamOut */
@@ -1104,6 +1253,21 @@ export interface components {
             /** Team Assignments */
             team_assignments?: components["schemas"]["TeamAssignment"][] | null;
         };
+        /** DiffEntry */
+        DiffEntry: {
+            /** Play Name */
+            play_name: string;
+            /** Task Name */
+            task_name: string;
+            /** Host */
+            host: string;
+            /** Before */
+            before: string | null;
+            /** After */
+            after: string | null;
+            /** Seq */
+            seq: number | null;
+        };
         /** DirectoryUser */
         DirectoryUser: {
             /** Id */
@@ -1112,6 +1276,21 @@ export interface components {
             display_name: string;
             /** Email */
             email: string;
+        };
+        /** DurationDelta */
+        DurationDelta: {
+            /** Play Name */
+            play_name: string;
+            /** Task Name */
+            task_name: string;
+            /** Seq */
+            seq: number;
+            /** Before S */
+            before_s: number;
+            /** After S */
+            after_s: number;
+            /** Delta S */
+            delta_s: number;
         };
         /** FacetController */
         FacetController: {
@@ -1176,16 +1355,6 @@ export interface components {
              * @default 0
              */
             skipped: number;
-            /**
-             * Rescued
-             * @default 0
-             */
-            rescued: number;
-            /**
-             * Ignored
-             * @default 0
-             */
-            ignored: number;
         };
         /** InviteAcceptIn */
         InviteAcceptIn: {
@@ -1212,6 +1381,23 @@ export interface components {
              */
             team_ids: string[];
         };
+        /** InviteCreatedOut */
+        InviteCreatedOut: {
+            /** Link */
+            link: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+        };
+        /** InviteInfoOut */
+        InviteInfoOut: {
+            /** Email */
+            email: string;
+            /** Valid */
+            valid: boolean;
+        };
         /** KbSuggestionOut */
         KbSuggestionOut: {
             signature: components["schemas"]["SignatureOut"];
@@ -1219,8 +1405,6 @@ export interface components {
             exact: boolean;
             /** Score */
             score: number;
-            /** Recent Runs */
-            recent_runs: components["schemas"]["OccurrenceRunBrief"][];
         };
         /** LoginIn */
         LoginIn: {
@@ -1263,6 +1447,16 @@ export interface components {
             avatar_color?: string | null;
             /** Must Change Password */
             must_change_password: boolean;
+            /**
+             * Totp Enabled
+             * @default false
+             */
+            totp_enabled: boolean;
+            /**
+             * Mfa Setup Required
+             * @default false
+             */
+            mfa_setup_required: boolean;
             /** Teams */
             teams: components["schemas"]["TeamBrief"][];
         };
@@ -1291,10 +1485,6 @@ export interface components {
         NotificationListOut: {
             /** Items */
             items: components["schemas"]["NotificationOut"][];
-            /** Total */
-            total: number;
-            /** Unread */
-            unread: number;
         };
         /** NotificationOut */
         NotificationOut: {
@@ -1306,8 +1496,6 @@ export interface components {
             run_id: string | null;
             /** Run Template */
             run_template: string | null;
-            /** Comment Id */
-            comment_id: string | null;
             /** Task Seq */
             task_seq: number | null;
             /** Task Name */
@@ -1324,20 +1512,10 @@ export interface components {
              */
             created_at: string;
         };
-        /** OccurrenceRunBrief */
-        OccurrenceRunBrief: {
-            /** Run Id */
-            run_id: string;
-            /** Template Name */
-            template_name: string | null;
-            /** Status */
-            status: string;
-            /** Log Time */
-            log_time: string | null;
-            /** Task Seq */
-            task_seq: number;
-            /** Host */
-            host: string | null;
+        /** OkOut */
+        OkOut: {
+            /** Ok */
+            ok: boolean;
         };
         /** PromoteIn */
         PromoteIn: {
@@ -1366,6 +1544,11 @@ export interface components {
              */
             links: components["schemas"]["AnnotationLink"][];
         };
+        /** RecoveryOut */
+        RecoveryOut: {
+            /** Recovery Codes */
+            recovery_codes: string[];
+        };
         /** RoleIn */
         RoleIn: {
             /** Role */
@@ -1383,12 +1566,12 @@ export interface components {
             status: string;
             /** Log Time */
             log_time: string | null;
+            /** Launched At */
+            launched_at?: string | null;
             /** Host Count */
             host_count: number;
             /** Task Count */
             task_count: number;
-            /** Warnings Count */
-            warnings_count: number;
             counts: components["schemas"]["RunCounts"];
             /** Recap */
             recap: components["schemas"]["HostRecap"][];
@@ -1405,14 +1588,12 @@ export interface components {
             controller_id?: string | null;
             /** Controller Name */
             controller_name?: string | null;
-            /** Awx Organization Id */
-            awx_organization_id?: number | null;
             /** Awx Organization Name */
             awx_organization_name?: string | null;
             /** Awx Launch Type */
             awx_launch_type?: string | null;
-            /** Awx Workflow Name */
-            awx_workflow_name?: string | null;
+            /** Elapsed */
+            elapsed?: number | null;
         };
         /** RunCounts */
         RunCounts: {
@@ -1459,12 +1640,12 @@ export interface components {
             status: string;
             /** Log Time */
             log_time: string | null;
+            /** Launched At */
+            launched_at?: string | null;
             /** Host Count */
             host_count: number;
             /** Task Count */
             task_count: number;
-            /** Warnings Count */
-            warnings_count: number;
             counts: components["schemas"]["RunCounts"];
             /** Recap */
             recap: components["schemas"]["HostRecap"][];
@@ -1481,18 +1662,36 @@ export interface components {
             controller_id?: string | null;
             /** Controller Name */
             controller_name?: string | null;
-            /** Awx Organization Id */
-            awx_organization_id?: number | null;
             /** Awx Organization Name */
             awx_organization_name?: string | null;
             /** Awx Launch Type */
             awx_launch_type?: string | null;
-            /** Awx Workflow Name */
-            awx_workflow_name?: string | null;
-            /** Source */
-            source: string;
+            /** Elapsed */
+            elapsed?: number | null;
             /** Owner User Id */
             owner_user_id: string | null;
+        };
+        /** RunDiffOut */
+        RunDiffOut: {
+            baseline: components["schemas"]["RunCard"] | null;
+            /** Reason */
+            reason: ("no_template" | "no_green_run") | null;
+            /** Newly Failing */
+            newly_failing: components["schemas"]["DiffEntry"][];
+            /** Fixed */
+            fixed: components["schemas"]["DiffEntry"][];
+            /** Still Failing */
+            still_failing: components["schemas"]["DiffEntry"][];
+            /** Added Count */
+            added_count: number;
+            /** Removed Count */
+            removed_count: number;
+            /** Hosts Newly Unreachable */
+            hosts_newly_unreachable: string[];
+            /** Duration Delta S */
+            duration_delta_s: number | null;
+            /** Slowest Changes */
+            slowest_changes: components["schemas"]["DurationDelta"][];
         };
         /** RunList */
         RunList: {
@@ -1512,6 +1711,20 @@ export interface components {
             display_name: string;
             /** Password */
             password: string;
+        };
+        /** SetupOut */
+        SetupOut: {
+            /** Secret */
+            secret: string;
+            /** Otpauth Uri */
+            otpauth_uri: string;
+            /** Qr Svg */
+            qr_svg: string;
+        };
+        /** SetupStatusOut */
+        SetupStatusOut: {
+            /** Needs Setup */
+            needs_setup: boolean;
         };
         /** ShareCreate */
         ShareCreate: {
@@ -1589,6 +1802,13 @@ export interface components {
              */
             links: components["schemas"]["AnnotationLink"][];
         };
+        /** SignatureList */
+        SignatureList: {
+            /** Items */
+            items: components["schemas"]["SignatureOut"][];
+            /** Total */
+            total: number;
+        };
         /** SignatureOut */
         SignatureOut: {
             /** Id */
@@ -1613,8 +1833,6 @@ export interface components {
             representative_text: string;
             /** Links */
             links: components["schemas"]["AnnotationLink"][];
-            /** Created By User Id */
-            created_by_user_id: string | null;
             /** Occurrence Count */
             occurrence_count: number;
             /**
@@ -1685,10 +1903,6 @@ export interface components {
             items_count: number;
             /** Line No */
             line_no: number | null;
-            /** Has Output */
-            has_output: boolean;
-            /** Has Error */
-            has_error: boolean;
             /** Duration S */
             duration_s?: number | null;
             /** Output */
@@ -1718,10 +1932,6 @@ export interface components {
             items_count: number;
             /** Line No */
             line_no: number | null;
-            /** Has Output */
-            has_output: boolean;
-            /** Has Error */
-            has_error: boolean;
             /** Duration S */
             duration_s?: number | null;
         };
@@ -1766,6 +1976,48 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** TemplateStat */
+        TemplateStat: {
+            /** Template Name */
+            template_name: string;
+            /** Runs */
+            runs: number;
+            /** Failed */
+            failed: number;
+            /** Succeeded */
+            succeeded: number;
+            /** Success Rate */
+            success_rate: number;
+            /** Current Streak */
+            current_streak: number;
+            /** Streak Kind */
+            streak_kind: string;
+            /** Flips */
+            flips: number;
+            /** Flaky Score */
+            flaky_score: number;
+            /** Avg Duration S */
+            avg_duration_s: number | null;
+            /** Time To Recovery S */
+            time_to_recovery_s: number | null;
+            /** Last Status */
+            last_status: string;
+            /** Last When */
+            last_when: string | null;
+            /** Last Run Id */
+            last_run_id: string;
+            /** Recent */
+            recent: string[];
+            /** Recent Ids */
+            recent_ids: string[];
+        };
+        /** TemplateStatsOut */
+        TemplateStatsOut: {
+            /** Items */
+            items: components["schemas"]["TemplateStat"][];
+            /** Window Days */
+            window_days: number;
+        };
         /** TestConnectionIn */
         TestConnectionIn: {
             /** Base Url */
@@ -1803,12 +2055,24 @@ export interface components {
             role: string;
             /** Is Active */
             is_active: boolean;
-            /** Created At */
+            /**
+             * Created At
+             * Format: date-time
+             */
             created_at: string;
             /** Last Login At */
             last_login_at: string | null;
             /** Teams */
             teams: components["schemas"]["TeamBrief"][];
+            /**
+             * Totp Enabled
+             * @default false
+             */
+            totp_enabled: boolean;
+            /** Initials */
+            initials?: string | null;
+            /** Avatar Color */
+            avatar_color?: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -1869,9 +2133,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: boolean;
-                    };
+                    "application/json": components["schemas"]["SetupStatusOut"];
                 };
             };
         };
@@ -1924,9 +2186,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: boolean;
-                    };
+                    "application/json": components["schemas"]["OkOut"];
                 };
             };
         };
@@ -1950,7 +2210,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MeOut"];
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -2086,6 +2346,175 @@ export interface operations {
             };
         };
     };
+    setup_api_auth_2fa_setup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                tg_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetupOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    enable_api_auth_2fa_enable_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                tg_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CodeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    disable_api_auth_2fa_disable_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                tg_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CodeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    regenerate_api_auth_2fa_recovery_codes_regenerate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                tg_session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CodeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    login_verify_api_auth_login_verify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                tg_mfa_pending?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CodeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_invite_api_admin_invites_post: {
         parameters: {
             query?: never;
@@ -2107,7 +2536,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["InviteCreatedOut"];
                 };
             };
             /** @description Validation Error */
@@ -2138,7 +2567,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["InviteInfoOut"];
                 };
             };
             /** @description Validation Error */
@@ -2532,9 +2961,12 @@ export interface operations {
                 awx_user?: string | null;
                 status?: string | null;
                 launch_type?: string | null;
+                source?: string | null;
                 launched_after?: string | null;
                 launched_before?: string | null;
                 search?: string | null;
+                sort?: string;
+                dir?: string;
                 limit?: number;
                 offset?: number;
             };
@@ -2686,6 +3118,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_diff_api_runs__run_id__diff_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: {
+                tg_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunDiffOut"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -3135,6 +3600,37 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DirectoryUser"][];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reset_2fa_api_users__user_id__reset_2fa_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: {
+                tg_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -3631,6 +4127,8 @@ export interface operations {
                 scope?: string;
                 status?: string | null;
                 q?: string | null;
+                limit?: number;
+                offset?: number;
             };
             header?: never;
             path?: never;
@@ -3646,7 +4144,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SignatureOut"][];
+                    "application/json": components["schemas"]["SignatureList"];
                 };
             };
             /** @description Validation Error */
@@ -3885,6 +4383,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SignatureOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_template_stats_api_analytics_templates_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                tg_session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateStatsOut"];
                 };
             };
             /** @description Validation Error */

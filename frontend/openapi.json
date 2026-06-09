@@ -43,11 +43,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "boolean"
-                  },
-                  "type": "object",
-                  "title": "Response Setup Status Api Setup Status Get"
+                  "$ref": "#/components/schemas/SetupStatusOut"
                 }
               }
             }
@@ -109,11 +105,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "boolean"
-                  },
-                  "type": "object",
-                  "title": "Response Csrf Bootstrap Api Auth Csrf Get"
+                  "$ref": "#/components/schemas/OkOut"
                 }
               }
             }
@@ -143,9 +135,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MeOut"
-                }
+                "schema": {}
               }
             }
           },
@@ -347,6 +337,282 @@
         }
       }
     },
+    "/api/auth/2fa/setup": {
+      "post": {
+        "tags": [
+          "mfa"
+        ],
+        "summary": "Setup",
+        "operationId": "setup_api_auth_2fa_setup_post",
+        "parameters": [
+          {
+            "name": "tg_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tg Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetupOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/2fa/enable": {
+      "post": {
+        "tags": [
+          "mfa"
+        ],
+        "summary": "Enable",
+        "operationId": "enable_api_auth_2fa_enable_post",
+        "parameters": [
+          {
+            "name": "tg_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tg Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CodeIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/2fa/disable": {
+      "post": {
+        "tags": [
+          "mfa"
+        ],
+        "summary": "Disable",
+        "operationId": "disable_api_auth_2fa_disable_post",
+        "parameters": [
+          {
+            "name": "tg_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tg Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CodeIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/2fa/recovery-codes/regenerate": {
+      "post": {
+        "tags": [
+          "mfa"
+        ],
+        "summary": "Regenerate",
+        "operationId": "regenerate_api_auth_2fa_recovery_codes_regenerate_post",
+        "parameters": [
+          {
+            "name": "tg_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tg Session"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CodeIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login/verify": {
+      "post": {
+        "tags": [
+          "mfa"
+        ],
+        "summary": "Login Verify",
+        "operationId": "login_verify_api_auth_login_verify_post",
+        "parameters": [
+          {
+            "name": "tg_mfa_pending",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tg Mfa Pending"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CodeIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/invites": {
       "post": {
         "tags": [
@@ -387,7 +653,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/InviteCreatedOut"
+                }
               }
             }
           },
@@ -427,7 +695,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/InviteInfoOut"
+                }
               }
             }
           },
@@ -1261,6 +1531,23 @@
             }
           },
           {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(upload|awx)$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source"
+            }
+          },
+          {
             "name": "launched_after",
             "in": "query",
             "required": false,
@@ -1308,6 +1595,28 @@
                 }
               ],
               "title": "Search"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(when|job_id|hosts|duration|status)$",
+              "default": "when",
+              "title": "Sort"
+            }
+          },
+          {
+            "name": "dir",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(asc|desc)$",
+              "default": "desc",
+              "title": "Dir"
             }
           },
           {
@@ -1529,6 +1838,66 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs/{run_id}/diff": {
+      "get": {
+        "tags": [
+          "runs"
+        ],
+        "summary": "Get Run Diff",
+        "description": "Diff this run against its last green baseline (same template, older, visible to U).",
+        "operationId": "get_run_diff_api_runs__run_id__diff_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "tg_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tg Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunDiffOut"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -2450,6 +2819,58 @@
         }
       }
     },
+    "/api/users/{user_id}/reset-2fa": {
+      "post": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Reset 2Fa",
+        "operationId": "reset_2fa_api_users__user_id__reset_2fa_post",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "tg_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tg Session"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/annotations/{aid}": {
       "patch": {
         "tags": [
@@ -3355,6 +3776,29 @@
             }
           },
           {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
             "name": "tg_session",
             "in": "cookie",
             "required": false,
@@ -3377,11 +3821,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/SignatureOut"
-                  },
-                  "title": "Response List Signatures Api Kb Signatures Get"
+                  "$ref": "#/components/schemas/SignatureList"
                 }
               }
             }
@@ -3816,6 +4256,67 @@
           }
         }
       }
+    },
+    "/api/analytics/templates": {
+      "get": {
+        "tags": [
+          "analytics"
+        ],
+        "summary": "Get Template Stats",
+        "operationId": "get_template_stats_api_analytics_templates_get",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 365,
+              "minimum": 1,
+              "default": 30,
+              "title": "Days"
+            }
+          },
+          {
+            "name": "tg_session",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tg Session"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateStatsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3824,6 +4325,7 @@
         "properties": {
           "note": {
             "type": "string",
+            "maxLength": 20000,
             "title": "Note",
             "default": ""
           },
@@ -3832,6 +4334,7 @@
               "type": "string"
             },
             "type": "array",
+            "maxItems": 20,
             "title": "Tags",
             "default": []
           },
@@ -3840,6 +4343,7 @@
               "$ref": "#/components/schemas/AnnotationLink"
             },
             "type": "array",
+            "maxItems": 50,
             "title": "Links",
             "default": []
           }
@@ -3851,10 +4355,12 @@
         "properties": {
           "label": {
             "type": "string",
+            "maxLength": 300,
             "title": "Label"
           },
           "url": {
             "type": "string",
+            "maxLength": 2048,
             "title": "Url"
           }
         },
@@ -3941,7 +4447,8 @@
           "note": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 20000
               },
               {
                 "type": "null"
@@ -3955,7 +4462,8 @@
                 "items": {
                   "type": "string"
                 },
-                "type": "array"
+                "type": "array",
+                "maxItems": 20
               },
               {
                 "type": "null"
@@ -3969,7 +4477,8 @@
                 "items": {
                   "$ref": "#/components/schemas/AnnotationLink"
                 },
-                "type": "array"
+                "type": "array",
+                "maxItems": 50
               },
               {
                 "type": "null"
@@ -4050,10 +4559,24 @@
         ],
         "title": "ChangePasswordIn"
       },
+      "CodeIn": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "title": "CodeIn"
+      },
       "CommentCreate": {
         "properties": {
           "body": {
             "type": "string",
+            "maxLength": 20000,
             "title": "Body"
           },
           "mentions": {
@@ -4061,13 +4584,15 @@
               "type": "string"
             },
             "type": "array",
+            "maxItems": 200,
             "title": "Mentions",
             "default": []
           },
           "parent_id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 64
               },
               {
                 "type": "null"
@@ -4078,7 +4603,8 @@
           "annotation_id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 64
               },
               {
                 "type": "null"
@@ -4162,13 +4688,6 @@
             "type": "array",
             "title": "Mentions"
           },
-          "mention_names": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Mention Names"
-          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -4210,7 +4729,6 @@
           "author_name",
           "body",
           "mentions",
-          "mention_names",
           "created_at",
           "edited_at",
           "deleted_at"
@@ -4221,6 +4739,7 @@
         "properties": {
           "body": {
             "type": "string",
+            "maxLength": 20000,
             "title": "Body"
           },
           "mentions": {
@@ -4228,6 +4747,7 @@
               "type": "string"
             },
             "type": "array",
+            "maxItems": 200,
             "title": "Mentions",
             "default": []
           }
@@ -4242,14 +4762,20 @@
         "properties": {
           "name": {
             "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
             "title": "Name"
           },
           "base_url": {
             "type": "string",
+            "maxLength": 2048,
+            "minLength": 1,
             "title": "Base Url"
           },
           "token": {
             "type": "string",
+            "maxLength": 4096,
+            "minLength": 1,
             "title": "Token"
           },
           "verify_ssl": {
@@ -4282,6 +4808,7 @@
               "$ref": "#/components/schemas/TeamAssignment"
             },
             "type": "array",
+            "maxItems": 200,
             "title": "Team Assignments",
             "default": []
           }
@@ -4338,7 +4865,8 @@
           "last_sync_at": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "format": "date-time"
               },
               {
                 "type": "null"
@@ -4357,7 +4885,7 @@
             ],
             "title": "Last Sync Error"
           },
-          "last_synced_job_id": {
+          "sync_total": {
             "anyOf": [
               {
                 "type": "integer"
@@ -4366,7 +4894,29 @@
                 "type": "null"
               }
             ],
-            "title": "Last Synced Job Id"
+            "title": "Sync Total"
+          },
+          "sync_done": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sync Done"
+          },
+          "sync_current_job": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sync Current Job"
           },
           "token_masked": {
             "type": "string",
@@ -4381,6 +4931,7 @@
           },
           "created_at": {
             "type": "string",
+            "format": "date-time",
             "title": "Created At"
           }
         },
@@ -4396,7 +4947,6 @@
           "last_sync_status",
           "last_sync_at",
           "last_sync_error",
-          "last_synced_job_id",
           "token_masked",
           "team_assignments",
           "created_at"
@@ -4445,7 +4995,8 @@
           "name": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 200
               },
               {
                 "type": "null"
@@ -4456,7 +5007,8 @@
           "base_url": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 2048
               },
               {
                 "type": "null"
@@ -4467,7 +5019,8 @@
           "token": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 4096
               },
               {
                 "type": "null"
@@ -4518,7 +5071,8 @@
                 "items": {
                   "$ref": "#/components/schemas/TeamAssignment"
                 },
-                "type": "array"
+                "type": "array",
+                "maxItems": 200
               },
               {
                 "type": "null"
@@ -4529,6 +5083,65 @@
         },
         "type": "object",
         "title": "ControllerUpdate"
+      },
+      "DiffEntry": {
+        "properties": {
+          "play_name": {
+            "type": "string",
+            "title": "Play Name"
+          },
+          "task_name": {
+            "type": "string",
+            "title": "Task Name"
+          },
+          "host": {
+            "type": "string",
+            "title": "Host"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before"
+          },
+          "after": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After"
+          },
+          "seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seq"
+          }
+        },
+        "type": "object",
+        "required": [
+          "play_name",
+          "task_name",
+          "host",
+          "before",
+          "after",
+          "seq"
+        ],
+        "title": "DiffEntry"
       },
       "DirectoryUser": {
         "properties": {
@@ -4552,6 +5165,44 @@
           "email"
         ],
         "title": "DirectoryUser"
+      },
+      "DurationDelta": {
+        "properties": {
+          "play_name": {
+            "type": "string",
+            "title": "Play Name"
+          },
+          "task_name": {
+            "type": "string",
+            "title": "Task Name"
+          },
+          "seq": {
+            "type": "integer",
+            "title": "Seq"
+          },
+          "before_s": {
+            "type": "number",
+            "title": "Before S"
+          },
+          "after_s": {
+            "type": "number",
+            "title": "After S"
+          },
+          "delta_s": {
+            "type": "number",
+            "title": "Delta S"
+          }
+        },
+        "type": "object",
+        "required": [
+          "play_name",
+          "task_name",
+          "seq",
+          "before_s",
+          "after_s",
+          "delta_s"
+        ],
+        "title": "DurationDelta"
       },
       "FacetController": {
         "properties": {
@@ -4702,16 +5353,6 @@
             "type": "integer",
             "title": "Skipped",
             "default": 0
-          },
-          "rescued": {
-            "type": "integer",
-            "title": "Rescued",
-            "default": 0
-          },
-          "ignored": {
-            "type": "integer",
-            "title": "Ignored",
-            "default": 0
           }
         },
         "type": "object",
@@ -4724,10 +5365,13 @@
         "properties": {
           "display_name": {
             "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
             "title": "Display Name"
           },
           "password": {
             "type": "string",
+            "maxLength": 1024,
             "title": "Password"
           }
         },
@@ -4755,6 +5399,7 @@
               "type": "string"
             },
             "type": "array",
+            "maxItems": 100,
             "title": "Team Ids",
             "default": []
           }
@@ -4764,6 +5409,43 @@
           "email"
         ],
         "title": "InviteCreateIn"
+      },
+      "InviteCreatedOut": {
+        "properties": {
+          "link": {
+            "type": "string",
+            "title": "Link"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "link",
+          "expires_at"
+        ],
+        "title": "InviteCreatedOut"
+      },
+      "InviteInfoOut": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "valid": {
+            "type": "boolean",
+            "title": "Valid"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "valid"
+        ],
+        "title": "InviteInfoOut"
       },
       "KbSuggestionOut": {
         "properties": {
@@ -4777,21 +5459,13 @@
           "score": {
             "type": "number",
             "title": "Score"
-          },
-          "recent_runs": {
-            "items": {
-              "$ref": "#/components/schemas/OccurrenceRunBrief"
-            },
-            "type": "array",
-            "title": "Recent Runs"
           }
         },
         "type": "object",
         "required": [
           "signature",
           "exact",
-          "score",
-          "recent_runs"
+          "score"
         ],
         "title": "KbSuggestionOut"
       },
@@ -4888,6 +5562,16 @@
             "type": "boolean",
             "title": "Must Change Password"
           },
+          "totp_enabled": {
+            "type": "boolean",
+            "title": "Totp Enabled",
+            "default": false
+          },
+          "mfa_setup_required": {
+            "type": "boolean",
+            "title": "Mfa Setup Required",
+            "default": false
+          },
           "teams": {
             "items": {
               "$ref": "#/components/schemas/TeamBrief"
@@ -4974,21 +5658,11 @@
             },
             "type": "array",
             "title": "Items"
-          },
-          "total": {
-            "type": "integer",
-            "title": "Total"
-          },
-          "unread": {
-            "type": "integer",
-            "title": "Unread"
           }
         },
         "type": "object",
         "required": [
-          "items",
-          "total",
-          "unread"
+          "items"
         ],
         "title": "NotificationListOut"
       },
@@ -5023,17 +5697,6 @@
               }
             ],
             "title": "Run Template"
-          },
-          "comment_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Comment Id"
           },
           "task_seq": {
             "anyOf": [
@@ -5103,7 +5766,6 @@
           "type",
           "run_id",
           "run_template",
-          "comment_id",
           "task_seq",
           "task_name",
           "actor_user_id",
@@ -5113,70 +5775,24 @@
         ],
         "title": "NotificationOut"
       },
-      "OccurrenceRunBrief": {
+      "OkOut": {
         "properties": {
-          "run_id": {
-            "type": "string",
-            "title": "Run Id"
-          },
-          "template_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Template Name"
-          },
-          "status": {
-            "type": "string",
-            "title": "Status"
-          },
-          "log_time": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Log Time"
-          },
-          "task_seq": {
-            "type": "integer",
-            "title": "Task Seq"
-          },
-          "host": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Host"
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
           }
         },
         "type": "object",
         "required": [
-          "run_id",
-          "template_name",
-          "status",
-          "log_time",
-          "task_seq",
-          "host"
+          "ok"
         ],
-        "title": "OccurrenceRunBrief"
+        "title": "OkOut"
       },
       "PromoteIn": {
         "properties": {
           "run_id": {
             "type": "string",
+            "maxLength": 64,
             "title": "Run Id"
           },
           "task_seq": {
@@ -5186,7 +5802,8 @@
           "team_id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 64
               },
               {
                 "type": "null"
@@ -5196,6 +5813,7 @@
           },
           "title": {
             "type": "string",
+            "maxLength": 300,
             "title": "Title"
           },
           "status": {
@@ -5206,7 +5824,8 @@
           "description": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 20000
               },
               {
                 "type": "null"
@@ -5217,7 +5836,8 @@
           "is_problem": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 20000
               },
               {
                 "type": "null"
@@ -5228,7 +5848,8 @@
           "where_it_lives": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 20000
               },
               {
                 "type": "null"
@@ -5241,6 +5862,7 @@
               "$ref": "#/components/schemas/AnnotationLink"
             },
             "type": "array",
+            "maxItems": 50,
             "title": "Links",
             "default": []
           }
@@ -5252,6 +5874,22 @@
           "title"
         ],
         "title": "PromoteIn"
+      },
+      "RecoveryOut": {
+        "properties": {
+          "recovery_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Recovery Codes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "recovery_codes"
+        ],
+        "title": "RecoveryOut"
       },
       "RoleIn": {
         "properties": {
@@ -5310,6 +5948,18 @@
             ],
             "title": "Log Time"
           },
+          "launched_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Launched At"
+          },
           "host_count": {
             "type": "integer",
             "title": "Host Count"
@@ -5317,10 +5967,6 @@
           "task_count": {
             "type": "integer",
             "title": "Task Count"
-          },
-          "warnings_count": {
-            "type": "integer",
-            "title": "Warnings Count"
           },
           "counts": {
             "$ref": "#/components/schemas/RunCounts"
@@ -5381,17 +6027,6 @@
             ],
             "title": "Controller Name"
           },
-          "awx_organization_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Awx Organization Id"
-          },
           "awx_organization_name": {
             "anyOf": [
               {
@@ -5414,16 +6049,16 @@
             ],
             "title": "Awx Launch Type"
           },
-          "awx_workflow_name": {
+          "elapsed": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "number"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Awx Workflow Name"
+            "title": "Elapsed"
           }
         },
         "type": "object",
@@ -5435,7 +6070,6 @@
           "log_time",
           "host_count",
           "task_count",
-          "warnings_count",
           "counts",
           "recap",
           "created_at"
@@ -5530,6 +6164,18 @@
             ],
             "title": "Log Time"
           },
+          "launched_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Launched At"
+          },
           "host_count": {
             "type": "integer",
             "title": "Host Count"
@@ -5537,10 +6183,6 @@
           "task_count": {
             "type": "integer",
             "title": "Task Count"
-          },
-          "warnings_count": {
-            "type": "integer",
-            "title": "Warnings Count"
           },
           "counts": {
             "$ref": "#/components/schemas/RunCounts"
@@ -5601,17 +6243,6 @@
             ],
             "title": "Controller Name"
           },
-          "awx_organization_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Awx Organization Id"
-          },
           "awx_organization_name": {
             "anyOf": [
               {
@@ -5634,20 +6265,16 @@
             ],
             "title": "Awx Launch Type"
           },
-          "awx_workflow_name": {
+          "elapsed": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "number"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Awx Workflow Name"
-          },
-          "source": {
-            "type": "string",
-            "title": "Source"
+            "title": "Elapsed"
           },
           "owner_user_id": {
             "anyOf": [
@@ -5670,14 +6297,109 @@
           "log_time",
           "host_count",
           "task_count",
-          "warnings_count",
           "counts",
           "recap",
           "created_at",
-          "source",
           "owner_user_id"
         ],
         "title": "RunDetail"
+      },
+      "RunDiffOut": {
+        "properties": {
+          "baseline": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RunCard"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "no_template",
+                  "no_green_run"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "newly_failing": {
+            "items": {
+              "$ref": "#/components/schemas/DiffEntry"
+            },
+            "type": "array",
+            "title": "Newly Failing"
+          },
+          "fixed": {
+            "items": {
+              "$ref": "#/components/schemas/DiffEntry"
+            },
+            "type": "array",
+            "title": "Fixed"
+          },
+          "still_failing": {
+            "items": {
+              "$ref": "#/components/schemas/DiffEntry"
+            },
+            "type": "array",
+            "title": "Still Failing"
+          },
+          "added_count": {
+            "type": "integer",
+            "title": "Added Count"
+          },
+          "removed_count": {
+            "type": "integer",
+            "title": "Removed Count"
+          },
+          "hosts_newly_unreachable": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Hosts Newly Unreachable"
+          },
+          "duration_delta_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Delta S"
+          },
+          "slowest_changes": {
+            "items": {
+              "$ref": "#/components/schemas/DurationDelta"
+            },
+            "type": "array",
+            "title": "Slowest Changes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "baseline",
+          "reason",
+          "newly_failing",
+          "fixed",
+          "still_failing",
+          "added_count",
+          "removed_count",
+          "hosts_newly_unreachable",
+          "duration_delta_s",
+          "slowest_changes"
+        ],
+        "title": "RunDiffOut"
       },
       "RunList": {
         "properties": {
@@ -5709,10 +6431,13 @@
           },
           "display_name": {
             "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
             "title": "Display Name"
           },
           "password": {
             "type": "string",
+            "maxLength": 1024,
             "title": "Password"
           }
         },
@@ -5724,12 +6449,49 @@
         ],
         "title": "SetupIn"
       },
+      "SetupOut": {
+        "properties": {
+          "secret": {
+            "type": "string",
+            "title": "Secret"
+          },
+          "otpauth_uri": {
+            "type": "string",
+            "title": "Otpauth Uri"
+          },
+          "qr_svg": {
+            "type": "string",
+            "title": "Qr Svg"
+          }
+        },
+        "type": "object",
+        "required": [
+          "secret",
+          "otpauth_uri",
+          "qr_svg"
+        ],
+        "title": "SetupOut"
+      },
+      "SetupStatusOut": {
+        "properties": {
+          "needs_setup": {
+            "type": "boolean",
+            "title": "Needs Setup"
+          }
+        },
+        "type": "object",
+        "required": [
+          "needs_setup"
+        ],
+        "title": "SetupStatusOut"
+      },
       "ShareCreate": {
         "properties": {
           "user_id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 64
               },
               {
                 "type": "null"
@@ -5740,7 +6502,8 @@
           "team_id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 64
               },
               {
                 "type": "null"
@@ -5858,14 +6621,17 @@
         "properties": {
           "signature_key": {
             "type": "string",
+            "maxLength": 1000,
             "title": "Signature Key"
           },
           "representative_text": {
             "type": "string",
+            "maxLength": 8000,
             "title": "Representative Text"
           },
           "title": {
             "type": "string",
+            "maxLength": 300,
             "title": "Title"
           },
           "status": {
@@ -5876,7 +6642,8 @@
           "team_id": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 64
               },
               {
                 "type": "null"
@@ -5887,7 +6654,8 @@
           "category": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 120
               },
               {
                 "type": "null"
@@ -5898,7 +6666,8 @@
           "description": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 20000
               },
               {
                 "type": "null"
@@ -5909,7 +6678,8 @@
           "is_problem": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 20000
               },
               {
                 "type": "null"
@@ -5920,7 +6690,8 @@
           "where_it_lives": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 20000
               },
               {
                 "type": "null"
@@ -5945,6 +6716,7 @@
               "$ref": "#/components/schemas/AnnotationLink"
             },
             "type": "array",
+            "maxItems": 50,
             "title": "Links",
             "default": []
           }
@@ -5956,6 +6728,27 @@
           "title"
         ],
         "title": "SignatureCreate"
+      },
+      "SignatureList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SignatureOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "SignatureList"
       },
       "SignatureOut": {
         "properties": {
@@ -6041,17 +6834,6 @@
             "type": "array",
             "title": "Links"
           },
-          "created_by_user_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Created By User Id"
-          },
           "occurrence_count": {
             "type": "integer",
             "title": "Occurrence Count"
@@ -6080,7 +6862,6 @@
           "where_it_lives",
           "representative_text",
           "links",
-          "created_by_user_id",
           "occurrence_count",
           "created_at",
           "updated_at"
@@ -6092,7 +6873,8 @@
           "title": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 300
               },
               {
                 "type": "null"
@@ -6114,7 +6896,8 @@
           "representative_text": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 8000
               },
               {
                 "type": "null"
@@ -6125,7 +6908,8 @@
           "category": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 120
               },
               {
                 "type": "null"
@@ -6136,7 +6920,8 @@
           "description": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 20000
               },
               {
                 "type": "null"
@@ -6147,7 +6932,8 @@
           "is_problem": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 20000
               },
               {
                 "type": "null"
@@ -6158,7 +6944,8 @@
           "where_it_lives": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 20000
               },
               {
                 "type": "null"
@@ -6184,7 +6971,8 @@
                 "items": {
                   "$ref": "#/components/schemas/AnnotationLink"
                 },
-                "type": "array"
+                "type": "array",
+                "maxItems": 50
               },
               {
                 "type": "null"
@@ -6290,14 +7078,6 @@
             ],
             "title": "Line No"
           },
-          "has_output": {
-            "type": "boolean",
-            "title": "Has Output"
-          },
-          "has_error": {
-            "type": "boolean",
-            "title": "Has Error"
-          },
           "duration_s": {
             "anyOf": [
               {
@@ -6353,8 +7133,6 @@
           "hosts",
           "items_count",
           "line_no",
-          "has_output",
-          "has_error",
           "output",
           "error",
           "included_path"
@@ -6412,14 +7190,6 @@
             ],
             "title": "Line No"
           },
-          "has_output": {
-            "type": "boolean",
-            "title": "Has Output"
-          },
-          "has_error": {
-            "type": "boolean",
-            "title": "Has Error"
-          },
           "duration_s": {
             "anyOf": [
               {
@@ -6441,9 +7211,7 @@
           "status",
           "hosts",
           "items_count",
-          "line_no",
-          "has_output",
-          "has_error"
+          "line_no"
         ],
         "title": "TaskLean"
       },
@@ -6451,12 +7219,14 @@
         "properties": {
           "team_id": {
             "type": "string",
+            "maxLength": 64,
             "title": "Team Id"
           },
           "awx_organization_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "exclusiveMinimum": 0.0
               },
               {
                 "type": "null"
@@ -6503,6 +7273,7 @@
         "properties": {
           "name": {
             "type": "string",
+            "maxLength": 120,
             "title": "Name"
           }
         },
@@ -6549,6 +7320,7 @@
         "properties": {
           "name": {
             "type": "string",
+            "maxLength": 120,
             "title": "Name"
           }
         },
@@ -6557,6 +7329,143 @@
           "name"
         ],
         "title": "TeamRenameIn"
+      },
+      "TemplateStat": {
+        "properties": {
+          "template_name": {
+            "type": "string",
+            "title": "Template Name"
+          },
+          "runs": {
+            "type": "integer",
+            "title": "Runs"
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed"
+          },
+          "succeeded": {
+            "type": "integer",
+            "title": "Succeeded"
+          },
+          "success_rate": {
+            "type": "number",
+            "title": "Success Rate"
+          },
+          "current_streak": {
+            "type": "integer",
+            "title": "Current Streak"
+          },
+          "streak_kind": {
+            "type": "string",
+            "title": "Streak Kind"
+          },
+          "flips": {
+            "type": "integer",
+            "title": "Flips"
+          },
+          "flaky_score": {
+            "type": "number",
+            "title": "Flaky Score"
+          },
+          "avg_duration_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Duration S"
+          },
+          "time_to_recovery_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time To Recovery S"
+          },
+          "last_status": {
+            "type": "string",
+            "title": "Last Status"
+          },
+          "last_when": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last When"
+          },
+          "last_run_id": {
+            "type": "string",
+            "title": "Last Run Id"
+          },
+          "recent": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Recent"
+          },
+          "recent_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Recent Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "template_name",
+          "runs",
+          "failed",
+          "succeeded",
+          "success_rate",
+          "current_streak",
+          "streak_kind",
+          "flips",
+          "flaky_score",
+          "avg_duration_s",
+          "time_to_recovery_s",
+          "last_status",
+          "last_when",
+          "last_run_id",
+          "recent",
+          "recent_ids"
+        ],
+        "title": "TemplateStat"
+      },
+      "TemplateStatsOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateStat"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "window_days": {
+            "type": "integer",
+            "title": "Window Days"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "window_days"
+        ],
+        "title": "TemplateStatsOut"
       },
       "TestConnectionIn": {
         "properties": {
@@ -6680,12 +7589,14 @@
           },
           "created_at": {
             "type": "string",
+            "format": "date-time",
             "title": "Created At"
           },
           "last_login_at": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "format": "date-time"
               },
               {
                 "type": "null"
@@ -6699,6 +7610,33 @@
             },
             "type": "array",
             "title": "Teams"
+          },
+          "totp_enabled": {
+            "type": "boolean",
+            "title": "Totp Enabled",
+            "default": false
+          },
+          "initials": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Initials"
+          },
+          "avatar_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Color"
           }
         },
         "type": "object",
