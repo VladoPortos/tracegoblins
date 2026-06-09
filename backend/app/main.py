@@ -51,7 +51,7 @@ def create_app() -> FastAPI:
 
     app.include_router(meta)
     from app.api import (
-        admin, annotations, auth, comments, controllers, invites, kb,
+        admin, analytics, annotations, auth, comments, controllers, invites, kb,
         mfa, notifications, runs, setup, users,
     )
 
@@ -69,6 +69,7 @@ def create_app() -> FastAPI:
     app.include_router(notifications.router)  # M3 Phase C
     app.include_router(controllers.router)  # M4 Phase E
     app.include_router(kb.router)  # M5 Phase D
+    app.include_router(analytics.router)  # per-template failure analytics
 
     from app.static import mount_spa
 
