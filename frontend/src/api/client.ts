@@ -84,26 +84,26 @@ export interface InviteInfo { email: string; valid: boolean }
 
 export interface HostRecap {
   host: string; ok: number; changed: number; unreachable: number
-  failed: number; skipped: number; rescued: number; ignored: number
+  failed: number; skipped: number
 }
 export interface RunCounts { ok: number; changed: number; unreachable: number; failed: number; skipped: number }
 export interface RunCard {
   id: string; job_id: string | null; template_name: string | null
   status: string; log_time: string | null
   launched_at?: string | null
-  host_count: number; task_count: number; warnings_count: number
+  host_count: number; task_count: number
   counts: RunCounts; recap: HostRecap[]; created_at: string
   team_id: string | null; team_name: string | null
   controller_id?: string | null; controller_name?: string | null
-  awx_organization_id?: number | null; awx_organization_name?: string | null
-  awx_launch_type?: string | null; awx_workflow_name?: string | null
+  awx_organization_name?: string | null
+  awx_launch_type?: string | null
   elapsed?: number | null
 }
-export interface RunDetail extends RunCard { source: string; owner_user_id: string | null }
+export interface RunDetail extends RunCard { owner_user_id: string | null }
 export interface TaskLean {
   seq: number; play_name: string; role: string | null; name: string
   status: string; hosts: Record<string, string>; items_count: number
-  line_no: number | null; has_output: boolean; has_error: boolean
+  line_no: number | null
   duration_s: number | null  // job_events durations; null for stdout runs
 }
 export interface TaskFull extends TaskLean { output: string | null; error: string | null; included_path: string | null }

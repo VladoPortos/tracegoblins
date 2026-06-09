@@ -3,11 +3,11 @@ import { apiFetch } from './client'
 
 export interface Notification {
   id: string; type: string; run_id: string | null; run_template: string | null
-  comment_id: string | null; task_seq: number | null; task_name: string | null
+  task_seq: number | null; task_name: string | null
   actor_user_id: string | null; actor_name: string | null
   read_at: string | null; created_at: string
 }
-export interface NotificationList { items: Notification[]; total: number; unread: number }
+export interface NotificationList { items: Notification[] }
 export interface UnreadCount { count: number }
 export interface MarkRead { ids?: string[] | null; all?: boolean }
 

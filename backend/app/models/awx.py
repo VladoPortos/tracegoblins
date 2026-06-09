@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy import (
     Boolean, DateTime, ForeignKey, Index, Integer, String, Text, Uuid, func, text,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 
@@ -36,10 +36,6 @@ class AwxController(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    team_links: Mapped[list["ControllerTeam"]] = relationship(
-        back_populates="controller", cascade="all, delete-orphan", passive_deletes=True
-    )
-
 
 class ControllerTeam(Base):
     __tablename__ = "controller_teams"
@@ -51,8 +47,6 @@ class ControllerTeam(Base):
     team_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("teams.id", ondelete="CASCADE"))
     awx_organization_id: Mapped[int | None] = mapped_column(Integer, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-
-    controller: Mapped["AwxController"] = relationship(back_populates="team_links")
 
     __table_args__ = (
         Index("ix_controller_teams_team", "team_id"),

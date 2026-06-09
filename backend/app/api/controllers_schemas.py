@@ -60,7 +60,6 @@ class ControllerOut(BaseModel):
     last_sync_status: str                          # never|running|ok|error
     last_sync_at: str | None
     last_sync_error: str | None
-    last_synced_job_id: int | None
     sync_total: int | None = None
     sync_done: int | None = None
     sync_current_job: str | None = None

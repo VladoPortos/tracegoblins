@@ -13,7 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from app.api.collab_schemas import AnnotationCreate, AnnotationOut, CommentCreate, CommentOut, MentionableUser, ShareCreate, ShareOut
 from app.api.deps import CurrentUser, DbSession, GatedUser
 from app.api.http_utils import client_ip
-from app.api.kb_schemas import KbSuggestionOut, OccurrenceRunBrief
+from app.api.kb_schemas import KbSuggestionOut
 from app.api.runs_schemas import FacetController, FacetOrg, FacetsOut, RunCreated, RunDetail, RunList, TaskFull, TaskLean
 from app.models import Annotation, AwxController, Comment, ControllerTeam, KbOccurrence, KbSignature, Run, RunRaw, RunShare, Task, Team, TeamMember, User
 from app.services.audit import write_audit
@@ -22,9 +22,9 @@ from app.services.collab_query import annotation_to_out, comment_to_out, resolve
 from app.services.collab_validate import validate_links, validate_tags
 from app.services.visibility import is_run_visible, my_team_ids
 from app.services.ingestion import MAX_UPLOAD_BYTES, ingest_upload
-from app.services.runs_query import row_to_lean, run_to_card, run_to_detail, task_to_full
+from app.services.runs_query import run_to_card, run_to_detail, task_to_full, task_to_lean
 from app.kb.signature import extract_signature
-from app.kb.service import recent_visible_occurrences, visible_occurrence_count
+from app.kb.service import visible_occurrence_count
 
 import logging
 
@@ -441,18 +441,15 @@ async def get_run(run: VisibleRun, db: DbSession):
 
 @router.get("/{run_id}/tasks", response_model=list[TaskLean])
 async def list_tasks(run: VisibleRun, db: DbSession):
-    # Lean list: select only lean columns + two DB-computed booleans so the heavy
-    # output/error TEXT never crosses the wire (the lean/full split exists to avoid it).
-    # has_output = non-empty output ('' -> False); has_error = error is not null.
+    # Lean list: select only lean columns so the heavy output/error TEXT never
+    # crosses the wire (the lean/full split exists to avoid it).
     rows = (await db.execute(
         select(
             Task.seq, Task.play_name, Task.role, Task.name, Task.status,
             Task.hosts, Task.items_count, Task.line_no, Task.duration_s,
-            (func.coalesce(Task.output, "") != "").label("has_output"),
-            Task.error.isnot(None).label("has_error"),
         ).where(Task.run_id == run.id).order_by(Task.seq)
     )).all()
-    return [row_to_lean(r) for r in rows]
+    return [task_to_lean(r) for r in rows]
 
 
 @router.get("/{run_id}/tasks/{seq}", response_model=TaskFull)
@@ -507,26 +504,10 @@ async def get_task_kb(run: VisibleRun, seq: int, user: CurrentUser, db: DbSessio
         score = 0.0
 
     n = await visible_occurrence_count(db, sig.id, user)
-    recents = await recent_visible_occurrences(db, sig.id, user, limit=5)
-    # recents is list[tuple[KbOccurrence, Run]] (Phase C §4). Unpack each pair: run fields
-    # off `run` (element[1]), occurrence fields off `occ` (element[0]). The comprehension's
-    # `run`/`occ` are comprehension-locally scoped (Python 3) and describe EACH occurrence's
-    # own run — recents may include runs other than this route's `run`; that is correct.
     return KbSuggestionOut(
         signature=signature_to_out(sig, occurrence_count=n),
         exact=exact,
         score=score,
-        recent_runs=[
-            OccurrenceRunBrief(
-                run_id=str(run.id),
-                template_name=run.template_name,
-                status=run.status,
-                log_time=run.log_time,
-                task_seq=occ.task_seq,
-                host=occ.host,
-            )
-            for occ, run in recents
-        ],
     )
 
 
@@ -673,12 +654,10 @@ async def _name_map(db: DbSession, ids: set[uuid.UUID]) -> dict[uuid.UUID, str]:
 
 
 async def _comment_out_with_names(c: Comment, db: DbSession) -> CommentOut:
-    """Single-comment response builder: one batch query for author + mention names."""
-    ids: set[uuid.UUID] = {c.author_user_id, *(c.mentions or [])}
-    names = await _name_map(db, ids)
+    """Single-comment response builder: one batch query for the author name."""
+    names = await _name_map(db, {c.author_user_id})
     author_name = names.get(c.author_user_id, "(unknown)")
-    mention_names = [names[m] for m in (c.mentions or []) if m in names]
-    return comment_to_out(c, author_name=author_name, mention_names=mention_names)
+    return comment_to_out(c, author_name=author_name)
 
 
 @router.get("/{run_id}/tasks/{seq}/comments", response_model=list[CommentOut])
@@ -688,18 +667,10 @@ async def list_comments(run: VisibleRun, seq: int, db: DbSession):
         .where(Comment.run_id == run.id, Comment.task_seq == seq)
         .order_by(Comment.created_at)
     )).scalars().all()
-    # Batch ALL author + mention ids across the whole thread into ONE lookup (no N+1).
-    all_ids: set[uuid.UUID] = set()
-    for c in rows:
-        all_ids.add(c.author_user_id)
-        all_ids.update(c.mentions or [])
-    names = await _name_map(db, all_ids)
+    # Batch ALL author ids across the whole thread into ONE lookup (no N+1).
+    names = await _name_map(db, {c.author_user_id for c in rows})
     return [
-        comment_to_out(
-            c,
-            author_name=names.get(c.author_user_id, "(unknown)"),
-            mention_names=[names[m] for m in (c.mentions or []) if m in names],
-        )
+        comment_to_out(c, author_name=names.get(c.author_user_id, "(unknown)"))
         for c in rows
     ]
 

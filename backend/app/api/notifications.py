@@ -25,14 +25,6 @@ async def list_notifications(
     if unread_only:
         base = base.where(Notification.read_at.is_(None))
 
-    total = await db.scalar(
-        select(func.count()).select_from(base.subquery())
-    )
-    unread = await db.scalar(
-        select(func.count()).select_from(Notification).where(
-            Notification.user_id == user.id, Notification.read_at.is_(None)
-        )
-    )
     rows = (await db.execute(
         base.order_by(Notification.created_at.desc()).limit(limit).offset(offset)
     )).scalars().all()
@@ -98,7 +90,7 @@ async def list_notifications(
         )
         for n in rows
     ]
-    return NotificationListOut(items=items, total=total or 0, unread=unread or 0)
+    return NotificationListOut(items=items)
 
 
 @router.get("/unread_count", response_model=UnreadCountOut)

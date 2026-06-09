@@ -6,7 +6,7 @@ from sqlalchemy import (
     DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, Uuid, func, text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 
@@ -44,10 +44,6 @@ class KbSignature(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    occurrences: Mapped[list["KbOccurrence"]] = relationship(
-        back_populates="signature", cascade="all, delete-orphan", passive_deletes=True
-    )
-
     __table_args__ = (
         # NULL-distinct partial-unique pair (copied from 0004 controller_teams): one entry
         # per (team, key) for team rows, exactly one global row per key (team_id NULL).
@@ -77,8 +73,6 @@ class KbOccurrence(Base):
     matched_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
-
-    signature: Mapped["KbSignature"] = relationship(back_populates="occurrences")
 
     __table_args__ = (
         UniqueConstraint("signature_id", "run_id", "task_seq",

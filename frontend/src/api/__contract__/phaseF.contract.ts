@@ -16,7 +16,7 @@ const _ctrl: Controller = {
   id: '', name: '', base_url: '', verify_ssl: true,
   sync_mode: 'manual', sync_interval_minutes: null,
   status: 'unconfigured', last_sync_status: 'never',
-  last_sync_at: null, last_sync_error: null, last_synced_job_id: null,
+  last_sync_at: null, last_sync_error: null,
   sync_total: null, sync_done: null, sync_current_job: null,
   token_masked: '', team_assignments: [_ctOut], created_at: '',
 }
@@ -55,12 +55,12 @@ const _filters: RunFilters = {
 }
 const _cardAwx: RunCard = {
   id: '', job_id: null, template_name: null, status: 'ok', log_time: null,
-  host_count: 0, task_count: 0, warnings_count: 0,
+  host_count: 0, task_count: 0,
   counts: { ok: 0, changed: 0, unreachable: 0, failed: 0, skipped: 0 },
   recap: [], created_at: '', team_id: null, team_name: null,
   controller_id: null, controller_name: null,
-  awx_organization_id: null, awx_organization_name: null,
-  awx_launch_type: null, awx_workflow_name: null,
+  awx_organization_name: null,
+  awx_launch_type: null,
 }
 
 export const _guardF2 = {

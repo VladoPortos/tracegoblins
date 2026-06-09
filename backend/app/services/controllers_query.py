@@ -51,7 +51,6 @@ async def controller_to_out(
         last_sync_status=c.last_sync_status,
         last_sync_at=_iso(c.last_sync_at),
         last_sync_error=c.last_sync_error,
-        last_synced_job_id=c.last_synced_job_id,
         sync_total=c.sync_total,
         sync_done=c.sync_done,
         sync_current_job=c.sync_current_job,

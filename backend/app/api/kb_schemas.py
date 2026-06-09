@@ -77,7 +77,6 @@ class SignatureOut(BaseModel):
     where_it_lives: str | None
     representative_text: str
     links: list[AnnotationLink]
-    created_by_user_id: str | None
     occurrence_count: int                # visibility-scoped (§4 helper) for the requesting U
     created_at: datetime
     updated_at: datetime
@@ -101,17 +100,7 @@ class SuggestOut(BaseModel):             # GET /api/kb/suggest — auto-extracte
     category: str | None
 
 
-class OccurrenceRunBrief(BaseModel):
-    run_id: str
-    template_name: str | None
-    status: str
-    log_time: datetime | None
-    task_seq: int
-    host: str | None
-
-
 class KbSuggestionOut(BaseModel):        # GET /api/runs/{id}/tasks/{seq}/kb — the drawer card
     signature: SignatureOut              # includes occurrence_count
     exact: bool
     score: float
-    recent_runs: list[OccurrenceRunBrief]   # visibility-scoped recent occurrences (cap 5)

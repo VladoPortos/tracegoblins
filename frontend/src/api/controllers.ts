@@ -9,7 +9,7 @@ export interface Controller {
   sync_mode: 'manual' | 'auto'; sync_interval_minutes: number | null
   status: 'unconfigured' | 'connected' | 'error'
   last_sync_status: 'never' | 'running' | 'ok' | 'error'
-  last_sync_at: string | null; last_sync_error: string | null; last_synced_job_id: number | null
+  last_sync_at: string | null; last_sync_error: string | null
   sync_total: number | null; sync_done: number | null; sync_current_job: string | null
   token_masked: string; team_assignments: ControllerTeamOut[]; created_at: string
 }

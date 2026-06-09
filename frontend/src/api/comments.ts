@@ -4,7 +4,7 @@ import { apiFetch } from './client'
 export interface Comment {
   id: string; run_id: string; task_seq: number | null; annotation_id: string | null
   parent_id: string | null; author_user_id: string; author_name: string
-  body: string | null; mentions: string[]; mention_names: string[]
+  body: string | null; mentions: string[]
   created_at: string; edited_at: string | null; deleted_at: string | null
 }
 export interface CommentCreate {

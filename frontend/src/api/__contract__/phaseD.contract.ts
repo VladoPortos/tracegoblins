@@ -44,7 +44,7 @@ const _annCreate: AnnotationCreate = { note: '', tags: [], links: [] }
 const _annUpdate: AnnotationUpdate = { resolved: true }
 const _cmt: Comment = {
   id: '', run_id: '', task_seq: 0, annotation_id: null, parent_id: null,
-  author_user_id: '', author_name: '', body: '', mentions: [], mention_names: [],
+  author_user_id: '', author_name: '', body: '', mentions: [],
   created_at: '', edited_at: null, deleted_at: null,
 }
 const _cmtCreate: CommentCreate = { body: '', mentions: [], parent_id: null, annotation_id: null }
@@ -52,16 +52,16 @@ const _cmtUpdate: CommentUpdate = { body: '' }
 const _mention: MentionableUser = { id: '', display_name: '', email: '', initials: null, avatar_color: null }
 const _dirUser: DirectoryUser = { id: '', display_name: '', email: '' }
 const _notif: Notification = {
-  id: '', type: 'mention', run_id: null, run_template: null, comment_id: null,
+  id: '', type: 'mention', run_id: null, run_template: null,
   task_seq: null, task_name: null, actor_user_id: null, actor_name: null,
   read_at: null, created_at: '',
 }
-const _notifList: NotificationList = { items: [_notif], total: 0, unread: 0 }
+const _notifList: NotificationList = { items: [_notif] }
 const _unread: UnreadCount = { count: 0 }
 const _markRead: MarkRead = { ids: [], all: false }
 const _card: RunCard = {
   id: '', job_id: null, template_name: null, status: 'ok', log_time: null,
-  host_count: 0, task_count: 0, warnings_count: 0,
+  host_count: 0, task_count: 0,
   counts: { ok: 0, changed: 0, unreachable: 0, failed: 0, skipped: 0 },
   recap: [], created_at: '', team_id: null, team_name: null,
 }

@@ -53,7 +53,7 @@ def annotation_to_out(a: Annotation, *, author_name: str) -> AnnotationOut:
     )
 
 
-def comment_to_out(c: Comment, *, author_name: str, mention_names: list[str]) -> CommentOut:
+def comment_to_out(c: Comment, *, author_name: str) -> CommentOut:
     deleted = c.deleted_at is not None
     return CommentOut(
         id=str(c.id),
@@ -65,7 +65,6 @@ def comment_to_out(c: Comment, *, author_name: str, mention_names: list[str]) ->
         author_name=author_name,
         body=None if deleted else c.body,  # tombstone hides text
         mentions=[str(m) for m in (c.mentions or [])],
-        mention_names=mention_names,
         created_at=c.created_at,
         edited_at=c.edited_at,
         deleted_at=c.deleted_at,
@@ -162,7 +161,6 @@ def notification_to_out(
         type=n.type,
         run_id=str(n.run_id) if n.run_id else None,
         run_template=run_template,
-        comment_id=str(n.comment_id) if n.comment_id else None,
         task_seq=task_seq,
         task_name=task_name,
         actor_user_id=str(n.actor_user_id) if n.actor_user_id else None,

@@ -254,23 +254,3 @@ async def visible_occurrence_counts(
         .group_by(KbOccurrence.signature_id)
     )).all()
     return {sig_id: int(n or 0) for sig_id, n in rows}
-
-
-async def recent_visible_occurrences(
-    db: AsyncSession, signature_id: uuid.UUID, user: User, *, limit: int = 5
-) -> list[tuple[KbOccurrence, Run]]:
-    """The latest `limit` (occurrence, run) pairs for `signature_id` visible to U.
-
-    Ordered by the run's recency (log_time, then created_at). Used by the drawer card
-    "recent runs" list; visibility-scoped exactly like visible_occurrence_count.
-    """
-    cond = await _run_visible_cond(db, user)
-    when = func.coalesce(Run.log_time, Run.created_at)
-    rows = (await db.execute(
-        select(KbOccurrence, Run)
-        .join(Run, Run.id == KbOccurrence.run_id)
-        .where(KbOccurrence.signature_id == signature_id, cond)
-        .order_by(when.desc(), KbOccurrence.matched_at.desc())
-        .limit(limit)
-    )).all()
-    return [(occ, run) for occ, run in rows]

@@ -9,16 +9,12 @@ export interface KbSignatureOut {
   id: string; team_id: string | null; signature_key: string; title: string
   status: KbStatus; category: string | null; description: string | null
   is_problem: string | null; where_it_lives: string | null; representative_text: string
-  links: KbLink[]; created_by_user_id: string | null
+  links: KbLink[]
   occurrence_count: number; created_at: string; updated_at: string
 }
 export interface KbSuggest { signature_key: string; representative_text: string; category: string | null }
-export interface KbOccurrenceRun {
-  run_id: string; template_name: string | null; status: string
-  log_time: string | null; task_seq: number; host: string | null
-}
 export interface KbDrawerSuggestion {
-  signature: KbSignatureOut; exact: boolean; score: number; recent_runs: KbOccurrenceRun[]
+  signature: KbSignatureOut; exact: boolean; score: number
 }
 export interface KbSignatureUpdate {
   title?: string | null; status?: KbStatus | null; representative_text?: string | null

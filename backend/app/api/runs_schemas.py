@@ -12,8 +12,6 @@ class HostRecap(BaseModel):
     unreachable: int = 0
     failed: int = 0
     skipped: int = 0
-    rescued: int = 0
-    ignored: int = 0
 
 
 class RunCounts(BaseModel):
@@ -33,7 +31,6 @@ class RunCard(BaseModel):
     launched_at: datetime | None = None
     host_count: int
     task_count: int
-    warnings_count: int
     counts: RunCounts
     recap: list[HostRecap]
     created_at: datetime
@@ -41,15 +38,12 @@ class RunCard(BaseModel):
     team_name: str | None = None
     controller_id: str | None = None
     controller_name: str | None = None
-    awx_organization_id: int | None = None
     awx_organization_name: str | None = None
     awx_launch_type: str | None = None
-    awx_workflow_name: str | None = None
     elapsed: float | None = None
 
 
 class RunDetail(RunCard):
-    source: str
     owner_user_id: str | None
 
 
@@ -71,8 +65,6 @@ class TaskLean(BaseModel):
     hosts: dict[str, str]
     items_count: int
     line_no: int | None
-    has_output: bool
-    has_error: bool
     duration_s: float | None = None  # job_events durations; None for stdout runs
 
 

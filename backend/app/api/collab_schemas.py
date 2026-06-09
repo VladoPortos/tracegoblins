@@ -98,7 +98,6 @@ class CommentOut(BaseModel):
     author_name: str
     body: str | None  # null when soft-deleted (tombstone)
     mentions: list[str]
-    mention_names: list[str]
     created_at: datetime
     edited_at: datetime | None
     deleted_at: datetime | None
@@ -137,7 +136,6 @@ class NotificationOut(BaseModel):
     type: str                             # "mention" | "share"
     run_id: str | None                    # null if run deleted (SET NULL)
     run_template: str | None              # denormalized: runs.template_name
-    comment_id: str | None
     task_seq: int | None                  # for deep-link to the task drawer
     task_name: str | None                 # denormalized task display
     actor_user_id: str | None
@@ -148,8 +146,6 @@ class NotificationOut(BaseModel):
 
 class NotificationListOut(BaseModel):
     items: list[NotificationOut]
-    total: int
-    unread: int
 
 
 class UnreadCountOut(BaseModel):

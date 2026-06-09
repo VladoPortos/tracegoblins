@@ -2,7 +2,7 @@
 // (no value exports are referenced by the app); `tsc --noEmit` typechecks it.
 // If any imported symbol or field drifts from the Canonical Contract (§6), tsc fails.
 import type {
-  KbLink, KbStatus, KbSignatureOut, KbSuggest, KbOccurrenceRun,
+  KbLink, KbStatus, KbSignatureOut, KbSuggest,
   KbDrawerSuggestion, KbPromote, KbSignatureUpdate,
 } from '../kb'
 import {
@@ -18,14 +18,11 @@ const _status: KbStatus = 'needs-fix'
 const _sig: KbSignatureOut = {
   id: '', team_id: null, signature_key: '', title: '', status: 'known-issue',
   category: null, description: null, is_problem: null, where_it_lives: null,
-  representative_text: '', links: [_link], created_by_user_id: null,
+  representative_text: '', links: [_link],
   occurrence_count: 0, created_at: '', updated_at: '',
 }
 const _suggest: KbSuggest = { signature_key: '', representative_text: '', category: null }
-const _occRun: KbOccurrenceRun = {
-  run_id: '', template_name: null, status: 'failed', log_time: null, task_seq: 0, host: null,
-}
-const _drawer: KbDrawerSuggestion = { signature: _sig, exact: true, score: 1, recent_runs: [_occRun] }
+const _drawer: KbDrawerSuggestion = { signature: _sig, exact: true, score: 1 }
 const _promote: KbPromote = {
   run_id: '', task_seq: 0, team_id: null, title: '', status: 'needs-fix',
   description: null, is_problem: null, where_it_lives: null, links: [_link],
@@ -33,7 +30,7 @@ const _promote: KbPromote = {
 const _update: KbSignatureUpdate = { title: '', status: 'resolved' }
 
 export const _guardE1 = {
-  _link, _status, _sig, _suggest, _occRun, _drawer, _promote, _update,
+  _link, _status, _sig, _suggest, _drawer, _promote, _update,
   kbKey,
   kbSignatureKey: kbSignatureKey('id'),
   taskKbKey: taskKbKey('r', 0),
@@ -75,7 +72,7 @@ import type { ComponentProps as _CPdrawer } from 'react'
 import type { TaskLean } from '../client'
 const _leanE5: TaskLean = {
   seq: 0, play_name: '', role: null, name: '', status: 'failed', hosts: {},
-  items_count: 0, line_no: null, has_output: false, has_error: true, duration_s: null,
+  items_count: 0, line_no: null, duration_s: null,
 }
 const _drawerProps: _CPdrawer<typeof TaskDrawer> = {
   runId: '', lean: _leanE5, width: '', onClose: () => {},

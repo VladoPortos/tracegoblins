@@ -51,7 +51,6 @@ def signature_to_out(sig: KbSignature, *, occurrence_count: int) -> SignatureOut
         where_it_lives=sig.where_it_lives,
         representative_text=sig.representative_text,
         links=_links_out(sig.links),
-        created_by_user_id=str(sig.created_by_user_id) if sig.created_by_user_id else None,
         occurrence_count=occurrence_count,
         created_at=sig.created_at,
         updated_at=sig.updated_at,
