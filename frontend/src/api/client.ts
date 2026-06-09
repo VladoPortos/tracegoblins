@@ -79,8 +79,8 @@ export interface UserOut {
   totp_enabled: boolean
 }
 export interface TeamOut { id: string; name: string; slug: string; is_default: boolean; member_count: number }
-export interface InviteCreated { invite_id: string; token: string; link: string; expires_at: string }
-export interface InviteInfo { email: string; role: string; valid: boolean }
+export interface InviteCreated { link: string; expires_at: string }
+export interface InviteInfo { email: string; valid: boolean }
 
 export interface HostRecap {
   host: string; ok: number; changed: number; unreachable: number

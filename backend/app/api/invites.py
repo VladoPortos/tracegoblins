@@ -75,8 +75,6 @@ async def create_invite(data: InviteCreateIn, request: Request, admin: AdminUser
     await db.commit()
     base = str(request.base_url).rstrip("/")
     return {
-        "invite_id": str(invite.id),
-        "token": raw,
         "link": f"{base}/invite/{raw}",
         "expires_at": invite.expires_at.isoformat(),
     }
@@ -87,7 +85,7 @@ async def get_invite(token: str, db: DbSession):
     invite = await _load_valid_invite(db, token)
     if invite is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Invalid or expired invite")
-    return {"email": invite.email, "role": invite.target_role, "valid": True}
+    return {"email": invite.email, "valid": True}
 
 
 class InviteAcceptIn(BaseModel):

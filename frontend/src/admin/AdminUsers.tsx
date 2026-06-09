@@ -7,7 +7,7 @@ import { Glyph } from '../components/atoms/Glyph'
 import { Avatar } from '../components/atoms/Avatar'
 import { FullScreenSpinner } from '../components/atoms/FullScreenSpinner'
 import { shortTime } from '../components/atoms/format'
-import { ApiError } from '../api/client'
+import { ApiError, type InviteCreated } from '../api/client'
 import { useAdminUsers, useChangeRole, useCreateInvite, useSetActive, usersKey } from '../api/queries'
 import { useResetUser2fa } from '../api/mfa'
 
@@ -21,14 +21,17 @@ export function AdminUsers() {
   const [open, setOpen] = useState(false)
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('user')
-  const [link, setLink] = useState<string | null>(null)
+  const [invite, setInvite] = useState<InviteCreated | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const generate = (e: React.FormEvent) => {
     e.preventDefault()
-    createInvite.mutate({ email, role }, { onSuccess: (r) => setLink(r.link) })
+    createInvite.mutate({ email, role }, { onSuccess: (r) => setInvite(r) })
   }
-  const closeModal = () => { setOpen(false); setLink(null); setEmail(''); setRole('user') }
+  const closeModal = () => { setOpen(false); setInvite(null); setEmail(''); setRole('user') }
+  const expireHrs = invite
+    ? Math.max(1, Math.round((new Date(invite.expires_at).getTime() - Date.now()) / 3600000))
+    : 0
 
   const action = (
     <button className="btn btn-primary" onClick={() => setOpen(true)}><Glyph name="plus" size={16} />Invite user</button>
@@ -79,7 +82,7 @@ export function AdminUsers() {
       </div>
 
       <Modal open={open} onOpenChange={(o) => (o ? setOpen(true) : closeModal())} title="Invite a user">
-        {!link ? (
+        {!invite ? (
           <form onSubmit={generate} className="col gap3">
             <Field label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             <div>
@@ -98,10 +101,10 @@ export function AdminUsers() {
           </form>
         ) : (
           <div className="col gap3">
-            <p className="muted" style={{ fontSize: 13 }}>Copy this link and send it to the invitee. It expires in 72 hours.</p>
+            <p className="muted" style={{ fontSize: 13 }}>Copy this link and send it to the invitee. It expires in {expireHrs} hour{expireHrs === 1 ? '' : 's'}.</p>
             <div className="row gap2">
-              <input className="input mono" data-testid="invite-link" readOnly value={link} onFocus={(e) => e.currentTarget.select()} />
-              <button className="btn" onClick={() => navigator.clipboard?.writeText(link)} aria-label="Copy link"><Glyph name="copy" size={15} /></button>
+              <input className="input mono" data-testid="invite-link" readOnly value={invite.link} onFocus={(e) => e.currentTarget.select()} />
+              <button className="btn" onClick={() => navigator.clipboard?.writeText(invite.link)} aria-label="Copy link"><Glyph name="copy" size={15} /></button>
             </div>
             <div className="row" style={{ justifyContent: 'flex-end' }}>
               <button className="btn btn-primary" onClick={closeModal}>Done</button>
