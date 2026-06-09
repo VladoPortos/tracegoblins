@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Glyph } from '../components/atoms/Glyph'
+import { PageShell } from '../components/atoms/PageShell'
 import { RunsList } from './RunsList'
 import { UploadModal } from '../upload/UploadModal'
 import { useMe } from '../api/queries'
@@ -13,8 +14,7 @@ export function Dashboard() {
   const tabs = [['mine', 'My logs', 'folder'], ['shared', 'Shared with me', 'inbox'], ['team', 'Team workspace', 'users']] as const
 
   return (
-    <div className="col scroll" style={{ height: '100%' }}>
-      <div style={{ maxWidth: 'var(--maxw)', width: '100%', margin: '0 auto', padding: '28px clamp(20px,4vw,40px) 64px' }}>
+    <PageShell>
         <div className="row gap4" style={{ alignItems: 'flex-end', marginBottom: 22, flexWrap: 'wrap' }}>
           <div className="grow">
             <div className="eyebrow" style={{ marginBottom: 6 }}>Workspace</div>
@@ -31,8 +31,7 @@ export function Dashboard() {
         {tab === 'mine' && <RunsList scope="mine" onUpload={() => setUpload(true)} />}
         {tab === 'shared' && <RunsList scope="shared" />}
         {tab === 'team' && <RunsList scope="team" />}
-      </div>
       <UploadModal open={upload} onOpenChange={setUpload} teams={me.data?.teams ?? []} />
-    </div>
+    </PageShell>
   )
 }

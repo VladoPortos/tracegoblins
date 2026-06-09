@@ -47,6 +47,15 @@ export function useLogout() {
   })
 }
 
+// Revokes ALL of the user's sessions server-side (this device included).
+export function useLogoutEverywhere() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiFetch<void>('/auth/logout-everywhere', { method: 'POST' }),
+    onSettled: () => { qc.setQueryData(meKey, null); qc.clear() },
+  })
+}
+
 export function useRunSetup() {
   const qc = useQueryClient()
   return useMutation({

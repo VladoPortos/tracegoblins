@@ -4,7 +4,7 @@ import { Modal } from '../components/atoms/Modal'
 import { Field } from '../components/atoms/Field'
 import { Glyph } from '../components/atoms/Glyph'
 import { FullScreenSpinner } from '../components/atoms/FullScreenSpinner'
-import { ApiError, type TeamOut } from '../api/client'
+import { errorMessage, type TeamOut } from '../api/client'
 import {
   useAddTeamMember, useAdminTeams, useAdminUsers, useCreateTeam,
   useDeleteTeam, useRemoveTeamMember, useRenameTeam,
@@ -25,8 +25,7 @@ function TeamDetail({ team, onClose }: { team: TeamOut; onClose: () => void }) {
   const all = users.data ?? []
   const members = all.filter((u) => u.teams.some((t) => t.id === team.id))
   const nonMembers = all.filter((u) => !u.teams.some((t) => t.id === team.id))
-  const fail = (e: unknown) =>
-    setError(e instanceof ApiError && typeof e.detail === 'string' ? e.detail : 'Action failed.')
+  const fail = (e: unknown) => setError(errorMessage(e, 'Action failed.'))
 
   return (
     <Modal open onOpenChange={(o) => { if (!o) onClose() }} title={`Team · ${team.name}`} width={520}>

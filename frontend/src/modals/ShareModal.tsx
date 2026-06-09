@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react'
 import { Modal } from '../components/atoms/Modal'
 import { Glyph } from '../components/atoms/Glyph'
 import { Avatar } from '../components/atoms/Avatar'
-import { ApiError, type TeamBrief } from '../api/client'
+import { PersonRow } from '../components/atoms/PersonRow'
+import { useCopied } from '../components/atoms/useCopied'
+import { ApiError, errorMessage, type TeamBrief } from '../api/client'
 import { useUserSearch } from '../api/users'
 import { useRunShares, useCreateShare, useDeleteShare, type Share, type ShareCreate } from '../api/shares'
 
@@ -33,7 +35,7 @@ export function ShareModal({ open, onOpenChange, runId, teams }: { open: boolean
   const create = useCreateShare(runId)
   const [q, setQ] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
+  const { copied, copy } = useCopied()
   // PEOPLE from the directory (NOT visibility-gated) so the FIRST share is possible.
   const people = useUserSearch(q)
 
@@ -57,14 +59,11 @@ export function ShareModal({ open, onOpenChange, runId, teams }: { open: boolean
       onError: (e) => setError(
         e instanceof ApiError && e.status === 409
           ? `Already shared with that ${c.kind === 'user' ? 'person' : 'team'}.`
-          : 'Could not share.',
+          : errorMessage(e, 'Could not share.'),
       ),
     })
   }
-  const copyLink = () => {
-    void navigator.clipboard?.writeText(window.location.origin + '/runs/' + runId)
-    setCopied(true); setTimeout(() => setCopied(false), 1800)
-  }
+  const copyLink = () => copy(window.location.origin + '/runs/' + runId)
 
   return (
     <Modal open={open} onOpenChange={onOpenChange} title="Share this run" width={520}>
@@ -79,13 +78,13 @@ export function ShareModal({ open, onOpenChange, runId, teams }: { open: boolean
               <button key={`${c.kind}:${c.id}`} type="button" role="option" aria-selected={false}
                 className="btn btn-ghost sm" style={{ width: '100%', justifyContent: 'flex-start', gap: 8 }}
                 onClick={() => add(c)}>
-                {c.kind === 'user'
-                  ? <Avatar name={c.label} size="sm" />
-                  : <span className="avatar sm" style={{ background: 'var(--accent)' }}><Glyph name="users" size={14} /></span>}
-                <span className="col" style={{ gap: 0, alignItems: 'flex-start', minWidth: 0 }}>
-                  <span className="truncate" style={{ fontSize: 12.5, fontWeight: 600 }}>{c.label}</span>
-                  <span className="dim truncate" style={{ fontSize: 11 }}>{c.sub}</span>
-                </span>
+                <PersonRow
+                  name={c.label}
+                  sub={c.sub}
+                  avatar={c.kind === 'team'
+                    ? <span className="avatar sm" style={{ background: 'var(--accent)' }}><Glyph name="users" size={14} /></span>
+                    : undefined}
+                />
                 <span className="grow" /><Glyph name="plus" size={14} />
               </button>
             ))}

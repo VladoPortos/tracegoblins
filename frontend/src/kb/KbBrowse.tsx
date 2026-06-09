@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Glyph } from '../components/atoms/Glyph'
+import { PageShell } from '../components/atoms/PageShell'
 import { KbStatusBadge } from '../components/atoms/KbStatusBadge'
 import { EmptyState } from '../components/atoms/EmptyState'
 import { KbLinkRow } from '../components/atoms/KbLinkRow'
@@ -123,8 +124,7 @@ export function KbBrowse() {
   const openSig = items.find((s) => s.id === openId) ?? null
 
   return (
-    <div className="col scroll" style={{ height: '100%' }}>
-      <div style={{ maxWidth: 'var(--maxw)', width: '100%', margin: '0 auto', padding: '28px clamp(20px,4vw,40px) 64px' }}>
+    <PageShell>
         <div className="eyebrow" style={{ marginBottom: 6 }}>Knowledge base</div>
         <h1 className="h1">Knowledge base</h1>
         <p className="muted" style={{ fontSize: 13.5, marginTop: 4, marginBottom: 22 }}>Recurring errors and their documented fixes.</p>
@@ -176,7 +176,6 @@ export function KbBrowse() {
             )}
           </>
         )}
-      </div>
-    </div>
+    </PageShell>
   )
 }

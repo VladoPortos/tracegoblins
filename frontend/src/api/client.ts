@@ -10,11 +10,12 @@ export class ApiError extends Error {
 }
 
 // Human-readable message from an unknown thrown value (ApiError carries the server detail).
-export function errorMessage(e: unknown): string {
-  if (!e) return ''
-  if (typeof e === 'string') return e
-  if (e instanceof Error) return e.message
-  return 'An error occurred.'
+// Shows the server detail when it is a plain string, otherwise the caller's fallback.
+export function errorMessage(e: unknown, fallback = 'Something went wrong.'): string {
+  if (typeof e === 'string' && e) return e
+  if (e instanceof ApiError) return typeof e.detail === 'string' && e.detail ? e.detail : fallback
+  if (e instanceof Error && e.message) return e.message
+  return fallback
 }
 
 function readCookie(name: string): string | null {

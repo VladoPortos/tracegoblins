@@ -11,6 +11,7 @@ import { DiscussionBlock } from './DiscussionBlock'
 import { KbSuggestion } from './KbSuggestion'
 import { PromoteKbModal } from '../modals/PromoteKbModal'
 import { OutputViewer } from './OutputViewer'
+import { useCopied } from '../components/atoms/useCopied'
 
 function prettyJson(raw: string) { try { return JSON.stringify(JSON.parse(raw), null, 2) } catch { return raw } }
 
@@ -19,14 +20,14 @@ function JsonBlock({ raw }: { raw: string }) {
   const [modal, setModal] = useState(false)
   const txt = prettyJson(raw); const lines = txt.split('\n'); const big = lines.length > 10
   const shown = open || !big ? txt : lines.slice(0, 8).join('\n')
-  const copy = async () => { try { await navigator.clipboard.writeText(txt) } catch { /* blocked */ } }
+  const { copied, copy } = useCopied()
   return (
     <div className="col" style={{ gap: 6 }}>
       <div className="row gap2" style={{ alignItems: 'center' }}>
         <span className="eyebrow">Task output</span>
         <span className="dim mono" style={{ fontSize: 10.5 }}>{lines.length + ' lines'}</span>
         <div className="grow" />
-        <button className="btn icon sm btn-ghost" onClick={copy} aria-label="Copy output" title="Copy"><Glyph name="copy" size={14} /></button>
+        <button className="btn icon sm btn-ghost" onClick={() => copy(txt)} aria-label="Copy output" title={copied ? 'Copied' : 'Copy'}><Glyph name={copied ? 'check' : 'copy'} size={14} /></button>
         <button className="btn icon sm btn-ghost" onClick={() => setModal(true)} aria-label="Expand output" title="Expand"><Glyph name="expand" size={14} /></button>
       </div>
       <div style={{ position: 'relative', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>

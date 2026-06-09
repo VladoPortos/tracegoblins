@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router'
 import { Modal } from '../components/atoms/Modal'
 import { Field } from '../components/atoms/Field'
 import { Glyph } from '../components/atoms/Glyph'
-import { ApiError, type TeamBrief } from '../api/client'
+import { errorMessage, type TeamBrief } from '../api/client'
 import { useUploadRun } from '../api/runs'
 
 export function UploadModal({ open, onOpenChange, teams = [] }: { open: boolean; onOpenChange: (o: boolean) => void; teams?: TeamBrief[] }) {
@@ -24,7 +24,7 @@ export function UploadModal({ open, onOpenChange, teams = [] }: { open: boolean;
       : { text, template: template || undefined, team_id: teamId }
     upload.mutate(payload, {
       onSuccess: (r) => { onOpenChange(false); nav('/runs/' + r.id) },
-      onError: (e) => setError(e instanceof ApiError && typeof e.detail === 'string' ? e.detail : 'Upload failed.'),
+      onError: (e) => setError(errorMessage(e, 'Upload failed.')),
     })
   }
   const canSubmit = mode === 'file' ? !!file : text.trim().length > 0

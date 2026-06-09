@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { AuthLayout } from './AuthLayout'
 import { Field } from '../components/atoms/Field'
-import { apiFetch, type InviteInfo } from '../api/client'
+import { PasswordFields, validateNewPassword } from '../components/auth/PasswordFields'
+import { apiFetch, errorMessage, type InviteInfo } from '../api/client'
 import { inviteKey, useAcceptInvite } from '../api/queries'
 import { FullScreenSpinner } from '../components/atoms/FullScreenSpinner'
 
@@ -29,11 +30,11 @@ export function InviteAccept() {
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    if (password.length < 12) { setError('Password must be at least 12 characters.'); return }
-    if (password !== confirm) { setError('Passwords do not match.'); return }
+    const invalid = validateNewPassword(password, confirm)
+    if (invalid) { setError(invalid); return }
     accept.mutate({ display_name: displayName, password }, {
       onSuccess: () => nav('/', { replace: true }),
-      onError: () => setError('Could not accept this invite.'),
+      onError: (e) => setError(errorMessage(e, 'Could not accept this invite.')),
     })
   }
 
@@ -41,8 +42,7 @@ export function InviteAccept() {
     <AuthLayout eyebrow="You're invited" title="Set up your account" sub={`Joining as ${info.data!.email}.`}>
       <form onSubmit={submit} className="col gap3">
         <Field label="Display name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
-        <Field label="Password" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} hint="At least 12 characters." required />
-        <Field label="Confirm password" type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
+        <PasswordFields password={password} confirm={confirm} onPasswordChange={setPassword} onConfirmChange={setConfirm} />
         {error && <div className="tag tag-needs-fix" style={{ alignSelf: 'flex-start' }}>{error}</div>}
         <button className="btn btn-primary" type="submit" disabled={accept.isPending} style={{ justifyContent: 'center', padding: 10 }}>
           {accept.isPending ? 'Joining…' : 'Accept invite'}

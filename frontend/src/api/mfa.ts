@@ -15,8 +15,9 @@ export function useMfaEnable() {
   // invalidateQueries(meKey) must fire AFTER the call-site onSuccess sets
   // recoveryCodes state; otherwise the useMe refetch flips SecuritySettings
   // from <EnrollSection> (which owns recoveryCodes state) to <EnrolledSection>
-  // before the codes can be displayed.  SecuritySettings.tsx handleEnable's
-  // onDone callback invalidates meKey after the user clicks Done.
+  // before the codes can be displayed.  TotpEnroll surfaces the codes via its
+  // onEnabled callback; SecuritySettings invalidates meKey only in the
+  // RecoveryCodesPanel onDone handler, after the user clicks Done.
   return useMutation<RecoveryOut, unknown, { code: string }>({
     mutationFn: (b) => apiFetch<RecoveryOut>('/auth/2fa/enable', { method: 'POST', body: JSON.stringify(b) }),
   })

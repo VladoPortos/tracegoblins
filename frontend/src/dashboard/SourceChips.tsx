@@ -1,6 +1,6 @@
 import { Glyph } from '../components/atoms/Glyph'
-import { LastSyncChip } from '../components/atoms/LastSyncChip'
 import { SyncProgress } from '../components/atoms/SyncProgress'
+import { SyncNowChip } from './SyncNowChip'
 import { useControllers, useSyncController } from '../api/controllers'
 import { useLogsState } from './useLogsState'
 
@@ -32,15 +32,7 @@ export function SourceChips() {
       </div>
       {active && (
         <div className="row gap2 wrap" style={{ alignItems: 'center' }}>
-          <LastSyncChip status={active.last_sync_status} at={active.last_sync_at} error={active.last_sync_error} />
-          <button
-            className="btn btn-ghost sm"
-            onClick={() => void syncCtl.mutateAsync(active.id)}
-            disabled={syncCtl.isPending || active.last_sync_status === 'running'}
-            title="Sync now"
-          >
-            <Glyph name="spinner" size={13} />Sync now
-          </button>
+          <SyncNowChip controller={active} onSync={(id) => void syncCtl.mutateAsync(id)} syncing={syncCtl.isPending} />
           {active.last_sync_status === 'running' && <SyncProgress c={active} />}
         </div>
       )}

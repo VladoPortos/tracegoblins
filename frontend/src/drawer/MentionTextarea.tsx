@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { useMentionable } from '../api/comments'
-import { Avatar } from '../components/atoms/Avatar'
+import { PersonRow } from '../components/atoms/PersonRow'
 
 // Detects "@token" immediately before the caret (no whitespace inside the token).
 function activeMention(value: string, caret: number): { start: number; query: string } | null {
@@ -69,11 +69,7 @@ export function MentionTextarea({
             <button key={u.id} role="option" type="button" className="btn btn-ghost sm"
               style={{ width: '100%', justifyContent: 'flex-start', gap: 8 }}
               onMouseDown={(e) => { e.preventDefault(); pick(u) }}>
-              <Avatar name={u.display_name} color={u.avatar_color} initials={u.initials} size="sm" />
-              <span className="col" style={{ gap: 0, alignItems: 'flex-start', minWidth: 0 }}>
-                <span className="truncate" style={{ fontSize: 12.5, fontWeight: 600 }}>{u.display_name}</span>
-                <span className="dim truncate" style={{ fontSize: 11 }}>{u.email}</span>
-              </span>
+              <PersonRow name={u.display_name} sub={u.email} initials={u.initials} avatarColor={u.avatar_color} />
             </button>
           ))}
         </div>

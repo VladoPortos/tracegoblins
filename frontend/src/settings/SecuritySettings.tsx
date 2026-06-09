@@ -1,58 +1,36 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { SettingsLayout } from './SettingsLayout'
 import { Field } from '../components/atoms/Field'
 import { Glyph } from '../components/atoms/Glyph'
-import { useMe, meKey } from '../api/queries'
-import { useMfaSetup, useMfaEnable, useMfaDisable, useRegenRecovery } from '../api/mfa'
+import { useMe, meKey, useLogoutEverywhere } from '../api/queries'
+import { useMfaDisable, useRegenRecovery } from '../api/mfa'
+import { TotpEnroll } from '../components/auth/TotpEnroll'
+import { RecoveryCodesPanel } from '../components/auth/RecoveryCodesPanel'
 import { FullScreenSpinner } from '../components/atoms/FullScreenSpinner'
 import { errorMessage } from '../api/client'
 
 // ── Recovery codes display (shown once after enable or regen) ─────────────────
 function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () => void }) {
-  const [copied, setCopied] = useState(false)
-  function copyAll() {
-    void navigator.clipboard.writeText(codes.join('\n')).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    })
-  }
   return (
-    <div className="col" style={{ gap: 14 }}>
-      <div className="row gap2" style={{ alignItems: 'center' }}>
-        <Glyph name="alert" size={18} style={{ color: 'var(--warn)' }} />
-        <span style={{ fontWeight: 600 }}>Save these recovery codes — they are shown only once.</span>
-      </div>
-      <p className="muted" style={{ fontSize: 13 }}>
-        Each code can be used once to sign in if you lose access to your authenticator app.
-        Store them somewhere safe (password manager, printed copy, etc.).
-      </p>
-      <div style={{
-        display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 24px',
-        fontFamily: 'var(--font-mono)', fontSize: 14,
-        background: 'var(--surface-2)', borderRadius: 8, padding: '14px 18px',
-      }}>
-        {codes.map((c) => (
-          <span key={c} style={{ userSelect: 'all', letterSpacing: '0.05em' }}>{c}</span>
-        ))}
-      </div>
-      <div className="row gap3">
-        <button className="btn btn-secondary" onClick={copyAll}>
-          <Glyph name="copy" size={15} />
-          {copied ? 'Copied!' : 'Copy all'}
-        </button>
-        <button className="btn btn-primary" onClick={onDone}>Done</button>
-      </div>
-    </div>
+    <RecoveryCodesPanel
+      codes={codes}
+      warning="Save these recovery codes — they are shown only once."
+      note={
+        <p className="muted" style={{ fontSize: 13 }}>
+          Each code can be used once to sign in if you lose access to your authenticator app.
+          Store them somewhere safe (password manager, printed copy, etc.).
+        </p>
+      }
+      action={<button className="btn btn-primary" onClick={onDone}>Done</button>}
+    />
   )
 }
 
 // ── Enrolment flow (not yet enrolled) ────────────────────────────────────────
 function EnrollSection() {
   const qc = useQueryClient()
-  const setup = useMfaSetup()
-  const enable = useMfaEnable()
-  const [code, setCode] = useState('')
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null)
 
   if (recoveryCodes) {
@@ -69,18 +47,6 @@ function EnrollSection() {
     )
   }
 
-  function handleEnable() {
-    enable.mutate({ code }, {
-      onSuccess: (data) => {
-        setRecoveryCodes(data.recovery_codes)
-        setCode('')
-        setup.reset()
-        // NOTE: meKey invalidation is deferred to the onDone callback above
-        // so the RecoveryCodes panel stays mounted until the user clicks Done.
-      },
-    })
-  }
-
   return (
     <div className="col" style={{ gap: 18 }}>
       <div className="col" style={{ gap: 6 }}>
@@ -91,85 +57,14 @@ function EnrollSection() {
         </p>
       </div>
 
-      {!setup.data && (
-        <div>
-          <button
-            className="btn btn-primary"
-            onClick={() => setup.mutate()}
-            disabled={setup.isPending}
-          >
-            <Glyph name="shield" size={15} />
-            {setup.isPending ? 'Generating…' : 'Enable two-factor authentication'}
-          </button>
-          {setup.isError && (
-            <p style={{ color: 'var(--unreachable)', fontSize: 13, marginTop: 8 }}>
-              {errorMessage(setup.error)}
-            </p>
-          )}
-        </div>
-      )}
-
-      {setup.data && (
-        <div className="col" style={{ gap: 16 }}>
-          <div className="hr" />
-          <span style={{ fontWeight: 600 }}>1. Scan this QR code in your authenticator app</span>
-          <img
-            alt="Scan this QR code in your authenticator app"
-            src={`data:image/svg+xml;utf8,${encodeURIComponent(setup.data.qr_svg)}`}
-            style={{ width: 200, height: 200, background: '#fff', borderRadius: 8, padding: 8 }}
-          />
-
-          <div className="col" style={{ gap: 4 }}>
-            <span style={{ fontSize: 13, color: 'var(--text-2)' }}>
-              Or enter this secret key manually:
-            </span>
-            <span
-              data-testid="totp-secret"
-              style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 14,
-                userSelect: 'all',
-                background: 'var(--surface-2)',
-                borderRadius: 6,
-                padding: '6px 10px',
-                display: 'inline-block',
-                letterSpacing: '0.1em',
-              }}
-            >
-              {setup.data.secret}
-            </span>
-          </div>
-
-          <div className="hr" />
-          <span style={{ fontWeight: 600 }}>2. Enter the 6-digit code from your app</span>
-          <div className="row gap3" style={{ alignItems: 'flex-end' }}>
-            <div style={{ width: 160 }}>
-              <Field
-                label="Verification code"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="000000"
-                maxLength={6}
-                inputMode="numeric"
-                autoComplete="one-time-code"
-              />
-            </div>
-            <button
-              className="btn btn-primary"
-              onClick={handleEnable}
-              disabled={enable.isPending || code.length < 6}
-              style={{ marginBottom: 1 }}
-            >
-              {enable.isPending ? 'Verifying…' : 'Enable'}
-            </button>
-          </div>
-          {enable.isError && (
-            <p style={{ color: 'var(--unreachable)', fontSize: 13 }}>
-              {errorMessage(enable.error)}
-            </p>
-          )}
-        </div>
-      )}
+      {/* NOTE: meKey invalidation is deferred to the onDone callback above
+          so the RecoveryCodes panel stays mounted until the user clicks Done. */}
+      <TotpEnroll
+        startLabel="Enable two-factor authentication"
+        enableLabel="Enable"
+        dividerBeforeQr
+        onEnabled={setRecoveryCodes}
+      />
     </div>
   )
 }
@@ -323,13 +218,44 @@ function EnrolledSection() {
   )
 }
 
+// ── Sign out everywhere ───────────────────────────────────────────────────────
+function SignOutEverywhere() {
+  const nav = useNavigate()
+  const logoutEverywhere = useLogoutEverywhere()
+  return (
+    <div className="col" style={{ gap: 6 }}>
+      <span style={{ fontWeight: 600 }}>Sign out everywhere</span>
+      <p className="muted" style={{ fontSize: 13 }}>
+        End every active session for your account on all devices, including this one.
+      </p>
+      <div>
+        <button
+          className="btn btn-danger"
+          disabled={logoutEverywhere.isPending}
+          onClick={() => {
+            if (window.confirm('Sign out on all devices?')) {
+              logoutEverywhere.mutate(undefined, { onSettled: () => nav('/login') })
+            }
+          }}
+        >
+          Sign out everywhere
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── Page root ─────────────────────────────────────────────────────────────────
 export function SecuritySettings() {
   const me = useMe()
   if (me.isPending || !me.data) return <FullScreenSpinner />
   return (
     <SettingsLayout>
-      {me.data.totp_enabled ? <EnrolledSection /> : <EnrollSection />}
+      <div className="col" style={{ gap: 18 }}>
+        {me.data.totp_enabled ? <EnrolledSection /> : <EnrollSection />}
+        <div className="hr" />
+        <SignOutEverywhere />
+      </div>
     </SettingsLayout>
   )
 }

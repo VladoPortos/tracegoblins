@@ -8,7 +8,8 @@ import { FilterBar } from './FilterBar'
 import { Glyph } from '../components/atoms/Glyph'
 import { EmptyState } from '../components/atoms/EmptyState'
 import { FullScreenSpinner } from '../components/atoms/FullScreenSpinner'
-import { LastSyncChip } from '../components/atoms/LastSyncChip'
+import { runWord } from '../components/atoms/format'
+import { SyncNowChip } from './SyncNowChip'
 import { SourceChips } from './SourceChips'
 import { useLogsState } from './useLogsState'
 import type { RunCard } from '../api/client'
@@ -57,13 +58,8 @@ function GroupedTeamCards({ items, controllers, onSync, syncing }: {
               <span className="h3" style={{ fontSize: 13 }}>{g.name ?? g.id}</span>
               <span className="chip mono" style={{ fontSize: 10.5 }}>{g.rows.length}</span>
               {ctl && (
-                <>
-                  <LastSyncChip status={ctl.last_sync_status} at={ctl.last_sync_at} error={ctl.last_sync_error} />
-                  <button className="btn btn-ghost sm" onClick={() => onSync(g.id)}
-                    disabled={syncing || ctl.last_sync_status === 'running'} title="Sync now" aria-label={`Sync now ${g.name ?? g.id}`} style={{ fontSize: 12 }}>
-                    <Glyph name="spinner" size={13} />Sync now
-                  </button>
-                </>
+                <SyncNowChip controller={ctl} onSync={onSync} syncing={syncing}
+                  ariaLabel={`Sync now ${g.name ?? g.id}`} buttonStyle={{ fontSize: 12 }} />
               )}
             </div>
             <Grid items={g.rows} />
@@ -149,7 +145,7 @@ export function RunsList({ scope = 'mine', onUpload }: { scope?: 'mine' | 'share
         <div className="row gap2" data-testid="runs-count" style={{ alignItems: 'baseline' }}>
           <span style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-.01em' }}>{total.toLocaleString()}</span>
           <span className="muted" style={{ fontSize: 13 }}>
-            {total === 1 ? 'run' : 'runs'}{qTrim ? ' matching' : ''}
+            {runWord(total)}{qTrim ? ' matching' : ''}
           </span>
         </div>
         <div className="grow" />

@@ -1,22 +1,21 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { EditorState } from '@codemirror/state'
 import { EditorView, lineNumbers } from '@codemirror/view'
 import { json } from '@codemirror/lang-json'
 import { Glyph } from '../components/atoms/Glyph'
+import { useCopied } from '../components/atoms/useCopied'
 
 function CopyBtn({ text }: { text: string }) {
-  const [done, setDone] = useState(false)
+  const { copied, copy } = useCopied()
   return (
     <button
       className="btn btn-ghost sm"
-      onClick={async () => {
-        try { await navigator.clipboard.writeText(text); setDone(true); setTimeout(() => setDone(false), 1200) } catch { /* clipboard blocked */ }
-      }}
+      onClick={() => copy(text)}
       aria-label="Copy output"
       title="Copy"
     >
-      <Glyph name={done ? 'check' : 'copy'} size={14} />{done ? 'Copied' : 'Copy'}
+      <Glyph name={copied ? 'check' : 'copy'} size={14} />{copied ? 'Copied' : 'Copy'}
     </button>
   )
 }

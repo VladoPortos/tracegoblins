@@ -7,7 +7,8 @@ import { Glyph } from '../components/atoms/Glyph'
 import { Avatar } from '../components/atoms/Avatar'
 import { FullScreenSpinner } from '../components/atoms/FullScreenSpinner'
 import { shortTime } from '../components/atoms/format'
-import { ApiError, type InviteCreated } from '../api/client'
+import { useCopied } from '../components/atoms/useCopied'
+import { errorMessage, type InviteCreated } from '../api/client'
 import { useAdminUsers, useChangeRole, useCreateInvite, useSetActive, usersKey } from '../api/queries'
 import { useResetUser2fa } from '../api/mfa'
 
@@ -23,12 +24,18 @@ export function AdminUsers() {
   const [role, setRole] = useState('user')
   const [invite, setInvite] = useState<InviteCreated | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [inviteError, setInviteError] = useState<string | null>(null)
+  const { copied, copy } = useCopied()
 
   const generate = (e: React.FormEvent) => {
     e.preventDefault()
-    createInvite.mutate({ email, role }, { onSuccess: (r) => setInvite(r) })
+    setInviteError(null)
+    createInvite.mutate({ email, role }, {
+      onSuccess: (r) => setInvite(r),
+      onError: (err) => setInviteError(errorMessage(err, 'Could not create the invite.')),
+    })
   }
-  const closeModal = () => { setOpen(false); setInvite(null); setEmail(''); setRole('user') }
+  const closeModal = () => { setOpen(false); setInvite(null); setEmail(''); setRole('user'); setInviteError(null) }
   const expireHrs = invite
     ? Math.max(1, Math.round((new Date(invite.expires_at).getTime() - Date.now()) / 3600000))
     : 0
@@ -70,7 +77,7 @@ export function AdminUsers() {
                 Reset 2FA
               </button>
             )}
-            <select className="select" style={{ width: 110 }} value={u.role} onChange={(e) => { setError(null); changeRole.mutate({ id: u.id, role: e.target.value }, { onError: (err) => setError(err instanceof ApiError && typeof err.detail === 'string' ? err.detail : 'Could not change role.') }) }}>
+            <select className="select" style={{ width: 110 }} value={u.role} onChange={(e) => { setError(null); changeRole.mutate({ id: u.id, role: e.target.value }, { onError: (err) => setError(errorMessage(err, 'Could not change role.')) }) }}>
               <option value="user">user</option>
               <option value="admin">admin</option>
             </select>
@@ -84,6 +91,7 @@ export function AdminUsers() {
       <Modal open={open} onOpenChange={(o) => (o ? setOpen(true) : closeModal())} title="Invite a user">
         {!invite ? (
           <form onSubmit={generate} className="col gap3">
+            {inviteError && <div className="tag tag-needs-fix" role="alert" style={{ alignSelf: 'flex-start' }}>{inviteError}</div>}
             <Field label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             <div>
               <label className="field-label">Role</label>
@@ -104,7 +112,7 @@ export function AdminUsers() {
             <p className="muted" style={{ fontSize: 13 }}>Copy this link and send it to the invitee. It expires in {expireHrs} hour{expireHrs === 1 ? '' : 's'}.</p>
             <div className="row gap2">
               <input className="input mono" data-testid="invite-link" readOnly value={invite.link} onFocus={(e) => e.currentTarget.select()} />
-              <button className="btn" onClick={() => navigator.clipboard?.writeText(invite.link)} aria-label="Copy link"><Glyph name="copy" size={15} /></button>
+              <button className="btn" onClick={() => copy(invite.link)} aria-label="Copy link" title={copied ? 'Copied' : 'Copy link'}><Glyph name={copied ? 'check' : 'copy'} size={15} /></button>
             </div>
             <div className="row" style={{ justifyContent: 'flex-end' }}>
               <button className="btn btn-primary" onClick={closeModal}>Done</button>

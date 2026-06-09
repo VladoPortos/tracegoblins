@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { AuthLayout } from './AuthLayout'
 import { Field } from '../components/atoms/Field'
+import { PasswordFields, validateNewPassword } from '../components/auth/PasswordFields'
+import { errorMessage } from '../api/client'
 import { useChangePassword, useMe } from '../api/queries'
 
 export function ChangePassword() {
@@ -16,11 +18,11 @@ export function ChangePassword() {
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    if (next.length < 12) { setError('New password must be at least 12 characters.'); return }
-    if (next !== confirm) { setError('Passwords do not match.'); return }
+    const invalid = validateNewPassword(next, confirm)
+    if (invalid) { setError(invalid); return }
     change.mutate({ current_password: current, new_password: next }, {
       onSuccess: () => nav('/', { replace: true }),
-      onError: () => setError('Current password is incorrect.'),
+      onError: (e) => setError(errorMessage(e, 'Current password is incorrect.')),
     })
   }
 
@@ -29,8 +31,7 @@ export function ChangePassword() {
     <AuthLayout eyebrow="Account security" title="Change your password" sub={forced ? 'You must set a new password before continuing.' : undefined}>
       <form onSubmit={submit} className="col gap3">
         <Field label="Current password" type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} required />
-        <Field label="New password" type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} hint="At least 12 characters." required />
-        <Field label="Confirm new password" type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
+        <PasswordFields password={next} confirm={confirm} onPasswordChange={setNext} onConfirmChange={setConfirm} label="New password" confirmLabel="Confirm new password" />
         {error && <div className="tag tag-needs-fix" style={{ alignSelf: 'flex-start' }}>{error}</div>}
         <button className="btn btn-primary" type="submit" disabled={change.isPending} style={{ justifyContent: 'center', padding: 10 }}>
           {change.isPending ? 'Updating…' : 'Update password'}

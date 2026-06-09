@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Modal } from '../components/atoms/Modal'
 import { Glyph } from '../components/atoms/Glyph'
 import { Field } from '../components/atoms/Field'
-import { ApiError, type TeamBrief } from '../api/client'
+import { ApiError, errorMessage, type TeamBrief } from '../api/client'
 import {
   useKbSuggest, usePromoteKb, KB_STATUS_VALUES,
   type KbLink, type KbStatus, type KbPromote,
@@ -56,9 +56,7 @@ export function PromoteKbModal({
       onError: (e) => setError(
         e instanceof ApiError && e.status === 409
           ? 'A knowledge-base entry already exists for this signature in that scope.'
-          : e instanceof ApiError && typeof e.detail === 'string'
-            ? e.detail
-            : 'Could not promote this error.',
+          : errorMessage(e, 'Could not promote this error.'),
       ),
     })
   }

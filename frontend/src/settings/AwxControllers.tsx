@@ -13,6 +13,7 @@ import {
 } from '../api/controllers'
 import type { Controller, ControllerCreate, ControllerUpdate, TeamAssignment } from '../api/controllers'
 import { useAdminTeams } from '../api/queries'
+import { errorMessage } from '../api/client'
 
 // ─── Team assignment row editor ───────────────────────────────────────────────
 
@@ -187,7 +188,7 @@ function ControllerModal({
           })
       setTestResult(res)
     } catch (e) {
-      setTestResult({ ok: false, version: null, identity: null, error: String(e) })
+      setTestResult({ ok: false, version: null, identity: null, error: errorMessage(e) })
     } finally {
       setTestPending(false)
     }
@@ -225,8 +226,7 @@ function ControllerModal({
       }
       onClose()
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e)
-      setError(msg)
+      setError(errorMessage(e))
     }
   }
 
@@ -363,7 +363,7 @@ export function AwxControllers() {
     try {
       await syncCtl.mutateAsync(id)
     } catch (e) {
-      setSyncError((prev) => ({ ...prev, [id]: e instanceof Error ? e.message : String(e) }))
+      setSyncError((prev) => ({ ...prev, [id]: errorMessage(e) }))
     }
   }
 
