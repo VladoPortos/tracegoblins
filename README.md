@@ -106,8 +106,24 @@ The published image lives at **`ghcr.io/vladoportos/tracegoblins`** (`:latest` o
 first; building from source needs nothing but Docker.
 
 Behind a reverse proxy, keep `COOKIE_SECURE=true` and set `FORWARDED_ALLOW_IPS` to your proxy's
-network. The proxy terminates TLS and owns HSTS. See [`.env.example`](.env.example) for every
-option.
+network. The proxy terminates TLS and owns HSTS.
+
+### Configuration
+
+Configuration is environment-only — [`.env.example`](.env.example) documents every option with
+its default. Two settings deserve a conscious decision before going live:
+
+- **`MFA_ADMIN_REQUIRED`** (default `true`) — admins are redirected to 2FA enrollment and
+  cannot use the app until they enrol. Set to `false` to make 2FA opt-in for admins too.
+- **`RETENTION_DAYS`** (default `90`) — see below.
+
+### Retention
+
+A background sweep **permanently deletes AWX-synced runs** (`source='awx'`) older than
+`RETENTION_DAYS` — including their tasks, raw log, annotations, comments, and shares. A run's
+age is its actual job run time (falling back to import time when AWX didn't report one).
+Manually uploaded or pasted runs are **never** touched. Default is **90 days**; set
+`RETENTION_DAYS=0` to disable the sweep entirely.
 
 ### Local development (hot reload)
 
