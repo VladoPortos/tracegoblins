@@ -19,7 +19,7 @@ export function MentionTextarea({
   runId: string
   value: string
   onChange: (v: string) => void
-  onPickMention: (id: string, displayName: string) => void
+  onPickMention: (id: string) => void
   placeholder?: string
   ariaLabel?: string
   autoFocus?: boolean
@@ -41,7 +41,7 @@ export function MentionTextarea({
     const after = value.slice(active.start + 1 + active.query.length)
     const inserted = `@${u.display_name} `
     onChange(before + inserted + after)
-    onPickMention(u.id, u.display_name)
+    onPickMention(u.id)
     setOpen(false)
     requestAnimationFrame(() => ref.current?.focus())
   }

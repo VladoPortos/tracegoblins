@@ -220,6 +220,6 @@ async def login_verify(
     )
     await db.commit()
     clear_pending_cookie(response)
-    set_session_cookie(request, response, sess.id, session_max_age(pending.remember))
+    set_session_cookie(response, sess.id, session_max_age(pending.remember))
     from app.api.auth import build_me
     return await build_me(db, user)

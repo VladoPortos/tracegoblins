@@ -11,10 +11,6 @@ def client_ip(request: Request) -> str | None:
     return request.client.host if request.client else None
 
 
-def is_secure(request: Request) -> bool:
-    return settings.cookie_secure
-
-
 def session_max_age(remember: bool) -> int:
     return (
         settings.session_remember_days * 86400
@@ -23,13 +19,13 @@ def session_max_age(remember: bool) -> int:
     )
 
 
-def set_session_cookie(request: Request, response: Response, session_id: str, max_age: int) -> None:
+def set_session_cookie(response: Response, session_id: str, max_age: int) -> None:
     response.set_cookie(
         key=settings.session_cookie_name,
         value=sign_session_id(session_id),
         max_age=max_age,
         httponly=True,
-        secure=is_secure(request),
+        secure=settings.cookie_secure,
         samesite=settings.cookie_samesite,
         path="/",
     )
@@ -46,13 +42,13 @@ def clear_session_cookie(response: Response) -> None:
 MFA_PENDING_COOKIE = "tg_mfa_pending"
 
 
-def set_pending_cookie(request: Request, response: Response, pending_id: str) -> None:
+def set_pending_cookie(response: Response, pending_id: str) -> None:
     response.set_cookie(
         key=MFA_PENDING_COOKIE,
         value=sign_pending_id(pending_id),
         max_age=settings.mfa_pending_ttl_minutes * 60,
         httponly=True,
-        secure=is_secure(request),
+        secure=settings.cookie_secure,
         samesite=settings.cookie_samesite,
         path="/",
     )

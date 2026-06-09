@@ -131,7 +131,7 @@ async def login(data: LoginIn, request: Request, response: Response, db: DbSessi
         # httpx sees it (FastAPI only merges the injected `response` headers for dict/model
         # returns, not when the route returns a Response subclass directly).
         jr = JSONResponse({"mfa_required": True})
-        set_pending_cookie(request, jr, str(pending.id))
+        set_pending_cookie(jr, str(pending.id))
         return jr
 
     # No 2FA: the password IS the completed login — stamp last_login_at now. (Python datetime,
@@ -142,7 +142,7 @@ async def login(data: LoginIn, request: Request, response: Response, db: DbSessi
     )
     await write_audit(db, action="login", actor_id=user.id, ip=ip)
     await db.commit()
-    set_session_cookie(request, response, sess.id, session_max_age(data.remember))
+    set_session_cookie(response, sess.id, session_max_age(data.remember))
     return await build_me(db, user)
 
 

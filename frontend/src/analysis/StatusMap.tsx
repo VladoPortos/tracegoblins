@@ -39,7 +39,7 @@ function collapseSkipped(tasks: TaskLean[], f: Filters): Item[] {
   flush(); return items
 }
 interface Group { key: string; role: string | null; tasks: TaskLean[]; items: Item[]; stats: Record<string, number> }
-interface PlayVM { name: string; pi: number; groups: Group[]; stats: Record<string, number>; rawCount: number; shown: number }
+interface PlayVM { name: string; pi: number; groups: Group[]; stats: Record<string, number> }
 
 function buildPlays(tasks: TaskLean[], f: Filters): PlayVM[] {
   const plays: { name: string; tasks: TaskLean[] }[] = []
@@ -57,7 +57,7 @@ function buildPlays(tasks: TaskLean[], f: Filters): PlayVM[] {
       cur.tasks.push(t)
     })
     groups.forEach((g) => { g.items = collapseSkipped(g.tasks, f); g.stats = statsOf(g.tasks) })
-    return { name: play.name, pi, groups, stats: statsOf(shownTasks), rawCount: play.tasks.length, shown: shownTasks.length }
+    return { name: play.name, pi, groups, stats: statsOf(shownTasks) }
   })
 }
 

@@ -141,5 +141,5 @@ async def accept_invite(
     await write_audit(db, action="invite_accept", actor_id=user.id, target_type="user",
                       target_id=str(user.id), ip=client_ip(request))
     await db.commit()
-    set_session_cookie(request, response, sess.id, session_max_age(False))
+    set_session_cookie(response, sess.id, session_max_age(False))
     return await build_me(db, user)

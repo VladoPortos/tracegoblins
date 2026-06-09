@@ -259,20 +259,9 @@ async def list_runs(
         launched_after=launched_after, launched_before=launched_before, search=search,
     )
 
-    if scope == "mine":
-        base = (Run.owner_user_id == user.id) & Run.team_id.is_(None)
-        cond = and_(base, *extra)
-        total = await db.scalar(select(func.count()).select_from(Run).where(cond))
-        rows = (await db.execute(
-            select(Run).where(cond).order_by(*_runs_order_by(sort, dir)).limit(limit).offset(offset)
-        )).scalars().all()
-        return RunList(items=[run_to_card(r) for r in rows], total=total or 0)
-
-    if scope == "shared":
-        base = (
-            Run.id.in_(select(RunShare.run_id).where(RunShare.shared_with_user_id == user.id))
-            & (Run.owner_user_id != user.id)
-        )
+    if scope in ("mine", "shared"):
+        # Non-team scopes share the same base predicate as run_filters (ONE source of truth).
+        base = _scope_base_cond(scope, user)
         cond = and_(base, *extra)
         total = await db.scalar(select(func.count()).select_from(Run).where(cond))
         rows = (await db.execute(

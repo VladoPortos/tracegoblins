@@ -74,5 +74,5 @@ async def run_setup(data: SetupIn, request: Request, response: Response, db: DbS
     )
     await write_audit(db, action="setup_complete", actor_id=admin.id, ip=client_ip(request))
     await db.commit()
-    set_session_cookie(request, response, sess.id, session_max_age(False))
+    set_session_cookie(response, sess.id, session_max_age(False))
     return await build_me(db, admin)
