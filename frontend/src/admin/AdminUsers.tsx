@@ -6,6 +6,7 @@ import { Field } from '../components/atoms/Field'
 import { Glyph } from '../components/atoms/Glyph'
 import { Avatar } from '../components/atoms/Avatar'
 import { FullScreenSpinner } from '../components/atoms/FullScreenSpinner'
+import { shortTime } from '../components/atoms/format'
 import { ApiError } from '../api/client'
 import { useAdminUsers, useChangeRole, useCreateInvite, useSetActive, usersKey } from '../api/queries'
 import { useResetUser2fa } from '../api/mfa'
@@ -46,6 +47,9 @@ export function AdminUsers() {
               <span style={{ fontSize: 13.5, fontWeight: 500 }}>{u.display_name}</span>
               <span className="dim mono truncate" style={{ fontSize: 11.5 }}>{u.email}</span>
             </div>
+            <span className="dim" style={{ fontSize: 11.5, whiteSpace: 'nowrap' }} title="Last login">
+              {u.last_login_at ? shortTime(u.last_login_at) : '—'}
+            </span>
             {!u.is_active && <span className="tag tag-needs-fix">Deactivated</span>}
             <span className={`tag ${u.totp_enabled ? 'tag-resolved' : 'tag-note'}`} title={u.totp_enabled ? '2FA enabled' : '2FA disabled'}>
               {u.totp_enabled ? '2FA on' : '2FA off'}

@@ -38,6 +38,8 @@ class UserOut(BaseModel):
     last_login_at: str | None
     teams: list[TeamBrief]
     totp_enabled: bool = False
+    initials: str | None = None
+    avatar_color: str | None = None
 
 
 class RoleIn(BaseModel):
@@ -61,6 +63,8 @@ async def _user_out(db: AsyncSession, user: User) -> UserOut:
         last_login_at=user.last_login_at.isoformat() if user.last_login_at else None,
         teams=await _teams_for(db, user.id),
         totp_enabled=user.totp_enabled,
+        initials=user.initials,
+        avatar_color=user.avatar_color,
     )
 
 
