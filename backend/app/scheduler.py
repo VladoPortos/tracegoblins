@@ -1,6 +1,7 @@
 # app/scheduler.py
 from __future__ import annotations
 
+import logging
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
@@ -8,6 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Advisory-lock constants
@@ -169,26 +172,53 @@ async def start_scheduler() -> None:
         await conn.close()
         return
 
+    # We are the leader. Build + register + start ATOMICALLY: assign the module-global _scheduler
+    # only after a successful start, and if anything below fails, release the leader lock and reset
+    # state. Otherwise a transient failure (e.g. a DB hiccup during _register_all) would leave
+    # LEADER_KEY pinned on _leader_conn forever — no other worker could take over — with a
+    # half-built, never-started scheduler stranded in _scheduler.
     _leader_conn = conn
     _is_leader = True
-    _scheduler = AsyncIOScheduler()
-    async with SessionLocal() as db:
-        await _register_all(_scheduler, db)
-    _scheduler.start()
+    try:
+        scheduler = AsyncIOScheduler()
+        async with SessionLocal() as db:
+            await _register_all(scheduler, db)
+        scheduler.start()
+        _scheduler = scheduler
+    except Exception:
+        _scheduler = None
+        await stop_scheduler()  # releases the leader lock, closes _leader_conn, resets _is_leader
+        raise
 
 
 async def stop_scheduler() -> None:
-    """Shut the scheduler (if leader), release the leader lock, and close the connection."""
+    """Shut the scheduler (if leader), release the leader lock, and close the connection.
+
+    Crash-safe + idempotent: a failure shutting the scheduler down (it was never fully started, or
+    its event loop is already gone) must NOT skip releasing the leader advisory lock and closing the
+    connection — otherwise LEADER_KEY stays held and no worker can take over. Closing _leader_conn
+    is itself a backstop: Postgres drops session-level advisory locks when the backend disconnects.
+    """
     global _scheduler, _leader_conn, _is_leader
 
     if _scheduler is not None:
-        _scheduler.shutdown(wait=False)
+        try:
+            _scheduler.shutdown(wait=False)
+        except Exception:
+            logger.exception("scheduler shutdown failed; releasing leader lock anyway")
         _scheduler = None
     if _leader_conn is not None:
-        await _leader_conn.execute(
-            text("SELECT pg_advisory_unlock(:k)").bindparams(k=LEADER_KEY)
-        )
-        await _leader_conn.commit()
-        await _leader_conn.close()
+        try:
+            await _leader_conn.execute(
+                text("SELECT pg_advisory_unlock(:k)").bindparams(k=LEADER_KEY)
+            )
+            await _leader_conn.commit()
+        except Exception:
+            logger.exception("failed to release leader advisory lock cleanly")
+        finally:
+            try:
+                await _leader_conn.close()  # drops the session-level lock even if unlock failed
+            except Exception:
+                logger.exception("failed to close leader connection")
         _leader_conn = None
     _is_leader = False
