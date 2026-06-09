@@ -1,10 +1,35 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { apiFetch, apiUpload, type RunDetail, type RunListResponse, type TaskFull, type TaskLean } from './client'
+import { apiFetch, apiUpload, type RunCard, type RunDetail, type RunListResponse, type TaskFull, type TaskLean } from './client'
 
 export const runsKey = ['runs'] as const
 export const runKey = (id: string) => ['runs', id] as const
 export const runTasksKey = (id: string) => ['runs', id, 'tasks'] as const
 export const taskKey = (id: string, seq: number) => ['runs', id, 'tasks', seq] as const
+export const runDiffKey = (id: string) => ['runs', id, 'diff'] as const
+
+// Diff vs last green run — mirror backend runs_schemas.py (DiffEntry/DurationDelta/RunDiffOut).
+export interface DiffEntry {
+  play_name: string; task_name: string; host: string
+  before: string | null   // status in baseline; null = absent in baseline
+  after: string | null    // status in current run; null = absent now
+  seq: number | null      // seq in CURRENT run when present (drawer jump), else baseline seq
+}
+export interface DurationDelta {
+  play_name: string; task_name: string; seq: number
+  before_s: number; after_s: number; delta_s: number
+}
+export interface RunDiffOut {
+  baseline: RunCard | null
+  reason: 'no_template' | 'no_green_run' | null
+  newly_failing: DiffEntry[]
+  fixed: DiffEntry[]
+  still_failing: DiffEntry[]
+  added_count: number
+  removed_count: number
+  hosts_newly_unreachable: string[]
+  duration_delta_s: number | null
+  slowest_changes: DurationDelta[]
+}
 
 export interface RunFilters {
   controller?: string; organization?: number; template?: string; awx_user?: string
@@ -59,6 +84,13 @@ export function useTask(id: string, seq: number | null) {
     queryKey: seq == null ? ['runs', id, 'tasks', 'none'] : taskKey(id, seq),
     queryFn: () => apiFetch<TaskFull>(`/runs/${id}/tasks/${seq}`),
     enabled: !!id && seq != null,
+  })
+}
+export function useRunDiff(id: string, enabled: boolean) {
+  return useQuery<RunDiffOut>({
+    queryKey: runDiffKey(id),
+    queryFn: () => apiFetch<RunDiffOut>(`/runs/${id}/diff`),
+    enabled: !!id && enabled,
   })
 }
 export function useUploadRun() {

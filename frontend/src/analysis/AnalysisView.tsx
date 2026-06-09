@@ -12,6 +12,7 @@ import { TaskDrawer } from '../drawer/TaskDrawer'
 import { isErr } from '../components/atoms/status'
 import { shortTime } from '../components/atoms/format'
 import { ShareModal } from '../modals/ShareModal'
+import { RunDiffModal } from './RunDiffModal'
 import { useMe } from '../api/queries'
 import { useDrawerWidth } from './useDrawerWidth'
 
@@ -24,6 +25,7 @@ export function AnalysisView() {
   const me = useMe()
   const [searchParams] = useSearchParams()
   const [shareOpen, setShareOpen] = useState(false)
+  const [diffOpen, setDiffOpen] = useState(false)
   const [filters, setFilters] = useState<Filters>({ host: '', errorsOnly: false, hideSkipped: false, query: '' })
   const [selected, setSelected] = useState<number | null>(null)
   const [jumpTo, setJumpTo] = useState<JumpTo | null>(null)
@@ -48,6 +50,16 @@ export function AnalysisView() {
   // Return to wherever the user came from (preserving the dashboard tab/source they were on);
   // fall back to the logs root for deep links / fresh tabs with no in-app history.
   const goBack = () => { if (window.history.length > 1) nav(-1); else nav('/') }
+
+  // Reset per-run view state when navigating between runs while this view stays
+  // mounted (e.g. the diff modal's baseline link). Runs BEFORE the ?task deep-link
+  // effect below, so a ?task param on the new URL still applies after the reset.
+  useEffect(() => {
+    setSelected(null)
+    setJumpTo(null)
+    setDiffOpen(false)
+    setShareOpen(false)
+  }, [id])
 
   const taskParam = searchParams.get('task')
   useEffect(() => {
@@ -77,6 +89,7 @@ export function AnalysisView() {
           </div>
           <div className="grow" />
           {firstErr && <button className="btn sm btn-danger" onClick={goFirstFail}><Glyph name="alert" size={14} />First failure</button>}
+          {d.template_name && <button className="btn sm btn-ghost" onClick={() => setDiffOpen(true)}><Glyph name="layers" size={14} />Diff vs last green</button>}
           {isOwner && <button className="btn btn-ghost" onClick={() => setShareOpen(true)}><Glyph name="share" size={15} />Share</button>}
           {isOwner && <button className="btn btn-danger" onClick={() => { if (confirm('Delete this run?')) del.mutate(id, { onSuccess: () => nav('/') }) }}><Glyph name="close" size={15} />Delete</button>}
         </div>
@@ -123,6 +136,8 @@ export function AnalysisView() {
         )}
       </div>
       {isOwner && <ShareModal open={shareOpen} onOpenChange={setShareOpen} runId={id} teams={me.data?.teams ?? []} />}
+      <RunDiffModal runId={id} open={diffOpen} onOpenChange={setDiffOpen}
+        onJump={(seq) => { setSelected(seq); setJumpTo({ seq, nonce: Date.now() }); setDiffOpen(false) }} />
     </div>
   )
 }
