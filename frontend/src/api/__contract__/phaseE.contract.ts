@@ -2,7 +2,7 @@
 // (no value exports are referenced by the app); `tsc --noEmit` typechecks it.
 // If any imported symbol or field drifts from the Canonical Contract (§6), tsc fails.
 import type {
-  KbLink, KbStatus, KbSignatureOut, KbSuggest,
+  KbLink, KbStatus, KbSignatureOut, KbSignatureList, KbSuggest,
   KbDrawerSuggestion, KbPromote, KbSignatureUpdate,
 } from '../kb'
 import {
@@ -21,6 +21,7 @@ const _sig: KbSignatureOut = {
   representative_text: '', links: [_link],
   occurrence_count: 0, created_at: '', updated_at: '',
 }
+const _list: KbSignatureList = { items: [_sig], total: 0 }
 const _suggest: KbSuggest = { signature_key: '', representative_text: '', category: null }
 const _drawer: KbDrawerSuggestion = { signature: _sig, exact: true, score: 1 }
 const _promote: KbPromote = {
@@ -30,7 +31,7 @@ const _promote: KbPromote = {
 const _update: KbSignatureUpdate = { title: '', status: 'resolved' }
 
 export const _guardE1 = {
-  _link, _status, _sig, _suggest, _drawer, _promote, _update,
+  _link, _status, _sig, _list, _suggest, _drawer, _promote, _update,
   kbKey,
   kbSignatureKey: kbSignatureKey('id'),
   taskKbKey: taskKbKey('r', 0),

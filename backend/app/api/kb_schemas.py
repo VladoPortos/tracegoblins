@@ -82,6 +82,11 @@ class SignatureOut(BaseModel):
     updated_at: datetime
 
 
+class SignatureList(BaseModel):         # GET /api/kb/signatures — pagination envelope
+    items: list[SignatureOut]
+    total: int                           # ALL visible rows under the same filters, not just the page
+
+
 class PromoteIn(BaseModel):
     run_id: str = Field(max_length=_ID_MAX)
     task_seq: int

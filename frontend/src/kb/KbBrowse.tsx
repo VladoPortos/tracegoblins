@@ -119,8 +119,11 @@ export function KbBrowse() {
   const [q, setQ] = useState('')
   const [openId, setOpenId] = useState<string | null>(null)
 
+  // Offset-based infinite query: pages append, so "Load more" never refetches
+  // earlier pages and never exceeds the server's limit cap.
   const list = useKbSignatures(scope, status || undefined, q || undefined)
-  const items = list.data ?? []
+  const items = list.data?.pages.flatMap((p) => p.items) ?? []
+  const total = list.data?.pages.at(-1)?.total ?? 0
   const openSig = items.find((s) => s.id === openId) ?? null
 
   return (
@@ -155,6 +158,9 @@ export function KbBrowse() {
               <div className="card"><EmptyState icon="sparkle" title="Nothing documented yet" sub="Promote a failing task from a run drawer to start the knowledge base." /></div>
             ) : (
               <div className="col" style={{ gap: 8 }}>
+                <div className="muted mono" style={{ fontSize: 11.5 }}>
+                  {items.length < total ? `showing ${items.length} of ${total} entries` : `${total} ${total === 1 ? 'entry' : 'entries'}`}
+                </div>
                 {items.map((s) => {
                   const n = s.occurrence_count
                   return (
@@ -172,6 +178,12 @@ export function KbBrowse() {
                     </button>
                   )
                 })}
+                {list.hasNextPage && (
+                  <button className="btn sm btn-ghost" style={{ alignSelf: 'center' }}
+                    disabled={list.isFetchingNextPage} onClick={() => list.fetchNextPage()}>
+                    {list.isFetchingNextPage ? 'Loading…' : `Load more (${items.length} of ${total})`}
+                  </button>
+                )}
               </div>
             )}
           </>

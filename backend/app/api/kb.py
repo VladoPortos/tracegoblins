@@ -16,6 +16,7 @@ from app.api.kb_schemas import (
     KB_STATUS_VALUES,
     PromoteIn,
     SignatureCreate,
+    SignatureList,
     SignatureOut,
     SignatureUpdate,
     SuggestOut,
@@ -76,12 +77,14 @@ async def _get_visible_signature(db: AsyncSession, sig_id: uuid.UUID, user: User
     return sig
 
 
-@router.get("/signatures", response_model=list[SignatureOut])
+@router.get("/signatures", response_model=SignatureList)
 async def list_signatures(
     user: CurrentUser, db: DbSession,
     scope: str = Query("all", pattern="^(team|global|all)$"),
     status_: str | None = Query(None, alias="status"),
     q: str | None = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
 ):
     team_ids = await my_team_ids(db, user)
     if scope == "global":
@@ -96,20 +99,30 @@ async def list_signatures(
     else:  # all
         scope_cond = kb_visibility_cond(team_ids)
 
-    stmt = select(KbSignature).where(scope_cond)
+    conds = [scope_cond]
     if status_ is not None:
-        stmt = stmt.where(KbSignature.status == status_)
+        conds.append(KbSignature.status == status_)
     if q:
         like = f"%{q}%"
-        stmt = stmt.where(
+        conds.append(
             or_(KbSignature.title.ilike(like), KbSignature.representative_text.ilike(like))
         )
-    stmt = stmt.order_by(KbSignature.updated_at.desc()).limit(200)
+
+    # total = ALL visible rows under the same predicate (independent of the page window).
+    total = await db.scalar(select(sa.func.count()).select_from(KbSignature).where(*conds)) or 0
+    stmt = (
+        select(KbSignature).where(*conds)
+        # id DESC tiebreaker keeps offset pagination stable when updated_at ties
+        # (e.g. rows created/updated in the same transaction share now()).
+        .order_by(KbSignature.updated_at.desc(), KbSignature.id.desc())
+        .limit(limit).offset(offset)
+    )
 
     rows = (await db.execute(stmt)).scalars().all()
-    # Batched: ONE grouped count query for all listed signatures (avoids an N+1 over the list).
+    # Batched: ONE grouped count query for the PAGE's signatures (avoids an N+1 over the list).
     counts = await visible_occurrence_counts(db, [s.id for s in rows], user)
-    return [signature_to_out(sig, occurrence_count=counts.get(sig.id, 0)) for sig in rows]
+    items = [signature_to_out(sig, occurrence_count=counts.get(sig.id, 0)) for sig in rows]
+    return SignatureList(items=items, total=total)
 
 
 @router.get("/signatures/{sig_id}", response_model=SignatureOut)
