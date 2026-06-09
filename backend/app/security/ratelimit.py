@@ -12,6 +12,17 @@ class RateDecision:
     retry_after: int
 
 
+def too_many_attempts(decision: "RateDecision") -> "HTTPException":  # noqa: F821
+    """The canonical 429 for rate-limited auth flows."""
+    from fastapi import HTTPException, status
+
+    return HTTPException(
+        status.HTTP_429_TOO_MANY_REQUESTS,
+        detail="Too many attempts. Try again later.",
+        headers={"Retry-After": str(decision.retry_after)},
+    )
+
+
 class SlidingWindowLimiter:
     """In-process sliding-window + lockout. Single-worker correct.
 

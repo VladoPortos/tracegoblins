@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.kb.signature import Signature, extract_signature
 from app.models import KbSignature
+from app.services.visibility import kb_visibility_cond
 
 
 @dataclass
@@ -34,7 +35,7 @@ async def match_error(
         return None
 
     # Scope predicate reused by both lookups: global ∪ the run's audience teams.
-    scope = (KbSignature.team_id.is_(None)) | (KbSignature.team_id.in_(team_ids))
+    scope = kb_visibility_cond(team_ids)
 
     # Exact: team_id IS NOT NULL sorts first so a team entry beats global on a tie. When the
     # caller spans multiple teams that each defined the same signature_key, add a DETERMINISTIC

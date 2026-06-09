@@ -18,11 +18,12 @@ from app.api.controllers_schemas import (
 )
 from app.api.deps import AdminUser, CurrentUser, DbSession, require_password_current
 from app.api.http_utils import client_ip
+from app.api.validation import resolve_team_or_422
 from app.awx.client import AwxClient, AwxError
 from app.awx.sync import sync_controller
 from app.core.crypto import decrypt_token, encrypt_token
 from app.db.session import SessionLocal
-from app.models import AwxController, ControllerTeam, Team
+from app.models import AwxController, ControllerTeam
 from app.scheduler import reconcile_controller
 from app.security.urls import is_http_url
 from app.services.audit import write_audit
@@ -40,6 +41,13 @@ async def _assigned_team_ids(db: DbSession, controller_id: uuid.UUID) -> set[uui
     return set((await db.execute(
         select(ControllerTeam.team_id).where(ControllerTeam.controller_id == controller_id)
     )).scalars().all())
+
+
+async def _controller_or_404(db: DbSession, controller_id: uuid.UUID) -> AwxController:
+    controller = await db.get(AwxController, controller_id)
+    if controller is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Controller not found")
+    return controller
 
 
 @router.get("", response_model=list[ControllerOut])
@@ -83,16 +91,13 @@ async def _apply_assignments(db: DbSession, controller_id: uuid.UUID, assignment
     the undo to just the failed assignment."""
     seen: set[tuple[uuid.UUID, int | None]] = set()
     for a in assignments:
-        try:
-            tid = uuid.UUID(a.team_id)
-        except (ValueError, AttributeError):
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Invalid team_id")
+        # resolve-then-dedupe is order-equivalent to the old dedupe-then-exists: a pair can
+        # only be in `seen` after its first occurrence already passed the exists check.
+        tid = (await resolve_team_or_422(db, a.team_id)).id
         if (tid, a.awx_organization_id) in seen:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
                                 detail="Duplicate team/org assignment in request")
         seen.add((tid, a.awx_organization_id))
-        if await db.get(Team, tid) is None:
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Unknown team")
         try:
             async with db.begin_nested():  # SAVEPOINT: scopes any dup rollback to this row only
                 db.add(ControllerTeam(
@@ -154,9 +159,7 @@ async def create_controller(
 async def delete_controller(
     controller_id: uuid.UUID, request: Request, db: DbSession, user: AdminUser,
 ):
-    controller = await db.get(AwxController, controller_id)
-    if controller is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Controller not found")
+    controller = await _controller_or_404(db, controller_id)
     await db.delete(controller)  # cascades controller_teams + synced runs (FK ON DELETE CASCADE)
     await write_audit(db, action="controller_delete", actor_id=user.id,
                       target_type="awx_controller", target_id=str(controller_id),
@@ -172,9 +175,7 @@ async def update_controller(
     controller_id: uuid.UUID, payload: ControllerUpdate,
     request: Request, db: DbSession, user: AdminUser,
 ):
-    controller = await db.get(AwxController, controller_id)
-    if controller is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Controller not found")
+    controller = await _controller_or_404(db, controller_id)
 
     if payload.base_url is not None:
         if not is_http_url(payload.base_url):
@@ -267,9 +268,7 @@ async def test_connection(
     controller_id: uuid.UUID, payload: TestConnectionIn,
     request: Request, db: DbSession, user: AdminUser,
 ):
-    controller = await db.get(AwxController, controller_id)
-    if controller is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Controller not found")
+    controller = await _controller_or_404(db, controller_id)
 
     base_url = payload.base_url if payload.base_url is not None else controller.base_url
     # SSRF guard: an ad-hoc base_url must be http(s) with a netloc — same check create/update use.
@@ -316,9 +315,7 @@ async def sync_now(
     guard is the per-controller advisory lock inside sync_controller, so a racing duplicate
     launch is simply dropped as status='skipped_locked' and still returns 202. The 409 just
     gives a fast, friendly answer in the common case."""
-    controller = await db.get(AwxController, controller_id)
-    if controller is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Controller not found")
+    controller = await _controller_or_404(db, controller_id)
 
     assigned = await _assigned_team_ids(db, controller_id)
     mine = await my_team_ids(db, user)

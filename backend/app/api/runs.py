@@ -14,13 +14,14 @@ from app.api.collab_schemas import AnnotationCreate, AnnotationOut, CommentCreat
 from app.api.deps import CurrentUser, DbSession, GatedUser
 from app.api.http_utils import client_ip
 from app.api.kb_schemas import KbSuggestionOut
+from app.api.validation import parse_uuid_or_422, resolve_team_or_422
 from app.api.runs_schemas import FacetController, FacetOrg, FacetsOut, RunCreated, RunDetail, RunList, TaskFull, TaskLean
 from app.models import Annotation, AwxController, Comment, ControllerTeam, KbOccurrence, KbSignature, Run, RunRaw, RunShare, Task, Team, TeamMember, User
 from app.services.audit import write_audit
 from app.services.notifications import create_mention_notifications, create_share_notifications
 from app.services.collab_query import annotation_to_out, comment_to_out, resolve_visible_mentions, share_to_out
 from app.services.collab_validate import validate_links, validate_tags
-from app.services.visibility import is_run_visible, my_team_ids
+from app.services.visibility import is_run_visible, kb_visibility_cond, my_team_ids
 from app.services.ingestion import MAX_UPLOAD_BYTES, ingest_upload
 from app.services.runs_query import run_to_card, run_to_detail, task_to_full, task_to_lean
 from app.kb.signature import extract_signature
@@ -138,10 +139,7 @@ async def create_run(
 
     target_team_id: uuid.UUID | None = None
     if team_raw:
-        try:
-            target_team_id = uuid.UUID(team_raw)
-        except (ValueError, AttributeError):
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Invalid team_id")
+        target_team_id = parse_uuid_or_422(team_raw, detail="Invalid team_id")
         # Membership-checked: non-member (or unknown team) -> 403, never silently personal.
         if await db.get(TeamMember, (target_team_id, user.id)) is None:
             raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Not a member of that team")
@@ -208,10 +206,7 @@ def _runs_extra_conditions(
     if source is not None:
         extra.append(Run.source == source)
     if controller is not None:
-        try:
-            extra.append(Run.controller_id == uuid.UUID(controller))
-        except (ValueError, AttributeError):
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Invalid controller")
+        extra.append(Run.controller_id == parse_uuid_or_422(controller, detail="Invalid controller"))
     if organization is not None:
         extra.append(Run.awx_organization_id == organization)
     if template:
@@ -471,11 +466,7 @@ async def get_task_kb(run: VisibleRun, seq: int, user: CurrentUser, db: DbSessio
     from app.api.kb import signature_to_out  # local import avoids any potential circular import
 
     team_ids = await my_team_ids(db, user)
-    sig_visible = (
-        KbSignature.team_id.is_(None) | KbSignature.team_id.in_(team_ids)
-        if team_ids
-        else KbSignature.team_id.is_(None)
-    )
+    sig_visible = kb_visibility_cond(team_ids)
     row = (await db.execute(
         select(KbOccurrence, KbSignature)
         .join(KbSignature, KbSignature.id == KbOccurrence.signature_id)
@@ -549,14 +540,8 @@ async def create_share(
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Unknown user")
         share = RunShare(run_id=run.id, shared_with_user_id=uid, shared_by_user_id=user.id)
     else:
-        try:
-            tid = uuid.UUID(payload.team_id)
-        except ValueError:
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Invalid team_id")
-        target_team = await db.get(Team, tid)
-        if target_team is None:
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Unknown team")
-        share = RunShare(run_id=run.id, shared_with_team_id=tid, shared_by_user_id=user.id)
+        target_team = await resolve_team_or_422(db, payload.team_id)
+        share = RunShare(run_id=run.id, shared_with_team_id=target_team.id, shared_by_user_id=user.id)
 
     db.add(share)
     try:

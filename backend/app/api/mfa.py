@@ -8,22 +8,15 @@ from pydantic import BaseModel
 
 from app.api.deps import CurrentUser, DbSession
 from app.core.config import settings
-from app.api.http_utils import (
-    MFA_PENDING_COOKIE,
-    clear_pending_cookie,
-    client_ip,
-    session_max_age,
-    set_session_cookie,
-)
+from app.api.http_utils import MFA_PENDING_COOKIE, clear_pending_cookie, client_ip
 from app.core.crypto import decrypt_token, encrypt_token
 from app.models import User
 from app.security import totp
 from app.security.cookies import unsign_pending_id
-from app.security.ratelimit import mfa_verify_limiter
+from app.security.ratelimit import mfa_verify_limiter, too_many_attempts
 from app.services.audit import write_audit
 from app.services.mfa import consume_recovery_code, issue_recovery_codes
 from app.services.pending_login import consume_pending, get_valid_pending
-from app.services.sessions import create_session
 
 router = APIRouter(prefix="/api/auth/2fa", tags=["mfa"])
 
@@ -101,11 +94,7 @@ async def disable(data: CodeIn, request: Request, user: CurrentUser, db: DbSessi
     keys = _mfa_mgmt_keys(request, user)
     decision = await mfa_verify_limiter.check(*keys)
     if not decision.allowed:
-        raise HTTPException(
-            status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many attempts. Try again later.",
-            headers={"Retry-After": str(decision.retry_after)},
-        )
+        raise too_many_attempts(decision)
     secret = _active_secret(user)
     ok = totp.verify_totp(secret, data.code) is not None or await consume_recovery_code(db, user, data.code)
     if not ok:
@@ -128,11 +117,7 @@ async def regenerate(data: CodeIn, request: Request, user: CurrentUser, db: DbSe
     keys = _mfa_mgmt_keys(request, user)
     decision = await mfa_verify_limiter.check(*keys)
     if not decision.allowed:
-        raise HTTPException(
-            status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many attempts. Try again later.",
-            headers={"Retry-After": str(decision.retry_after)},
-        )
+        raise too_many_attempts(decision)
     if totp.verify_totp(_active_secret(user), data.code) is None:
         await mfa_verify_limiter.record_failure(*keys)
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Invalid code")
@@ -177,11 +162,7 @@ async def login_verify(
     keys = (f"mfa-verify-ip:{ip or 'unknown'}", f"mfa:{pending.user_id}")
     decision = await mfa_verify_limiter.check(*keys)
     if not decision.allowed:
-        raise HTTPException(
-            status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many attempts. Try again later.",
-            headers={"Retry-After": str(decision.retry_after)},
-        )
+        raise too_many_attempts(decision)
 
     # Lock the user row FOR UPDATE so the replay-guard read→compare→write of
     # totp_last_used_step is serialized. Two *distinct* pending-login rows for the same user
@@ -210,20 +191,11 @@ async def login_verify(
 
     await mfa_verify_limiter.reset(*keys)
     await consume_pending(db, pending)
-    user.last_login_at = datetime.now(timezone.utc)  # login completes only after the 2nd factor
-    sess = await create_session(
-        db, user_id=user.id, ip=ip,
-        user_agent=request.headers.get("user-agent"),
-        remember=pending.remember,
-    )
-    await write_audit(
-        db,
-        action="login" if not used_recovery else "mfa_recovery_used",
-        actor_id=user.id,
-        ip=ip,
-    )
-    await db.commit()
     clear_pending_cookie(response)
-    set_session_cookie(response, sess.id, session_max_age(pending.remember))
-    from app.api.auth import build_me
-    return await build_me(db, user)
+    # complete_login stamps last_login_at — the login completes only after the 2nd factor.
+    from app.api.login_flow import complete_login
+    return await complete_login(
+        db, request, response, user,
+        remember=pending.remember,
+        audit_action="login" if not used_recovery else "mfa_recovery_used",
+    )

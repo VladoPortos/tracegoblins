@@ -4,14 +4,13 @@ from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import func, select, text
 
-from app.api.auth import MeOut, build_me
+from app.api.auth import MeOut
 from app.api.deps import DbSession
-from app.api.http_utils import client_ip, session_max_age, set_session_cookie
+from app.api.http_utils import client_ip
+from app.api.login_flow import complete_login
 from app.models import Team, TeamMember, User
 from app.security.passwords import hash_password, validate_password
-from app.security.ratelimit import setup_limiter
-from app.services.audit import write_audit
-from app.services.sessions import create_session
+from app.security.ratelimit import setup_limiter, too_many_attempts
 
 router = APIRouter(prefix="/api/setup", tags=["setup"])
 
@@ -39,10 +38,7 @@ async def run_setup(data: SetupIn, request: Request, response: Response, db: DbS
     ip = client_ip(request)
     decision = await setup_limiter.check(f"setup:{ip or 'unknown'}")
     if not decision.allowed:
-        raise HTTPException(
-            status.HTTP_429_TOO_MANY_REQUESTS, detail="Too many attempts. Try again later.",
-            headers={"Retry-After": str(decision.retry_after)},
-        )
+        raise too_many_attempts(decision)
     await setup_limiter.record_failure(f"setup:{ip or 'unknown'}")
     # Serialize concurrent setup attempts; advisory xact lock auto-releases at txn end.
     # (Under the savepoint test harness the lock is held until the outer rollback, so true
@@ -68,11 +64,8 @@ async def run_setup(data: SetupIn, request: Request, response: Response, db: DbS
     await db.flush()
     db.add(TeamMember(team_id=general.id, user_id=admin.id))
 
-    sess = await create_session(
-        db, user_id=admin.id, ip=client_ip(request),
-        user_agent=request.headers.get("user-agent"), remember=False,
+    # stamp_last_login=False: the wizard never recorded a last_login_at for the first admin.
+    return await complete_login(
+        db, request, response, admin, remember=False,
+        audit_action="setup_complete", stamp_last_login=False,
     )
-    await write_audit(db, action="setup_complete", actor_id=admin.id, ip=client_ip(request))
-    await db.commit()
-    set_session_cookie(response, sess.id, session_max_age(False))
-    return await build_me(db, admin)

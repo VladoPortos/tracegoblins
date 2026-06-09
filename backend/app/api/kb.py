@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.collab_schemas import AnnotationLink
 from app.api.deps import AdminUser, CurrentUser, DbSession, GatedUser, require_password_current
 from app.api.http_utils import client_ip
+from app.api.validation import resolve_team_or_422
 from app.api.kb_schemas import (
     KB_STATUS_VALUES,
     PromoteIn,
@@ -21,10 +22,10 @@ from app.api.kb_schemas import (
 )
 from app.kb.service import backfill_signature, visible_occurrence_count, visible_occurrence_counts
 from app.kb.signature import extract_signature
-from app.models import KbSignature, Run, Task, Team, TeamMember, User
+from app.models import KbSignature, Run, Task, TeamMember, User
 from app.services.audit import write_audit
 from app.services.collab_validate import validate_links
-from app.services.visibility import is_run_visible, my_team_ids
+from app.services.visibility import is_run_visible, kb_visibility_cond, my_team_ids
 
 router = APIRouter(prefix="/api/kb", tags=["kb"])
 
@@ -92,11 +93,7 @@ async def list_signatures(
             KbSignature.team_id.in_(team_ids) if team_ids else sa.false()
         )
     else:  # all
-        scope_cond = (
-            or_(KbSignature.team_id.is_(None), KbSignature.team_id.in_(team_ids))
-            if team_ids
-            else KbSignature.team_id.is_(None)
-        )
+        scope_cond = kb_visibility_cond(team_ids)
 
     stmt = select(KbSignature).where(scope_cond)
     if status_ is not None:
@@ -138,15 +135,10 @@ async def _authorize_target_team(
         if user.role != "admin":
             raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Global KB requires admin")
         return None
-    try:
-        tid = uuid.UUID(team_id_raw)
-    except (ValueError, AttributeError):
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Invalid team_id")
-    if await db.get(Team, tid) is None:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Unknown team")
-    if await db.get(TeamMember, (tid, user.id)) is None:
+    team = await resolve_team_or_422(db, team_id_raw)
+    if await db.get(TeamMember, (team.id, user.id)) is None:
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Not a member of that team")
-    return tid
+    return team.id
 
 
 @router.post("/signatures", status_code=201, response_model=SignatureOut)

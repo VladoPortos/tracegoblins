@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 import uuid
 
-import sqlalchemy as sa
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,7 +11,7 @@ from app.kb.matcher import match_error
 from app.models import (
     ControllerTeam, KbOccurrence, KbSignature, Run, RunShare, Task, TeamMember, User,
 )
-from app.services.visibility import my_team_ids
+from app.services.visibility import my_team_ids, run_visible_cond
 
 logger = logging.getLogger(__name__)
 
@@ -173,46 +172,6 @@ async def backfill_signature(db: AsyncSession, sig: KbSignature, *, commit: bool
     return total
 
 
-async def _run_visible_cond(db: AsyncSession, user: User):
-    """A SQL predicate over `Run` matching is_run_visible's five paths for viewer U.
-
-    owner ∪ team-owned ∪ direct-share ∪ team-share ∪ AWX-via-controller_teams.
-    A1: admin role grants NO path — purely relationship-based.
-
-    NOTE — this is the THIRD hand-copy of the 5-path visibility disjunction (alongside
-    `is_run_visible` in app/services/visibility.py:16 and `runs.py::_team_scope_base`). It
-    mirrors `is_run_visible` in FULL — the **owner path is INCLUDED** so a viewer's OWN
-    personal uploads count toward "seen in N runs". It is INTENTIONALLY NOT `_team_scope_base`,
-    which deliberately EXCLUDES the owner's personal uploads (that helper scopes a team's
-    shared view, not a single viewer's). Keep this aligned with `is_run_visible`, not with
-    `_team_scope_base`, if any of the three ever change.
-    """
-    team_ids = await my_team_ids(db, user)
-    owner = Run.owner_user_id == user.id        # owner path — INCLUDED (unlike _team_scope_base)
-    team_owned = Run.team_id.in_(team_ids) if team_ids else sa.false()
-    direct = Run.id.in_(
-        select(RunShare.run_id).where(RunShare.shared_with_user_id == user.id)
-    )
-    team_share = (
-        Run.id.in_(select(RunShare.run_id).where(RunShare.shared_with_team_id.in_(team_ids)))
-        if team_ids else sa.false()
-    )
-    awx = (
-        (Run.source == "awx")
-        & Run.controller_id.in_(
-            select(ControllerTeam.controller_id).where(
-                ControllerTeam.team_id.in_(team_ids),
-                or_(
-                    ControllerTeam.awx_organization_id.is_(None),
-                    ControllerTeam.awx_organization_id == Run.awx_organization_id,
-                ),
-            )
-        )
-        if team_ids else sa.false()
-    )
-    return owner | team_owned | direct | team_share | awx
-
-
 async def visible_occurrence_count(
     db: AsyncSession, signature_id: uuid.UUID, user: User
 ) -> int:
@@ -221,7 +180,7 @@ async def visible_occurrence_count(
     The API layer must already have confirmed U may see the signature; this counts
     only occurrences whose run is visible to U, so an invisible run never leaks (A1).
     """
-    cond = await _run_visible_cond(db, user)
+    cond = await run_visible_cond(db, user)
     n = await db.scalar(
         select(func.count(func.distinct(KbOccurrence.run_id)))
         .select_from(KbOccurrence)
@@ -242,7 +201,7 @@ async def visible_occurrence_counts(
     """
     if not signature_ids:
         return {}
-    cond = await _run_visible_cond(db, user)
+    cond = await run_visible_cond(db, user)
     rows = (await db.execute(
         select(
             KbOccurrence.signature_id,

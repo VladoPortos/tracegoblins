@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr
@@ -10,12 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, DbSession
 from app.core.config import settings
-from app.api.http_utils import clear_session_cookie, client_ip, session_max_age, set_session_cookie
+from app.api.http_utils import clear_session_cookie, client_ip
 from app.models import Team, TeamMember, User
 from app.security.passwords import hash_password, needs_rehash, validate_password, verify_password
-from app.security.ratelimit import login_limiter
+from app.security.ratelimit import login_limiter, too_many_attempts
 from app.services.audit import write_audit
-from app.services.sessions import create_session, revoke_all_for_user, revoke_session
+from app.services.sessions import revoke_all_for_user, revoke_session
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -91,11 +89,7 @@ async def login(data: LoginIn, request: Request, response: Response, db: DbSessi
     if not decision.allowed:
         await write_audit(db, action="login_locked", ip=ip, metadata={"email": data.email})
         await db.commit()
-        raise HTTPException(
-            status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many attempts. Try again later.",
-            headers={"Retry-After": str(decision.retry_after)},
-        )
+        raise too_many_attempts(decision)
 
     user = await db.scalar(select(User).where(User.email == data.email))
     if user is None:
@@ -134,16 +128,13 @@ async def login(data: LoginIn, request: Request, response: Response, db: DbSessi
         set_pending_cookie(jr, str(pending.id))
         return jr
 
-    # No 2FA: the password IS the completed login — stamp last_login_at now. (Python datetime,
-    # not func.now(): with expire_on_commit=False the attribute isn't re-expired after commit.)
-    user.last_login_at = datetime.now(timezone.utc)
-    sess = await create_session(
-        db, user_id=user.id, ip=ip, user_agent=request.headers.get("user-agent"), remember=data.remember
+    # No 2FA: the password IS the completed login — complete_login stamps last_login_at now.
+    # (Python datetime, not func.now(): with expire_on_commit=False the attribute isn't
+    # re-expired after commit.) Local import: login_flow imports build_me from this module.
+    from app.api.login_flow import complete_login
+    return await complete_login(
+        db, request, response, user, remember=data.remember, audit_action="login"
     )
-    await write_audit(db, action="login", actor_id=user.id, ip=ip)
-    await db.commit()
-    set_session_cookie(response, sess.id, session_max_age(data.remember))
-    return await build_me(db, user)
 
 
 @router.get("/me", response_model=MeOut)

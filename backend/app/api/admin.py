@@ -185,6 +185,25 @@ async def _unique_slug(db: AsyncSession, base: str, *, exclude_id: uuid.UUID | N
         candidate = f"{base}-{n}"
 
 
+_TEAM_NAME_CONFLICT = "A team with this name already exists"
+
+
+async def _validated_name_and_slug(
+    db: AsyncSession, raw_name: str, *, exclude_id: uuid.UUID | None = None
+) -> tuple[str, str]:
+    """Shared create/rename validation: strip + blank -> 422, name clash -> 409,
+    then a collision-free slug. Callers keep their IntegrityError -> 409 race backstop."""
+    name = raw_name.strip()
+    if not name:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail="name is required")
+    clash_stmt = select(Team).where(Team.name == name)
+    if exclude_id is not None:
+        clash_stmt = clash_stmt.where(Team.id != exclude_id)
+    if await db.scalar(clash_stmt) is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=_TEAM_NAME_CONFLICT)
+    return name, await _unique_slug(db, _slugify(name), exclude_id=exclude_id)
+
+
 async def _team_out(db: AsyncSession, team: Team) -> TeamOut:
     count = await db.scalar(
         select(func.count()).select_from(TeamMember).where(TeamMember.team_id == team.id)
@@ -201,18 +220,14 @@ async def list_teams(admin: AdminUser, db: DbSession):
 
 @router.post("/teams", status_code=status.HTTP_201_CREATED, response_model=TeamOut)
 async def create_team(body: TeamCreateIn, request: Request, admin: AdminUser, db: DbSession):
-    name = body.name.strip()
-    if not name:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail="name is required")
-    if await db.scalar(select(Team).where(Team.name == name)) is not None:
-        raise HTTPException(status.HTTP_409_CONFLICT, detail="A team with this name already exists")
-    team = Team(name=name, slug=await _unique_slug(db, _slugify(name)), is_default=False, created_by=admin.id)
+    name, slug = await _validated_name_and_slug(db, body.name)
+    team = Team(name=name, slug=slug, is_default=False, created_by=admin.id)
     db.add(team)
     try:
         await db.flush()  # backstop for a name/slug uniqueness race -> clean 409, never a 500
     except IntegrityError:
         await db.rollback()
-        raise HTTPException(status.HTTP_409_CONFLICT, detail="A team with this name already exists")
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=_TEAM_NAME_CONFLICT)
     await write_audit(db, action="team_create", actor_id=admin.id, target_type="team",
                       target_id=str(team.id), ip=client_ip(request), metadata={"name": name})
     await db.commit()
@@ -224,20 +239,15 @@ async def rename_team(team_id: uuid.UUID, body: TeamRenameIn, request: Request, 
     team = await db.get(Team, team_id)
     if team is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND)
-    name = body.name.strip()
-    if not name:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail="name is required")
-    clash = await db.scalar(select(Team).where(Team.name == name, Team.id != team_id))
-    if clash is not None:
-        raise HTTPException(status.HTTP_409_CONFLICT, detail="A team with this name already exists")
+    # Slug kept consistent with the renamed team (it was previously left stale), collision-safe.
+    name, slug = await _validated_name_and_slug(db, body.name, exclude_id=team_id)
     team.name = name
-    # Keep the slug consistent with the renamed team (it was previously left stale), collision-safe.
-    team.slug = await _unique_slug(db, _slugify(name), exclude_id=team_id)
+    team.slug = slug
     try:
         await db.flush()  # name/slug uniqueness race backstop -> 409, never 500
     except IntegrityError:
         await db.rollback()
-        raise HTTPException(status.HTTP_409_CONFLICT, detail="A team with this name already exists")
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=_TEAM_NAME_CONFLICT)
     await write_audit(db, action="team_rename", actor_id=admin.id, target_type="team",
                       target_id=str(team.id), ip=client_ip(request), metadata={"name": name})
     await db.commit()

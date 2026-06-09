@@ -9,14 +9,15 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 
-from app.api.auth import MeOut, build_me
+from app.api.auth import MeOut
 from app.api.deps import AdminUser, DbSession, require_password_current
-from app.api.http_utils import client_ip, session_max_age, set_session_cookie
+from app.api.http_utils import client_ip
+from app.api.login_flow import complete_login
+from app.api.validation import parse_uuid_or_422
 from app.core.config import settings
 from app.models import Invite, Team, TeamMember, User
 from app.security.passwords import hash_password, validate_password
 from app.services.audit import write_audit
-from app.services.sessions import create_session
 
 admin_router = APIRouter(
     prefix="/api/admin", tags=["invites"], dependencies=[Depends(require_password_current)]
@@ -53,10 +54,8 @@ async def create_invite(data: InviteCreateIn, request: Request, admin: AdminUser
     # so a bad id can't FK-crash invite acceptance later.
     team_uuids: list[str] = []
     for t in data.team_ids:
-        try:
-            tid = uuid.UUID(t)
-        except (ValueError, TypeError):
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail=f"invalid team id: {t}")
+        # Detail strings stay this route's lowercase f-strings (NOT resolve_team_or_422's).
+        tid = parse_uuid_or_422(t, detail=f"invalid team id: {t}")
         if await db.get(Team, tid) is None:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail=f"unknown team: {t}")
         team_uuids.append(str(tid))
@@ -132,12 +131,9 @@ async def accept_invite(
         db.add(TeamMember(team_id=tid, user_id=user.id))
 
     invite.accepted_at = datetime.now(timezone.utc)
-    sess = await create_session(
-        db, user_id=user.id, ip=client_ip(request),
-        user_agent=request.headers.get("user-agent"), remember=False,
+    # stamp_last_login=False: invite acceptance never recorded a last_login_at (account birth).
+    return await complete_login(
+        db, request, response, user, remember=False,
+        audit_action="invite_accept", stamp_last_login=False,
+        audit_target_type="user", audit_target_id=str(user.id),
     )
-    await write_audit(db, action="invite_accept", actor_id=user.id, target_type="user",
-                      target_id=str(user.id), ip=client_ip(request))
-    await db.commit()
-    set_session_cookie(response, sess.id, session_max_age(False))
-    return await build_me(db, user)
