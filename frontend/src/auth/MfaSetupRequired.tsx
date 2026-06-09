@@ -44,13 +44,13 @@ export function MfaSetupRequired() {
       >
         <div className="col" style={{ gap: 16 }}>
           <div className="row gap2" style={{ alignItems: 'center' }}>
-            <Glyph name="alert" size={18} style={{ color: 'var(--c-warn)' }} />
+            <Glyph name="alert" size={18} style={{ color: 'var(--warn)' }} />
             <span style={{ fontWeight: 600 }}>Each code can be used once.</span>
           </div>
           <div style={{
             display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 24px',
-            fontFamily: 'var(--font-mono, monospace)', fontSize: 14,
-            background: 'var(--c-surface-2)', borderRadius: 8, padding: '14px 18px',
+            fontFamily: 'var(--font-mono)', fontSize: 14,
+            background: 'var(--surface-2)', borderRadius: 8, padding: '14px 18px',
           }}>
             {recoveryCodes.map((c) => (
               <span key={c} style={{ userSelect: 'all', letterSpacing: '0.05em' }}>{c}</span>
@@ -106,7 +106,7 @@ export function MfaSetupRequired() {
               {setup.isPending ? 'Generating…' : 'Set up authenticator app'}
             </button>
             {setup.isError && (
-              <p style={{ color: 'var(--c-danger)', fontSize: 13 }}>
+              <p style={{ color: 'var(--unreachable)', fontSize: 13 }}>
                 {errorMessage(setup.error)}
               </p>
             )}
@@ -124,16 +124,16 @@ export function MfaSetupRequired() {
             />
 
             <div className="col" style={{ gap: 4 }}>
-              <span style={{ fontSize: 13, color: 'var(--c-muted)' }}>
+              <span style={{ fontSize: 13, color: 'var(--text-2)' }}>
                 Or enter this secret key manually:
               </span>
               <span
                 data-testid="totp-secret"
                 style={{
-                  fontFamily: 'var(--font-mono, monospace)',
+                  fontFamily: 'var(--font-mono)',
                   fontSize: 14,
                   userSelect: 'all',
-                  background: 'var(--c-surface-2)',
+                  background: 'var(--surface-2)',
                   borderRadius: 6,
                   padding: '6px 10px',
                   display: 'inline-block',
@@ -168,7 +168,7 @@ export function MfaSetupRequired() {
               </button>
             </div>
             {enable.isError && (
-              <p style={{ color: 'var(--c-danger)', fontSize: 13 }}>
+              <p style={{ color: 'var(--unreachable)', fontSize: 13 }}>
                 {errorMessage(enable.error)}
               </p>
             )}

@@ -20,7 +20,7 @@ function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () => void 
   return (
     <div className="col" style={{ gap: 14 }}>
       <div className="row gap2" style={{ alignItems: 'center' }}>
-        <Glyph name="alert" size={18} style={{ color: 'var(--c-warn)' }} />
+        <Glyph name="alert" size={18} style={{ color: 'var(--warn)' }} />
         <span style={{ fontWeight: 600 }}>Save these recovery codes — they are shown only once.</span>
       </div>
       <p className="muted" style={{ fontSize: 13 }}>
@@ -29,8 +29,8 @@ function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () => void 
       </p>
       <div style={{
         display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 24px',
-        fontFamily: 'var(--font-mono, monospace)', fontSize: 14,
-        background: 'var(--c-surface-2)', borderRadius: 8, padding: '14px 18px',
+        fontFamily: 'var(--font-mono)', fontSize: 14,
+        background: 'var(--surface-2)', borderRadius: 8, padding: '14px 18px',
       }}>
         {codes.map((c) => (
           <span key={c} style={{ userSelect: 'all', letterSpacing: '0.05em' }}>{c}</span>
@@ -102,7 +102,7 @@ function EnrollSection() {
             {setup.isPending ? 'Generating…' : 'Enable two-factor authentication'}
           </button>
           {setup.isError && (
-            <p style={{ color: 'var(--c-danger)', fontSize: 13, marginTop: 8 }}>
+            <p style={{ color: 'var(--unreachable)', fontSize: 13, marginTop: 8 }}>
               {errorMessage(setup.error)}
             </p>
           )}
@@ -120,16 +120,16 @@ function EnrollSection() {
           />
 
           <div className="col" style={{ gap: 4 }}>
-            <span style={{ fontSize: 13, color: 'var(--c-muted)' }}>
+            <span style={{ fontSize: 13, color: 'var(--text-2)' }}>
               Or enter this secret key manually:
             </span>
             <span
               data-testid="totp-secret"
               style={{
-                fontFamily: 'var(--font-mono, monospace)',
+                fontFamily: 'var(--font-mono)',
                 fontSize: 14,
                 userSelect: 'all',
-                background: 'var(--c-surface-2)',
+                background: 'var(--surface-2)',
                 borderRadius: 6,
                 padding: '6px 10px',
                 display: 'inline-block',
@@ -164,7 +164,7 @@ function EnrollSection() {
             </button>
           </div>
           {enable.isError && (
-            <p style={{ color: 'var(--c-danger)', fontSize: 13 }}>
+            <p style={{ color: 'var(--unreachable)', fontSize: 13 }}>
               {errorMessage(enable.error)}
             </p>
           )}
@@ -206,8 +206,8 @@ function EnrolledSection() {
       <div className="col" style={{ gap: 6 }}>
         <span className="h2">Two-factor authentication</span>
         <div className="row gap2" style={{ alignItems: 'center' }}>
-          <Glyph name="check" size={16} style={{ color: 'var(--c-ok)' }} />
-          <span style={{ fontWeight: 600, color: 'var(--c-ok)' }}>2FA is enabled on your account.</span>
+          <Glyph name="check" size={16} style={{ color: 'var(--ok)' }} />
+          <span style={{ fontWeight: 600, color: 'var(--ok)' }}>2FA is enabled on your account.</span>
         </div>
         <p className="muted" style={{ fontSize: 13 }}>
           Your account is protected with an authenticator app.
@@ -262,7 +262,7 @@ function EnrolledSection() {
             </button>
           </div>
           {regen.isError && (
-            <p style={{ color: 'var(--c-danger)', fontSize: 13 }}>
+            <p style={{ color: 'var(--unreachable)', fontSize: 13 }}>
               {errorMessage(regen.error)}
             </p>
           )}
@@ -313,7 +313,7 @@ function EnrolledSection() {
             </button>
           </div>
           {disable.isError && (
-            <p style={{ color: 'var(--c-danger)', fontSize: 13 }}>
+            <p style={{ color: 'var(--unreachable)', fontSize: 13 }}>
               {errorMessage(disable.error)}
             </p>
           )}

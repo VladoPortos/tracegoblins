@@ -47,7 +47,7 @@ export function AdminUsers() {
               <span className="dim mono truncate" style={{ fontSize: 11.5 }}>{u.email}</span>
             </div>
             {!u.is_active && <span className="tag tag-needs-fix">Deactivated</span>}
-            <span className={`tag ${u.totp_enabled ? 'tag-ok' : 'tag-skip'}`} title={u.totp_enabled ? '2FA enabled' : '2FA disabled'}>
+            <span className={`tag ${u.totp_enabled ? 'tag-resolved' : 'tag-note'}`} title={u.totp_enabled ? '2FA enabled' : '2FA disabled'}>
               {u.totp_enabled ? '2FA on' : '2FA off'}
             </span>
             {u.totp_enabled && (
