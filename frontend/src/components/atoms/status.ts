@@ -9,4 +9,4 @@ export const STATUS: Record<Status, { label: string; cls: string }> = {
   failed:      { label: 'Failed',      cls: 'st-failed' },
 }
 export const isErr = (s: string): boolean => s === 'unreachable' || s === 'failed'
-export const stCls = (s: string): string => 'st-' + (s === 'skipped' ? 'skipped' : s)
+export const stCls = (s: string): string => 'st-' + s

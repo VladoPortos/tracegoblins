@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 
-const KEY = 'tg.drawerWidth'
+const KEY = 'tg:drawerWidth'
 const MIN = 320
 const MAX = 720
 const DEFAULT = 420
@@ -15,5 +15,5 @@ export function useDrawerWidth() {
     setWidth(clamped)
     localStorage.setItem(KEY, String(clamped))
   }, [])
-  return { width, set, MIN, MAX }
+  return { width, set }
 }

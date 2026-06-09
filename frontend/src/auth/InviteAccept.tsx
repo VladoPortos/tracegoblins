@@ -4,14 +4,14 @@ import { useQuery } from '@tanstack/react-query'
 import { AuthLayout } from './AuthLayout'
 import { Field } from '../components/atoms/Field'
 import { apiFetch, type InviteInfo } from '../api/client'
-import { useAcceptInvite } from '../api/queries'
+import { inviteKey, useAcceptInvite } from '../api/queries'
 import { FullScreenSpinner } from '../components/atoms/FullScreenSpinner'
 
 export function InviteAccept() {
   const { token = '' } = useParams()
   const nav = useNavigate()
   const info = useQuery<InviteInfo>({
-    queryKey: ['invite', token],
+    queryKey: inviteKey(token),
     queryFn: () => apiFetch<InviteInfo>(`/invites/${token}`),
     retry: false,
   })

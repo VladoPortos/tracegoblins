@@ -1,10 +1,9 @@
 import { SettingsLayout } from './SettingsLayout'
 import { Glyph } from '../components/atoms/Glyph'
-import { ACCENT_HUE, useTheme, type Density } from '../shell/ThemeProvider'
+import { ACCENT_HUE, useTheme } from '../shell/ThemeProvider'
 
 export function AppearanceSettings() {
-  const { theme, setTheme, accent, setAccent, density, setDensity } = useTheme()
-  const densities: Density[] = ['compact', 'regular', 'comfy']
+  const { theme, setTheme, accent, setAccent } = useTheme()
   return (
     <SettingsLayout>
       <div className="col" style={{ gap: 18 }}>
@@ -25,14 +24,6 @@ export function AppearanceSettings() {
               <button key={id} title={id} onClick={() => setAccent(id)} aria-label={`accent ${id}`}
                 style={{ width: 26, height: 26, borderRadius: 7, cursor: 'pointer', background: `oklch(0.6 0.17 ${h})`,
                          border: accent === id ? '2px solid var(--text)' : '2px solid var(--border)' }} />
-            ))}
-          </div>
-        </div>
-        <div>
-          <label className="field-label" style={{ marginBottom: 8 }}>Density</label>
-          <div className="seg">
-            {densities.map((d) => (
-              <button key={d} aria-pressed={density === d} onClick={() => setDensity(d)}>{d}</button>
             ))}
           </div>
         </div>

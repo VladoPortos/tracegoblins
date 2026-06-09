@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { SettingsLayout } from './SettingsLayout'
 import { Field } from '../components/atoms/Field'
 import { Avatar } from '../components/atoms/Avatar'
-import { Chip } from '../components/atoms/Badge'
 import { useMe } from '../api/queries'
 import { FullScreenSpinner } from '../components/atoms/FullScreenSpinner'
 
@@ -30,7 +29,7 @@ export function ProfileSettings() {
         <div>
           <label className="field-label">Teams</label>
           <div className="row gap2 wrap">
-            {u.teams.map((t) => <Chip key={t.id}>{t.name}{t.is_default ? ' · default' : ''}</Chip>)}
+            {u.teams.map((t) => <span className="chip" key={t.id}>{t.name}{t.is_default ? ' · default' : ''}</span>)}
           </div>
         </div>
         <div className="row" style={{ justifyContent: 'flex-end' }}>

@@ -8,6 +8,7 @@ export const meKey = ['auth', 'me'] as const
 export const setupKey = ['setup', 'status'] as const
 export const usersKey = ['admin', 'users'] as const
 export const teamsKey = ['admin', 'teams'] as const
+export const inviteKey = (token: string) => ['invite', token] as const
 
 export function useMe() {
   return useQuery<Me | null>({

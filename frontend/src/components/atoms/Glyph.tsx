@@ -43,7 +43,6 @@ export const ICONS: Record<string, (p: IconProps) => JSX.Element> = {
   copy: stroke('M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1', () => <rect x={9} y={9} width={11} height={11} rx={2} />),
   link: stroke(['M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1', 'M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1']),
   clock: stroke('M12 8v4l3 2', () => <circle cx={12} cy={12} r={8} />),
-  dots: stroke([], () => <><circle cx={5} cy={12} r={1.4} fill="currentColor" /><circle cx={12} cy={12} r={1.4} fill="currentColor" /><circle cx={19} cy={12} r={1.4} fill="currentColor" /></>),
   spinner: stroke('M12 3a9 9 0 1 0 9 9'),
   layers: stroke(['m12 3 9 5-9 5-9-5z', 'm3 13 9 5 9-5', 'm3 17 9 5 9-5']),
   grid: stroke([], () => <><rect x={4} y={4} width={7} height={7} rx={1.5} /><rect x={13} y={4} width={7} height={7} rx={1.5} /><rect x={4} y={13} width={7} height={7} rx={1.5} /><rect x={13} y={13} width={7} height={7} rx={1.5} /></>),

@@ -1,7 +1,3 @@
-import type { ReactNode } from 'react'
-export function Chip({ children, style }: { children: ReactNode; style?: React.CSSProperties }) {
-  return <span className="chip" style={style}>{children}</span>
-}
 import { STATUS } from './status'
 export function Badge({ status, count, withLabel = true }: { status: string; count?: number; withLabel?: boolean }) {
   const m = (STATUS as Record<string, { label: string; cls: string }>)[status]
