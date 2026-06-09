@@ -40,6 +40,7 @@ export function TopBar({ me }: { me: Me }) {
       </button>
       <div className="row gap1" style={{ marginLeft: 8 }}>
         {navItem('/', 'Logs', 'inbox', loc.pathname === '/')}
+        {navLink('/analytics', 'Analytics', 'chart', loc.pathname.startsWith('/analytics'))}
         {navLink('/kb', 'Knowledge base', 'sparkle', loc.pathname.startsWith('/kb'))}
         {me.role === 'admin' && navItem('/admin/users', 'Admin', 'users', loc.pathname.startsWith('/admin'))}
       </div>

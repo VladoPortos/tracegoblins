@@ -7,6 +7,7 @@ import { InviteAccept } from './auth/InviteAccept'
 import { ChangePassword } from './auth/ChangePassword'
 import { MfaSetupRequired } from './auth/MfaSetupRequired'
 import { Dashboard } from './dashboard/Dashboard'
+import { AnalyticsView } from './analytics/AnalyticsView'
 import { AnalysisView } from './analysis/AnalysisView'
 import { KbBrowse } from './kb/KbBrowse'
 import { ProfileSettings } from './settings/ProfileSettings'
@@ -59,6 +60,7 @@ export function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
           <Route index element={<Dashboard />} />
+          <Route path="analytics" element={<AnalyticsView />} />
           <Route path="runs/:id" element={<AnalysisView />} />
           <Route path="kb" element={<KbBrowse />} />
           <Route path="settings" element={<ProfileSettings />} />

@@ -55,6 +55,7 @@ export const ICONS: Record<string, (p: IconProps) => JSX.Element> = {
   trash:  stroke(['M4 7h16', 'M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2', 'M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13', 'M10 11v6M14 11v6']),
   expand: stroke(['M8 3H5a2 2 0 0 0-2 2v3', 'M21 8V5a2 2 0 0 0-2-2h-3', 'M3 16v3a2 2 0 0 0 2 2h3', 'M16 21h3a2 2 0 0 0 2-2v-3']),
   shield: stroke('M12 2 3 6.5v5c0 4.7 3.8 9.1 9 10.5 5.2-1.4 9-5.8 9-10.5v-5z'),
+  chart:  stroke(['M5 20v-6', 'M12 20v-11', 'M19 20V4']),
 }
 
 export function Glyph({ name, ...rest }: { name: keyof typeof ICONS | string } & IconProps) {
