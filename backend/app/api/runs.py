@@ -15,7 +15,7 @@ from app.api.deps import CurrentUser, DbSession, GatedUser
 from app.api.http_utils import client_ip
 from app.api.kb_schemas import KbSuggestionOut
 from app.api.validation import parse_uuid_or_422, resolve_team_or_422
-from app.api.runs_schemas import FacetController, FacetOrg, FacetsOut, RunCreated, RunDetail, RunList, TaskFull, TaskLean
+from app.api.runs_schemas import FacetController, FacetOrg, FacetsOut, RunCreated, RunDetail, RunDiffOut, RunList, TaskFull, TaskLean
 from app.models import Annotation, AwxController, Comment, ControllerTeam, KbOccurrence, KbSignature, Run, RunRaw, RunShare, Task, Team, TeamMember, User
 from app.services.audit import write_audit
 from app.services.notifications import create_mention_notifications, create_share_notifications
@@ -23,6 +23,7 @@ from app.services.collab_query import annotation_to_out, comment_to_out, resolve
 from app.services.collab_validate import validate_links, validate_tags
 from app.services.visibility import is_run_visible, kb_visibility_cond, my_team_ids
 from app.services.ingestion import MAX_UPLOAD_BYTES, ingest_upload
+from app.services.run_diff import diff_tasks, find_baseline, recap_newly_unreachable
 from app.services.runs_query import run_to_card, run_to_detail, task_to_full, task_to_lean
 from app.kb.signature import extract_signature
 from app.kb.service import visible_occurrence_count
@@ -432,6 +433,49 @@ async def get_run(run: VisibleRun, db: DbSession):
         ctrl = await db.get(AwxController, run.controller_id)
         controller_name = ctrl.name if ctrl is not None else None
     return run_to_detail(run, controller_name=controller_name)
+
+
+def _diff_tasks_stmt(run_id: uuid.UUID):
+    """Lean column select for diffing — never pulls the heavy output/error TEXT."""
+    return (
+        select(Task.seq, Task.play_name, Task.name, Task.hosts, Task.duration_s)
+        .where(Task.run_id == run_id)
+        .order_by(Task.seq)
+    )
+
+
+@router.get("/{run_id}/diff", response_model=RunDiffOut)
+async def get_run_diff(run: VisibleRun, user: CurrentUser, db: DbSession):
+    """Diff this run against its last green baseline (same template, older, visible to U)."""
+    empty = dict(newly_failing=[], fixed=[], still_failing=[], added_count=0,
+                 removed_count=0, hosts_newly_unreachable=[], duration_delta_s=None,
+                 slowest_changes=[])
+    if run.template_name is None:
+        return RunDiffOut(baseline=None, reason="no_template", **empty)
+    baseline = await find_baseline(db, run, user)
+    if baseline is None:
+        return RunDiffOut(baseline=None, reason="no_green_run", **empty)
+
+    controller_name = None
+    if baseline.controller_id is not None:
+        ctrl = await db.get(AwxController, baseline.controller_id)
+        controller_name = ctrl.name if ctrl is not None else None
+
+    cur_tasks = (await db.execute(_diff_tasks_stmt(run.id))).all()
+    base_tasks = (await db.execute(_diff_tasks_stmt(baseline.id))).all()
+    parts = diff_tasks(cur_tasks, base_tasks)
+
+    duration_delta_s = None
+    if run.elapsed is not None and baseline.elapsed is not None:
+        duration_delta_s = run.elapsed - baseline.elapsed
+
+    return RunDiffOut(
+        baseline=run_to_card(baseline, controller_name=controller_name),
+        reason=None,
+        hosts_newly_unreachable=recap_newly_unreachable(run.recap, baseline.recap),
+        duration_delta_s=duration_delta_s,
+        **parts,
+    )
 
 
 @router.get("/{run_id}/tasks", response_model=list[TaskLean])

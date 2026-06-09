@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -72,6 +73,37 @@ class TaskFull(TaskLean):
     output: str | None
     error: str | None
     included_path: str | None
+
+
+class DiffEntry(BaseModel):
+    play_name: str
+    task_name: str
+    host: str
+    before: str | None       # status in baseline; None = absent in baseline
+    after: str | None        # status in current run; None = absent now
+    seq: int | None          # seq in CURRENT run when present (drawer jump), else baseline seq
+
+
+class DurationDelta(BaseModel):
+    play_name: str
+    task_name: str
+    seq: int                 # current-run seq
+    before_s: float
+    after_s: float
+    delta_s: float
+
+
+class RunDiffOut(BaseModel):
+    baseline: RunCard | None
+    reason: Literal["no_template", "no_green_run"] | None  # set when baseline is None
+    newly_failing: list[DiffEntry]
+    fixed: list[DiffEntry]
+    still_failing: list[DiffEntry]
+    added_count: int
+    removed_count: int
+    hosts_newly_unreachable: list[str]
+    duration_delta_s: float | None
+    slowest_changes: list[DurationDelta]
 
 
 class FacetOrg(BaseModel):
