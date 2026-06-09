@@ -41,13 +41,19 @@ function throwApiError(status: number, data: unknown, fallbackText: string): nev
 
 const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 
+// CSRF double-submit names. These MUST match the backend constants (app/core/config.py
+// csrf_cookie_name / csrf_header_name), which are intentionally NOT env-overridable precisely
+// because this built-in SPA hard-codes them and has no channel to learn an overridden name.
+const CSRF_COOKIE = 'csrf_token'
+const CSRF_HEADER = 'X-CSRF-Token'
+
 export async function apiFetch<T>(path: string, init: RequestInit & { method?: string } = {}): Promise<T> {
   const method = (init.method ?? 'GET').toUpperCase()
   const headers = new Headers(init.headers)
   if (init.body != null && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
   if (MUTATING.has(method)) {
-    const csrf = readCookie('csrf_token')
-    if (csrf) headers.set('X-CSRF-Token', csrf)
+    const csrf = readCookie(CSRF_COOKIE)
+    if (csrf) headers.set(CSRF_HEADER, csrf)
   }
   const res = await fetch('/api' + path, { ...init, method, headers, credentials: 'include' })
   if (res.status === 204) return undefined as T
@@ -106,8 +112,8 @@ export interface RunListResponse { items: RunCard[]; total: number }
 // Multipart upload: do NOT set Content-Type (browser adds the boundary); reuse CSRF + credentials.
 export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
   const headers = new Headers()
-  const csrf = readCookie('csrf_token')
-  if (csrf) headers.set('X-CSRF-Token', csrf)
+  const csrf = readCookie(CSRF_COOKIE)
+  if (csrf) headers.set(CSRF_HEADER, csrf)
   const res = await fetch('/api' + path, { method: 'POST', body: form, headers, credentials: 'include' })
   if (res.status === 204) return undefined as T
   const text = await res.text()

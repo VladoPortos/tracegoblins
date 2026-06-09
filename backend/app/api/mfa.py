@@ -85,11 +85,13 @@ async def enable(data: CodeIn, request: Request, user: CurrentUser, db: DbSessio
 def _mfa_mgmt_keys(request: Request, user) -> tuple[str, str]:
     """Rate-limit keys for the authenticated 2FA-management surface (disable / regenerate).
 
-    Namespaced 'mfa-mgmt' so it is independent of the pre-session login-verify budget, but
-    shares the same brute-force ceiling — a session-only attacker must not be able to grind
-    the 6-digit code to remove 2FA or mint fresh recovery codes."""
+    BOTH keys are 'mfa-mgmt' namespaced so this surface is fully independent of the
+    pre-session login-verify budget — its per-IP and per-user keys must not collide with
+    login_verify's ('mfa-verify-ip:'/'mfa:'), or a few failed management attempts would lock
+    out 2FA *login* for every user sharing the NAT/IP. It keeps the same brute-force ceiling
+    (a session-only attacker still cannot grind the 6-digit code to remove 2FA or mint codes)."""
     ip = client_ip(request)
-    return (f"ip:{ip or 'unknown'}", f"mfa-mgmt:{user.id}")
+    return (f"mfa-mgmt-ip:{ip or 'unknown'}", f"mfa-mgmt:{user.id}")
 
 
 @router.post("/disable", status_code=204)
@@ -170,7 +172,9 @@ async def login_verify(
         raise bad
 
     ip = client_ip(request)
-    keys = (f"ip:{ip or 'unknown'}", f"mfa:{pending.user_id}")
+    # 'mfa-verify-ip:' namespace keeps this pre-session login budget separate from the
+    # authenticated mgmt surface (_mfa_mgmt_keys) so neither can lock/reset the other's IP key.
+    keys = (f"mfa-verify-ip:{ip or 'unknown'}", f"mfa:{pending.user_id}")
     decision = await mfa_verify_limiter.check(*keys)
     if not decision.allowed:
         raise HTTPException(

@@ -20,6 +20,15 @@ def is_safe_url(value: str) -> bool:
 
 
 def is_http_url(value: str) -> bool:
-    """True for absolute http(s) URLs — controller base URLs (no mailto, no length cap)."""
-    parts = urlsplit(value.strip())
+    """True for absolute http(s) URLs — controller base URLs (no mailto, no length cap).
+
+    Guards urlsplit like is_safe_url does, and forces port evaluation so a malformed
+    URL ('http://[::1', 'http://host:bad', out-of-range port) returns False (→ clean 422)
+    instead of escaping as a ValueError or surviving to httpx and raising InvalidURL (→ 500).
+    """
+    try:
+        parts = urlsplit(value.strip())
+        _ = parts.port  # raises ValueError on a non-numeric / out-of-range port
+    except ValueError:
+        return False
     return parts.scheme in {"http", "https"} and bool(parts.netloc)

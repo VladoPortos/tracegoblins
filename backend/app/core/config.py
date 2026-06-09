@@ -1,5 +1,5 @@
 from functools import lru_cache
-from typing import Literal
+from typing import ClassVar, Literal
 
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -21,8 +21,12 @@ class Settings(BaseSettings):
     cookie_secure: bool = True
     cookie_samesite: Literal["lax", "strict", "none"] = "lax"  # validated → no malformed Set-Cookie
     session_cookie_name: str = "tg_session"
-    csrf_cookie_name: str = "csrf_token"
-    csrf_header_name: str = "X-CSRF-Token"
+    # CSRF cookie/header names are NOT env-overridable: the built-in React SPA hard-codes
+    # 'csrf_token' / 'X-CSRF-Token' (frontend/src/api/client.ts) and has no channel to learn an
+    # overridden name, so an env override would silently 403 every mutation. ClassVar keeps them
+    # off the BaseSettings field set (no env binding) while still readable as settings.csrf_*.
+    csrf_cookie_name: ClassVar[str] = "csrf_token"
+    csrf_header_name: ClassVar[str] = "X-CSRF-Token"
 
     # Session TTLs
     session_idle_minutes: int = 120

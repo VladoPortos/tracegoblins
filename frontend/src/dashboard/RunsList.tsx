@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useInfiniteRuns, type RunFilters } from '../api/runs'
 import { useRunFilters } from '../api/runFilters'
 import { useSyncController, useControllers, type Controller } from '../api/controllers'
@@ -87,6 +87,16 @@ function GroupedTeamCards({ items, controllers, onSync, syncing }: {
 export function RunsList({ scope = 'mine', onUpload }: { scope?: 'mine' | 'shared' | 'team'; onUpload?: () => void }) {
   const { view, setView, sort, dir, setSort, src, q, setQ, filters, setFilters } = useLogsState()
 
+  // Debounce the search box and drive it SERVER-side (folded into the query below) so every page
+  // is filtered before pagination. A client-only filter over already-loaded pages reported false
+  // "no matches" for older runs (the empty result also unmounted the infinite-scroll sentinel).
+  const [qDebounced, setQDebounced] = useState(q)
+  useEffect(() => {
+    const t = setTimeout(() => setQDebounced(q), 250)
+    return () => clearTimeout(t)
+  }, [q])
+  const qTrim = qDebounced.trim()
+
   // Rich filters + source chips are team-scope only; never let a stored team filter narrow
   // mine/shared (which have no filter bar to reveal or clear it).
   const richFilters: RunFilters = scope === 'team' ? filters : {}
@@ -95,7 +105,7 @@ export function RunsList({ scope = 'mine', onUpload }: { scope?: 'mine' | 'share
     ? (effSrc === 'uploads' ? { ...richFilters, source: 'upload' } : { ...richFilters, controller: effSrc })
     : richFilters
 
-  const runs = useInfiniteRuns(scope, effFilters, sort, dir)
+  const runs = useInfiniteRuns(scope, qTrim ? { ...effFilters, search: qTrim } : effFilters, sort, dir)
   const facetsQuery = useRunFilters(scope === 'team' ? 'team' : scope === 'shared' ? 'shared' : 'mine')
   const syncCtl = useSyncController()
   const controllersQuery = useControllers({ enabled: scope === 'team' })
@@ -127,9 +137,9 @@ export function RunsList({ scope = 'mine', onUpload }: { scope?: 'mine' | 'share
   const empty = EMPTY[scope]
   const facets = facetsQuery.data ?? { organizations: [], templates: [], controllers: [], statuses: [], launch_types: [], users: [] }
 
-  // Client-side quick narrowing on top of server-side filters.
-  const items = all.filter((r) => !q.trim() ||
-    ((r.template_name || '') + ' ' + (r.job_id || '') + ' ' + (r.team_name || '') + ' ' + r.recap.map((x) => x.host).join(' ')).toLowerCase().includes(q.toLowerCase()))
+  // Search is applied server-side (folded into the query above), so the loaded pages already are
+  // the matching set across ALL pages — no client-side re-filtering (that caused false negatives).
+  const items = all
 
   const header = (
     <div className="col" style={{ gap: 12 }}>
@@ -139,7 +149,7 @@ export function RunsList({ scope = 'mine', onUpload }: { scope?: 'mine' | 'share
         <div className="row gap2" data-testid="runs-count" style={{ alignItems: 'baseline' }}>
           <span style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-.01em' }}>{total.toLocaleString()}</span>
           <span className="muted" style={{ fontSize: 13 }}>
-            {total === 1 ? 'run' : 'runs'}{q.trim() ? ` · ${items.length} shown` : ''}
+            {total === 1 ? 'run' : 'runs'}{qTrim ? ' matching' : ''}
           </span>
         </div>
         <div className="grow" />

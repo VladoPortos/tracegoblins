@@ -138,6 +138,16 @@ async def sync_controller(db: AsyncSession, controller: AwxController) -> SyncRe
     skipped = 0
     since = controller.last_synced_job_id or 0
     max_id = controller.last_synced_job_id or 0
+    pending_floor: int | None = None  # lowest non-terminal job id seen this sync
+
+    def _durable_cursor() -> int:
+        """Cursor to persist: never advance to/past a skipped non-terminal job (so it is
+        actually re-listed next sync instead of being leapfrogged by a higher-id terminal job),
+        and never rewind below the previous cursor (retention + resumability need forward-only)."""
+        if pending_floor is None:
+            return max_id
+        return max(since, min(max_id, pending_floor - 1))
+
     try:
         controller.last_sync_status = "running"
         controller.sync_total = None
@@ -155,9 +165,12 @@ async def sync_controller(db: AsyncSession, controller: AwxController) -> SyncRe
                 # Belt-and-suspenders: skip any job that is not in a terminal state
                 # (successful/failed/error/canceled). AWX rarely returns non-terminal
                 # jobs through a finished-filter query, but a 'new' job with no events
-                # could slip through. Do NOT advance the cursor (max_id) so it is
-                # re-evaluated on the next sync rather than permanently skipped.
+                # could slip through. Record it as the cursor floor so the persisted cursor is
+                # held below this id (see _durable_cursor) — otherwise a higher-id terminal job
+                # later in this ascending window would advance the cursor past it and it would be
+                # permanently lost instead of re-evaluated on the next sync.
                 if job.status not in _TERMINAL_STATUSES:
+                    pending_floor = job.id if pending_floor is None else min(pending_floor, job.id)
                     controller.sync_done = (controller.sync_done or 0) + 1
                     await db.commit()
                     continue
@@ -222,7 +235,7 @@ async def sync_controller(db: AsyncSession, controller: AwxController) -> SyncRe
                 max_id = max(max_id, job.id)
 
                 # durable per-job cursor -> sync is resumable after a crash/timeout
-                controller.last_synced_job_id = max_id
+                controller.last_synced_job_id = _durable_cursor()
                 controller.sync_done = (controller.sync_done or 0) + 1
                 await db.commit()
 
@@ -233,7 +246,8 @@ async def sync_controller(db: AsyncSession, controller: AwxController) -> SyncRe
                 except Exception:
                     logger.exception("kb match_run failed for awx run %s", run.id)
 
-        controller.last_synced_job_id = max_id
+        final_cursor = _durable_cursor()
+        controller.last_synced_job_id = final_cursor
         controller.last_sync_status = "ok"
         controller.last_sync_at = datetime.now(timezone.utc)
         controller.last_sync_error = None
@@ -245,12 +259,12 @@ async def sync_controller(db: AsyncSession, controller: AwxController) -> SyncRe
             db, action="awx_sync",
             target_type="awx_controller", target_id=str(controller.id),
             metadata={"imported": imported, "skipped": skipped,
-                      "last_synced_job_id": max_id},
+                      "last_synced_job_id": final_cursor},
         )
         await db.commit()
         return SyncResult(
             controller_id=str(controller.id), status="ok",
-            imported=imported, skipped=skipped, last_synced_job_id=max_id,
+            imported=imported, skipped=skipped, last_synced_job_id=final_cursor,
         )
     except (AwxError, TokenCryptoError) as e:
         # The in-flight job txn is rolled back; refresh `controller` (expired by the rollback)

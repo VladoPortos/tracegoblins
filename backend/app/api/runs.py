@@ -7,7 +7,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile, status
 from fastapi.responses import PlainTextResponse
-from sqlalchemy import BigInteger, and_, case, cast, func, nulls_last, or_, select
+from sqlalchemy import BigInteger, and_, case, cast, func, nulls_last, or_, select, text
 from sqlalchemy.exc import IntegrityError
 
 from app.api.collab_schemas import AnnotationCreate, AnnotationOut, CommentCreate, CommentOut, MentionableUser, ShareCreate, ShareOut
@@ -231,7 +231,29 @@ def _runs_extra_conditions(
         extra.append(when <= launched_before)
     if search:
         like = f"%{search}%"
-        extra.append(or_(Run.template_name.ilike(like), Run.awx_user.ilike(like)))
+        # Search is SERVER-side so every page is filtered before pagination — a client-only filter
+        # over already-loaded pages reports false "no matches" for older runs. Cover the fields the
+        # dashboard search box advertises: template, user, job id, org, workflow, team, recap host.
+        recap_array = case(
+            (func.jsonb_typeof(Run.recap) == "array", Run.recap),
+            else_=text("'[]'::jsonb"),
+        )
+        host_match = (
+            select(1)
+            .select_from(func.jsonb_array_elements(recap_array).table_valued("value"))
+            .where(text("value ->> 'host' ILIKE :host_like").bindparams(host_like=like))
+            .correlate(Run)
+            .exists()
+        )
+        extra.append(or_(
+            Run.template_name.ilike(like),
+            Run.awx_user.ilike(like),
+            Run.awx_job_id.ilike(like),
+            Run.awx_organization_name.ilike(like),
+            Run.awx_workflow_name.ilike(like),
+            Run.team_id.in_(select(Team.id).where(Team.name.ilike(like))),
+            host_match,
+        ))
     return extra
 
 
