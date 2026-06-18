@@ -98,8 +98,8 @@ def diff_tasks(cur_tasks: Sequence[Any], base_tasks: Sequence[Any]) -> dict:
     """Pure classification of current-vs-baseline tasks.
 
     Returns {newly_failing, fixed, still_failing, added_count, removed_count,
-    slowest_changes}. Entry lists are sorted by current-run seq (baseline-only
-    entries last) and capped at MAX_ENTRIES.
+    slowest_changes}. Entry lists are sorted by current-run seq, then host (a total
+    order so multi-host rows of one task are stable), and capped at MAX_ENTRIES.
     """
     cur = _expand_hosts(cur_tasks)
     base = _expand_hosts(base_tasks)
@@ -132,8 +132,10 @@ def diff_tasks(cur_tasks: Sequence[Any], base_tasks: Sequence[Any]) -> dict:
             continue
 
         # Every bucketed entry reaches here via after_status in FAIL or GREEN_HOST, both of
-        # which require after is not None, so the current-run seq is always available.
-        bucket.append(((0, after[1]), DiffEntry(
+        # which require after is not None, so the current-run seq is always available. host is
+        # the final sort tiebreaker so multi-host rows of one task have a deterministic order
+        # (the cur.keys()|base.keys() set union above is otherwise hash-ordered).
+        bucket.append(((0, after[1], host), DiffEntry(
             play_name=play_name, task_name=task_name, host=host,
             before=before_status, after=after_status, seq=after[1],
         )))

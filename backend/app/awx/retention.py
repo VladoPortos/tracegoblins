@@ -36,9 +36,10 @@ async def run_retention_sweep(db: AsyncSession | None = None) -> int:
     try:
         cutoff = utcnow() - timedelta(days=days)
         # Age by the job's ACTUAL run time (log_time), falling back to import time when AWX
-        # omitted it — matching how the rest of the app computes "when a run happened"
-        # (runs.py uses coalesce(log_time, created_at)). Using created_at alone would keep a
-        # freshly-imported but ancient job around for a full retention window after import.
+        # omitted it. This DELIBERATELY differs from the effective-ordering timestamp
+        # (run_time.run_when_expr = coalesce(launched_at, log_time, created_at)): retention
+        # ages a job by when it ran/finished, not when it launched. Using created_at alone
+        # would keep a freshly-imported but ancient job around for a full window after import.
         run_age = func.coalesce(Run.log_time, Run.created_at)
         total = 0
         while True:

@@ -73,6 +73,8 @@ async def template_stats(db: AsyncSession, user: User, *, days: int) -> list[dic
             "recent": [r.status for r in runs[-SPARK_N:]],
             "recent_ids": [str(r.id) for r in runs[-SPARK_N:]],
         })
-    # Worst first; template name as final tiebreaker for deterministic ordering.
-    out.sort(key=lambda d: (d["success_rate"], -d["runs"], d["template_name"]))
+    # Worst first; last_run_id (unique per group) is the final tiebreaker so ordering is
+    # total even when two rows share a label — e.g. null-named runs and a real template
+    # literally named "(untitled)" both render as "(untitled)" but stay deterministically ordered.
+    out.sort(key=lambda d: (d["success_rate"], -d["runs"], d["template_name"], d["last_run_id"]))
     return out
