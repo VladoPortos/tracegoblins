@@ -105,9 +105,9 @@ def diff_tasks(cur_tasks: Sequence[Any], base_tasks: Sequence[Any]) -> dict:
     base = _expand_hosts(base_tasks)
 
     # (sort_key, entry) pairs; sort_key puts current-run rows first, ordered by seq.
-    newly_failing: list[tuple[tuple[int, int], DiffEntry]] = []
-    still_failing: list[tuple[tuple[int, int], DiffEntry]] = []
-    fixed: list[tuple[tuple[int, int], DiffEntry]] = []
+    newly_failing: list[tuple[tuple[int, int, str], DiffEntry]] = []
+    still_failing: list[tuple[tuple[int, int, str], DiffEntry]] = []
+    fixed: list[tuple[tuple[int, int, str], DiffEntry]] = []
     added_count = 0
     removed_count = 0
 
@@ -140,7 +140,7 @@ def diff_tasks(cur_tasks: Sequence[Any], base_tasks: Sequence[Any]) -> dict:
             before=before_status, after=after_status, seq=after[1],
         )))
 
-    def _finalize(pairs: Iterable[tuple[tuple[int, int], DiffEntry]]) -> list[DiffEntry]:
+    def _finalize(pairs: Iterable[tuple[tuple[int, int, str], DiffEntry]]) -> list[DiffEntry]:
         return [e for _, e in sorted(pairs, key=lambda p: p[0])][:MAX_ENTRIES]
 
     # Task-level duration deltas (both sides need a real duration_s).

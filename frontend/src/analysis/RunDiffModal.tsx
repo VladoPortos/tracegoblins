@@ -26,7 +26,7 @@ function EntryRow({ entry, dot, onJump }: { entry: DiffEntry; dot: string; onJum
       {entry.before ?? '∅'}<span style={{ opacity: 0.5 }}>{' → '}</span>{entry.after ?? '∅'}
     </span>
   )
-  if (onJump && entry.seq != null) {
+  if (onJump) {
     const seq = entry.seq
     return (
       <button type="button" className="row gap2" onClick={() => onJump(seq)}

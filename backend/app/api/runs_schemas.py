@@ -81,7 +81,7 @@ class DiffEntry(BaseModel):
     host: str
     before: str | None       # status in baseline; None = absent in baseline
     after: str | None        # status in current run; None = absent now
-    seq: int | None          # current-run seq (drawer-jump target); always set for emitted entries
+    seq: int                 # current-run seq (drawer-jump target) — always present on emitted entries
 
 
 class DurationDelta(BaseModel):

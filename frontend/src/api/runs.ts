@@ -12,7 +12,7 @@ export interface DiffEntry {
   play_name: string; task_name: string; host: string
   before: string | null   // status in baseline; null = absent in baseline
   after: string | null    // status in current run; null = absent now
-  seq: number | null      // current-run seq (drawer-jump target); always set for emitted entries
+  seq: number             // current-run seq (drawer-jump target) — always present on emitted entries
 }
 export interface DurationDelta {
   play_name: string; task_name: string; seq: number
