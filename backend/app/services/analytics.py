@@ -3,11 +3,12 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.clock import utcnow
 from app.models import Run, User
+from app.services.run_time import run_when_expr
 from app.services.visibility import run_visible_cond
 
 FAIL_STATUSES = {"failed", "unreachable"}
@@ -21,18 +22,21 @@ async def template_stats(db: AsyncSession, user: User, *, days: int) -> list[dic
     scale (D8), and streak/flip/recovery logic is much clearer in Python than SQL.
     """
     cond = await run_visible_cond(db, user)
-    # Effective run timestamp — mirrors runs.py::_when_expr() (prefer AWX launch,
-    # then finish/log, then import). Kept inline so services don't import API modules.
-    when = func.coalesce(Run.launched_at, Run.log_time, Run.created_at)
+    # Effective run timestamp (prefer AWX launch, then finish/log, then import) — the one
+    # ordering rule lives in app.services.run_time. created_at breaks effective-time ties so
+    # the oldest→newest sequence (and thus streak/flip/recovery math) is deterministic.
+    when = run_when_expr()
     rows = (await db.execute(
         select(Run.id, Run.template_name, Run.status, Run.elapsed, when.label("when"))
         .where(cond, when >= utcnow() - timedelta(days=days))
-        .order_by(when.asc(), Run.id.asc())
+        .order_by(when.asc(), Run.created_at.asc(), Run.id.asc())
     )).all()
 
-    groups: dict[str, list] = defaultdict(list)
+    # Group by the real template name; None/"" share the null bucket. A real template
+    # literally named "(untitled)" stays separate (the display label is applied at output).
+    groups: dict[str | None, list] = defaultdict(list)
     for r in rows:
-        groups[r.template_name or "(untitled)"].append(r)
+        groups[r.template_name or None].append(r)
 
     out: list[dict] = []
     for name, runs in groups.items():
@@ -54,7 +58,7 @@ async def template_stats(db: AsyncSession, user: User, *, days: int) -> list[dic
                 recoveries.append((r.when - first_fail).total_seconds())
                 first_fail = None
         out.append({
-            "template_name": name,
+            "template_name": name or "(untitled)",
             "runs": len(runs), "failed": failed, "succeeded": len(runs) - failed,
             "success_rate": (len(runs) - failed) / len(runs),
             "current_streak": streak,

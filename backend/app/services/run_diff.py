@@ -8,15 +8,20 @@ from __future__ import annotations
 
 from typing import Any, Iterable, Sequence
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.runs_schemas import DiffEntry, DurationDelta
 from app.models import Run, User
+from app.services.run_time import run_effective_when, run_when_expr
 from app.services.visibility import run_visible_cond
 
 FAIL = {"failed", "unreachable"}
 GREEN = ("ok", "changed")
+# Host-level "actually passed": a real fix is ok/changed only. A host that goes
+# failed -> skipped/included did NOT pass (it stopped running), so it must not be
+# advertised as fixed. Derived from GREEN so the one ordering rule lives in one place.
+GREEN_HOST = frozenset(GREEN)
 MAX_ENTRIES = 200          # hard cap per entry list — never unbounded
 MIN_DURATION_DELTA_S = 5.0  # ignore sub-5s task duration noise
 TOP_SLOWEST = 5
@@ -27,11 +32,13 @@ async def find_baseline(db: AsyncSession, run: Run, user: User) -> Run | None:
 
     Effective time is coalesce(launched_at, log_time, created_at) on both sides.
     Visibility uses the canonical single-viewer predicate (A1: admin grants nothing).
+    Effective-time ties break toward the more recently ingested run (created_at desc),
+    with Run.id as the final deterministic fallback, so the baseline is reproducible.
     """
     if run.template_name is None:
         return None
-    run_when = run.launched_at or run.log_time or run.created_at
-    when = func.coalesce(Run.launched_at, Run.log_time, Run.created_at)
+    run_when = run_effective_when(run)
+    when = run_when_expr()
     visible = await run_visible_cond(db, user)
     return await db.scalar(
         select(Run)
@@ -42,7 +49,7 @@ async def find_baseline(db: AsyncSession, run: Run, user: User) -> Run | None:
             Run.status.in_(GREEN),
             when < run_when,
         )
-        .order_by(when.desc(), Run.id.asc())
+        .order_by(when.desc(), Run.created_at.desc(), Run.id.asc())
         .limit(1)
     )
 
@@ -52,6 +59,13 @@ def _expand_hosts(tasks: Sequence[Any]) -> dict[tuple[str, str, str, int], tuple
 
     occurrence_idx counts duplicate (play, task, host) keys in seq order so repeated
     task names (loops/includes) align positionally instead of colliding.
+
+    Heuristic limitation: there is no stable cross-run identity for a loop/include
+    iteration, so alignment is purely positional. If a repeated task's occurrence
+    *count* differs between baseline and current, the surplus occurrences pair with
+    nothing (surfacing as spurious added/removed), and a shifted failing iteration
+    can produce a paired spurious newly_failing + fixed. Acceptable for an advisory
+    diff at design scale; revisit only if per-iteration identity is ever recorded.
     """
     counts: dict[tuple[str, str, str], int] = {}
     out: dict[tuple[str, str, str, int], tuple[str, int]] = {}
@@ -65,7 +79,11 @@ def _expand_hosts(tasks: Sequence[Any]) -> dict[tuple[str, str, str, int], tuple
 
 
 def _expand_durations(tasks: Sequence[Any]) -> dict[tuple[str, str, int], tuple[float | None, int]]:
-    """Task-level (NOT per-host) expansion: (play, task, occurrence_idx) -> (duration_s, seq)."""
+    """Task-level (NOT per-host) expansion: (play, task, occurrence_idx) -> (duration_s, seq).
+
+    Positional occurrence_idx, same heuristic limitation as _expand_hosts: a loop/include
+    whose iteration count changes between runs can misalign duration deltas.
+    """
     counts: dict[tuple[str, str], int] = {}
     out: dict[tuple[str, str, int], tuple[float | None, int]] = {}
     for t in tasks:
@@ -102,20 +120,22 @@ def diff_tasks(cur_tasks: Sequence[Any], base_tasks: Sequence[Any]) -> dict:
 
         if after_status in FAIL:
             bucket = still_failing if before_status in FAIL else newly_failing
-        elif before_status in FAIL and after_status is not None:
-            bucket = fixed
+        elif before_status in FAIL and after_status in GREEN_HOST:
+            bucket = fixed       # only a genuine pass (ok/changed) counts as a fix
         else:
+            # A failed/unreachable host that is now skipped/included lands here: it did
+            # not pass, so it is neither fixed nor failing. Only real add/remove is counted.
             if before is None and after_status is not None:
                 added_count += 1       # appeared, non-failing
             elif after is None:
                 removed_count += 1     # present in baseline, absent now (any status)
             continue
 
-        sort_key = (0, after[1]) if after is not None else (1, before[1])
-        bucket.append((sort_key, DiffEntry(
+        # Every bucketed entry reaches here via after_status in FAIL or GREEN_HOST, both of
+        # which require after is not None, so the current-run seq is always available.
+        bucket.append(((0, after[1]), DiffEntry(
             play_name=play_name, task_name=task_name, host=host,
-            before=before_status, after=after_status,
-            seq=after[1] if after is not None else before[1],
+            before=before_status, after=after_status, seq=after[1],
         )))
 
     def _finalize(pairs: Iterable[tuple[tuple[int, int], DiffEntry]]) -> list[DiffEntry]:

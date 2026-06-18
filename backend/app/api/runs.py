@@ -24,6 +24,7 @@ from app.services.collab_validate import validate_links, validate_tags
 from app.services.visibility import is_run_visible, kb_visibility_cond, my_team_ids
 from app.services.ingestion import MAX_UPLOAD_BYTES, ingest_upload
 from app.services.run_diff import diff_tasks, find_baseline, recap_newly_unreachable
+from app.services.run_time import run_when_expr
 from app.services.runs_query import run_to_card, run_to_detail, task_to_full, task_to_lean
 from app.kb.signature import extract_signature
 from app.kb.service import visible_occurrence_count
@@ -161,8 +162,12 @@ async def create_run(
 
 
 def _when_expr():
-    """The run's effective timestamp: prefer AWX launch, then finish/log, then import."""
-    return func.coalesce(Run.launched_at, Run.log_time, Run.created_at)
+    """The run's effective timestamp: prefer AWX launch, then finish/log, then import.
+
+    Thin alias over app.services.run_time.run_when_expr so the coalesce ordering rule
+    is defined in exactly one place; kept as a local name for the existing call sites.
+    """
+    return run_when_expr()
 
 
 def _job_id_num():

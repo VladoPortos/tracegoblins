@@ -125,7 +125,8 @@ export function AnalyticsView() {
               <span style={cellRight}>Avg duration</span>
               <span style={cellRight}>Recovery</span>
             </div>
-            {items.map((s) => <StatRow key={s.template_name} s={s} />)}
+            {/* index-suffixed: a null template and a real "(untitled)" share a display label */}
+            {items.map((s, i) => <StatRow key={s.template_name + '|' + i} s={s} />)}
           </div>
         </div>
       )}
