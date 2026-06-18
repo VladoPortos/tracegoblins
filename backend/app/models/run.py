@@ -63,6 +63,10 @@ class Run(Base):
         Index("ix_runs_awx_user", "awx_user"),
         Index("ix_runs_template_trgm", "template_name",
               postgresql_using="gin", postgresql_ops={"template_name": "gin_trgm_ops"}),
+        # Effective-timestamp expression index matching app.services.run_time.run_when_expr,
+        # used by the analytics window scan and the run-diff baseline lookup. Makes the
+        # coalesce(...) range/sort sargable instead of a per-row recompute.
+        Index("ix_runs_when", func.coalesce(launched_at, log_time, created_at)),
     )
 
 

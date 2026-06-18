@@ -137,7 +137,12 @@ export function AnalysisView() {
       </div>
       {isOwner && <ShareModal open={shareOpen} onOpenChange={setShareOpen} runId={id} teams={me.data?.teams ?? []} />}
       <RunDiffModal runId={id} open={diffOpen} onOpenChange={setDiffOpen}
-        onJump={(seq) => { setSelected(seq); setJumpTo({ seq, nonce: Date.now() }); setDiffOpen(false) }} />
+        onJump={(seq) => {
+          // Clear host/query filters so the jumped task's row is present in the map and the
+          // scroll/highlight lands (errorsOnly/hideSkipped are status-based and let failures through).
+          setFilters((f) => ({ ...f, host: '', query: '' }))
+          setSelected(seq); setJumpTo({ seq, nonce: Date.now() }); setDiffOpen(false)
+        }} />
     </div>
   )
 }

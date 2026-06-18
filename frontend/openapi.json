@@ -5121,14 +5121,7 @@
             "title": "After"
           },
           "seq": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "integer",
             "title": "Seq"
           }
         },

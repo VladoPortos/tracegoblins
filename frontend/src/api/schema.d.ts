@@ -1266,7 +1266,7 @@ export interface components {
             /** After */
             after: string | null;
             /** Seq */
-            seq: number | null;
+            seq: number;
         };
         /** DirectoryUser */
         DirectoryUser: {

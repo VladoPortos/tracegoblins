@@ -19,18 +19,26 @@ function EntryRow({ entry, dot, onJump }: { entry: DiffEntry; dot: string; onJum
       </span>
     </>
   )
-  if (onJump && entry.seq != null) {
+  // before → after host status (e.g. "unreachable → failed"): surfaces the exact transition
+  // and distinguishes failed vs unreachable within a section. '∅' = absent on that side.
+  const transition = (
+    <span className="mono dim" style={{ flex: 'none', fontSize: 11, whiteSpace: 'nowrap' }}>
+      {entry.before ?? '∅'}<span style={{ opacity: 0.5 }}>{' → '}</span>{entry.after ?? '∅'}
+    </span>
+  )
+  if (onJump) {
     const seq = entry.seq
     return (
       <button type="button" className="row gap2" onClick={() => onJump(seq)}
         style={{ ...rowStyle, background: 'none', border: 'none', cursor: 'pointer', width: '100%', minWidth: 0, font: 'inherit', color: 'inherit' }}>
         {label}
         <span className="grow" />
-        <Glyph name="chevR" size={12} style={{ color: 'var(--text-3)', flexShrink: 0 }} />
+        {transition}
+        <Glyph name="chevR" size={12} style={{ color: 'var(--text-3)', flexShrink: 0, marginLeft: 6 }} />
       </button>
     )
   }
-  return <div className="row gap2" style={{ ...rowStyle, minWidth: 0 }}>{label}</div>
+  return <div className="row gap2" style={{ ...rowStyle, minWidth: 0 }}>{label}<span className="grow" />{transition}</div>
 }
 
 function Section({ title, entries, dot, onJump }: { title: string; entries: DiffEntry[]; dot: string; onJump?: (seq: number) => void }) {
