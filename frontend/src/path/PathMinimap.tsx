@@ -31,6 +31,8 @@ export function PathMinimap({
   ch: number
   onJump: (worldX: number, worldY: number) => void
 }) {
+  // Guard against zero-size layout: division below would yield Infinity/NaN.
+  if (!layout.worldW || !layout.worldH) return null
   const ms = Math.min((MINI_W - PAD * 2) / layout.worldW, (MINI_H - PAD * 2) / layout.worldH)
   const offx = (MINI_W - layout.worldW * ms) / 2
   const offy = (MINI_H - layout.worldH * ms) / 2
