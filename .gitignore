@@ -47,3 +47,6 @@ docker-compose.e2e.yml
 .gitleaks.toml
 .planning/
 .claude/
+
+# brainstorming visual companion (local only)
+.superpowers/
