@@ -8,6 +8,8 @@ import { layoutTree } from './layout'
 import { PathCanvas } from './PathCanvas'
 import { usePathController } from './usePathController'
 import { PathStepper } from './PathStepper'
+import { HostScopeChip } from './HostScopeChip'
+import type { HostScopeId } from './HostScopeChip'
 
 export function PathView() {
   const { id = '' } = useParams()
@@ -16,6 +18,16 @@ export function PathView() {
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [reduced, setReduced] = useState(false)
+  const [hostScope, setHostScope] = useState<HostScopeId>('all')
+
+  // Per prototype lines 424–429: all → every branch taken; single RedHat host → redhat only; win-01 → windows only.
+  const isBranchTaken = useCallback((branch: string | null | undefined): boolean => {
+    if (!branch || hostScope === 'all') return true
+    const isWin = hostScope === 'win-01'
+    return isWin ? branch === 'windows' : branch === 'redhat'
+  }, [hostScope])
+
+  const isTaken = useCallback((e: { branch?: string | null }) => isBranchTaken(e.branch), [isBranchTaken])
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -121,6 +133,7 @@ export function PathView() {
           <span className="mono" style={{ fontSize: 13, fontWeight: 600 }}>{title}</span>
         </div>
         <div className="grow" />
+        <HostScopeChip value={hostScope} onPick={setHostScope} />
         <span className="dim" style={{ fontSize: 11 }}>{tree.data?.nodes.length ?? 0} steps</span>
       </div>
 
@@ -174,7 +187,9 @@ export function PathView() {
                   selectedId={selectedId}
                   onSelect={setSelectedId}
                   onEnter={enter}
-                  isTaken={() => true}
+                  isTaken={isTaken}
+                  isBranchTaken={isBranchTaken}
+                  hostScope={hostScope}
                   reduced={reduced}
                 />
               </div>

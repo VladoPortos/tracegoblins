@@ -3,8 +3,8 @@ import type { PositionedNode } from './layout'
 const STATUS_GLYPH: Record<string, string> = { ok: '✓', changed: '~', failed: '✕', unreachable: '⚠', skipped: '–' }
 const statusVar = (s: string) => `var(--${s === 'unreachable' ? 'failed' : s})`
 
-export function PathNodeCard({ node: n, selected, onSelect, onEnter, reduced }: {
-  node: PositionedNode; selected: boolean; reduced: boolean
+export function PathNodeCard({ node: n, selected, onSelect, onEnter, reduced, notTaken = false }: {
+  node: PositionedNode; selected: boolean; reduced: boolean; notTaken?: boolean
   onSelect: (id: string) => void; onEnter: (t: { type: 'container' | 'loop'; id: string }) => void
 }) {
   const isContainer = n.type === 'role' || n.type === 'block' || n.type === 'include'
@@ -21,9 +21,12 @@ export function PathNodeCard({ node: n, selected, onSelect, onEnter, reduced }: 
     borderLeft: isWhen ? '1px solid var(--border)' : `3px solid ${accent}`,
     borderRadius: 13, padding: '11px 13px', display: 'flex', flexDirection: 'column', gap: 6,
     cursor: 'pointer', color: 'var(--text)',
+    opacity: notTaken ? 0.42 : 1,
+    filter: notTaken ? 'grayscale(0.7)' : 'none',
     boxShadow: selected ? '0 0 0 2px var(--flow), 0 8px 30px var(--flow-glow)'
       : isContainer ? '0 3px 14px rgba(0,0,0,.22), 6px 7px 0 0 var(--surface-2), 6px 7px 0 1px var(--border), 12px 14px 0 0 var(--surface-2), 12px 14px 0 1px var(--border)'
       : '0 3px 14px rgba(0,0,0,.22)',
+    transition: 'opacity .25s, filter .25s, box-shadow .2s',
     animation: selected && !reduced && isTaskish ? 'haloPulse 2.4s ease-in-out infinite' : 'none',
   }
   const glyph = isContainer ? '▣' : isLoop ? '⟳' : isWhen ? '⎇' : isItem ? '»' : (STATUS_GLYPH[n.status] || '•')
