@@ -72,6 +72,7 @@ export function usePathController(
   // fitView function), so pan/zoom setStates do not re-trigger a fit.
   const worldW = layout?.worldW
   const worldH = layout?.worldH
+  const layoutMounted = layout != null
   useEffect(() => {
     if (worldW == null || worldH == null) return
     // rAF so the canvas element has been laid out and is measurable.
@@ -119,7 +120,7 @@ export function usePathController(
     // Bind once the host div is mounted (layout present); subsequent reads come
     // from stateRef, so we key on a stable boolean rather than the layout object
     // to avoid needless re-binding on every pan/zoom render.
-  }, [layout != null])
+  }, [layoutMounted])
 
   const onMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (e.button !== 0) return
