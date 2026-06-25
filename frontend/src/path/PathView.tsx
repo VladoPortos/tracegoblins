@@ -7,6 +7,7 @@ import { FullScreenSpinner } from '../components/atoms/FullScreenSpinner'
 import { layoutTree } from './layout'
 import { PathCanvas } from './PathCanvas'
 import { usePathController } from './usePathController'
+import { PathStepper } from './PathStepper'
 
 export function PathView() {
   const { id = '' } = useParams()
@@ -86,6 +87,11 @@ export function PathView() {
   if (view.type === 'main') viewHint = 'execution order · left → right'
   if (view.type === 'container') viewHint = 'sub-flow · 12 tasks'
   if (view.type === 'loop') viewHint = `iteration ${iter + 1} of 50`
+
+  // Stepper: advance/retreat through loop iterations; clamp to 0..49.
+  const step = useCallback((dir: 1 | -1) => {
+    setIter(i => Math.max(0, Math.min(49, i + dir)))
+  }, [])
 
   // Pass layout to the controller. The controller keeps a layoutRef internally
   // and syncs it each render via useEffect, so fitView always uses current dims.
@@ -174,6 +180,9 @@ export function PathView() {
               </div>
             </div>
           </div>
+        )}
+        {view.type === 'loop' && (
+          <PathStepper iter={iter} total={50} onStep={step} />
         )}
       </div>
     </div>
