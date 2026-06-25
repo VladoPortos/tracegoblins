@@ -48,7 +48,7 @@ export function usePathController(
   // This keeps fitView a STABLE function: a previous bug put `layout` in
   // fitView's deps (and fitView in the fit-effect's deps), so an unstable
   // `layout` object identity re-ran fitView on every pan/zoom render and
-  // clobbered the transform back to the fit value.
+  // clobbered the transform back to the fit value (net-zero pan/zoom).
   const layoutRef = useRef(layout)
   useEffect(() => { layoutRef.current = layout }, [layout])
 
