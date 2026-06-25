@@ -79,14 +79,14 @@ export function InputsPanel({ runId }: InputsPanelProps) {
           {/* extra_vars */}
           <KvSection
             label="Extra vars"
-            rows={Object.entries(data.extra_vars).map(([k, v]) => [k, String(v)])}
+            rows={Object.entries(data.extra_vars).map(([k, v]) => [k, typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v)])}
           />
 
           {/* survey */}
           {data.survey && Object.keys(data.survey).length > 0 && (
             <KvSection
               label="Survey"
-              rows={Object.entries(data.survey).map(([k, v]) => [k, String(v)])}
+              rows={Object.entries(data.survey).map(([k, v]) => [k, typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v)])}
             />
           )}
 

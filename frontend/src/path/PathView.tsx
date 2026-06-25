@@ -179,7 +179,7 @@ export function PathView() {
               data-testid={c.last ? undefined : `crumb-${c.key}`}
               onClick={c.last ? undefined : () => c.exitRef && exitTo(c.exitRef)}
               style={{
-                fontFamily: "'IBM Plex Mono'", fontSize: 12,
+                fontFamily: 'var(--font-mono)', fontSize: 12,
                 fontWeight: c.last ? 600 : 500,
                 color: c.last ? 'var(--text)' : 'var(--flow)',
                 cursor: c.last ? 'default' : 'pointer',

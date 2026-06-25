@@ -16,7 +16,6 @@ export interface PathController {
   canvasRef: React.RefObject<HTMLDivElement | null>
   onMouseDown: (e: React.MouseEvent<HTMLDivElement>) => void
   fitView: () => void
-  zoomBy: (factor: number) => void
   panTo: (worldX: number, worldY: number) => void
 }
 
@@ -44,7 +43,7 @@ export function usePathController(
   const onEmptyClickRef = useRef(onEmptyClick)
   useEffect(() => { onEmptyClickRef.current = onEmptyClick }, [onEmptyClick])
 
-  // Keep a ref to the current layout so fitView / zoomBy / the native wheel
+  // Keep a ref to the current layout so fitView / the native wheel
   // listener can read world dimensions without being recreated each render.
   // This keeps fitView a STABLE function: a previous bug put `layout` in
   // fitView's deps (and fitView in the fit-effect's deps), so an unstable
@@ -87,21 +86,6 @@ export function usePathController(
     const id = requestAnimationFrame(() => fitView())
     return () => cancelAnimationFrame(id)
   }, [fitKey, fitView])
-
-  const zoomBy = useCallback((factor: number) => {
-    const el = canvasRef.current
-    const { panX, panY, zoom } = stateRef.current
-    const cwCur = el ? el.clientWidth : cw
-    const chCur = el ? el.clientHeight : ch
-    const mx = cwCur / 2
-    const my = chCur / 2
-    const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoom * factor))
-    const wx = (mx - panX) / zoom
-    const wy = (my - panY) / zoom
-    setPanX(mx - wx * z)
-    setPanY(my - wy * z)
-    setZoom(z)
-  }, [cw, ch])
 
   // Wheel zoom: attached as a NON-PASSIVE native listener via useEffect so
   // e.preventDefault() actually suppresses page scroll. React 19 attaches the
@@ -168,5 +152,5 @@ export function usePathController(
 
   const transform = `translate(${panX}px,${panY}px) scale(${zoom})`
 
-  return { panX, panY, zoom, transform, cw, ch, canvasRef, onMouseDown, fitView, zoomBy, panTo }
+  return { panX, panY, zoom, transform, cw, ch, canvasRef, onMouseDown, fitView, panTo }
 }

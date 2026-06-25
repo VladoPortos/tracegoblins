@@ -60,7 +60,7 @@ export function PathStepper({ iter, total, onStep }: PathStepperProps) {
       >
         <span
           style={{
-            fontFamily: "'IBM Plex Mono'",
+            fontFamily: 'var(--font-mono)',
             fontSize: 13,
             fontWeight: 600,
             color: 'var(--text)',
