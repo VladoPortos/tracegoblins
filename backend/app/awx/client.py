@@ -75,6 +75,17 @@ class JobSummary:
     url: str                        # job.url (relative) -> Run.awx_job_url (joined to base_url)
 
 
+@dataclass(frozen=True)
+class JobDetail:
+    extra_vars: dict                  # parsed; survey answers merged, sensitive = "$encrypted$"
+    limit: str | None
+    scm_revision: str | None
+    project_id: int | None
+    project_name: str | None
+    job_template_id: int | None
+    survey: dict | None = None        # M1: None (survey answers live inside extra_vars)
+
+
 def _to_summary(job: dict) -> JobSummary:
     """Map a raw AWX job dict (with summary_fields) to a JobSummary."""
     sf = job.get("summary_fields") or {}
@@ -99,6 +110,29 @@ def _to_summary(job: dict) -> JobSummary:
         created_by_username=created_by.get("username"),
         workflow_name=workflow_job.get("name") if workflow_job else None,
         url=job["url"],
+    )
+
+
+def _to_job_detail(job: dict) -> JobDetail:
+    """Map a raw AWX job dict to a JobDetail."""
+    raw_ev = job.get("extra_vars")
+    extra_vars: dict = {}
+    if isinstance(raw_ev, dict):
+        extra_vars = raw_ev
+    elif isinstance(raw_ev, str) and raw_ev.strip():
+        try:
+            parsed = json.loads(raw_ev)
+            extra_vars = parsed if isinstance(parsed, dict) else {}
+        except json.JSONDecodeError:
+            extra_vars = {}
+    sf = job.get("summary_fields") or {}
+    proj = sf.get("project") or {}
+    jt = sf.get("job_template") or {}
+    limit = job.get("limit") or None
+    return JobDetail(
+        extra_vars=extra_vars, limit=limit, scm_revision=job.get("scm_revision") or None,
+        project_id=proj.get("id"), project_name=proj.get("name"),
+        job_template_id=jt.get("id"), survey=None,
     )
 
 
@@ -194,3 +228,7 @@ class AwxClient:
                 break
             url = _safe_next(self._base, data.get("next"))
         return events
+
+    async def get_job_detail(self, job_id: int) -> JobDetail:
+        """GET /api/v2/jobs/{id}/ for inputs (extra_vars/limit/scm_revision/project/template)."""
+        return _to_job_detail(await self._get_json(f"/api/v2/jobs/{job_id}/"))
