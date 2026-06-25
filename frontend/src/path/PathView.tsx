@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router'
 import { useRun } from '../api/runs'
 import { useRunTree } from '../api/path'
@@ -26,17 +26,8 @@ export function PathView() {
 
   const layout = tree.data ? layoutTree(tree.data.nodes, tree.data.edges) : null
 
-  const ctrl = usePathController(layout)
-
-  // Clear selection when user clicks empty canvas (no drag)
-  const hostRef = useRef<HTMLDivElement | null>(null)
-  useEffect(() => {
-    const el = hostRef.current
-    if (!el) return
-    const handler = () => setSelectedId(null)
-    el.addEventListener('canvas:emptyclick', handler)
-    return () => el.removeEventListener('canvas:emptyclick', handler)
-  }, [])
+  // Clicking empty canvas (a press that didn't drag) clears the selection.
+  const ctrl = usePathController(layout, () => setSelectedId(null))
 
   const onEnter = (_t: { type: 'container' | 'loop'; id: string }) => {
     // no-op for now; Task 7+ will navigate into containers/loops
@@ -58,16 +49,11 @@ export function PathView() {
         <span className="dim" style={{ fontSize: 11 }}>{tree.data?.nodes.length ?? 0} steps</span>
       </div>
       <div
-        ref={(el) => {
-          // bind both our local hostRef and the controller's canvasRef
-          hostRef.current = el
-          ;(ctrl.canvasRef as React.MutableRefObject<HTMLDivElement | null>).current = el
-        }}
+        ref={ctrl.canvasRef}
         className="grow"
         data-testid="path-canvas"
         style={{ position: 'relative', overflow: 'hidden', minHeight: 0, cursor: 'grab' }}
         onMouseDown={ctrl.onMouseDown}
-        onWheel={ctrl.onWheel}
       >
         {layout && (
           <PathCanvas

@@ -15,12 +15,17 @@ export interface PathController {
   ch: number
   canvasRef: React.RefObject<HTMLDivElement | null>
   onMouseDown: (e: React.MouseEvent<HTMLDivElement>) => void
-  onWheel: (e: React.WheelEvent<HTMLDivElement>) => void
   fitView: () => void
   zoomBy: (factor: number) => void
 }
 
-export function usePathController(layout: LaidOut | null): PathController {
+export function usePathController(
+  layout: LaidOut | null,
+  onEmptyClick?: () => void,
+): PathController {
+  // The hook owns this ref and it is attached DIRECTLY to the canvas host div in
+  // PathView (no hand-merged callback ref), so canvasRef.current reliably holds
+  // the DOM node across re-renders.
   const canvasRef = useRef<HTMLDivElement | null>(null)
   const [panX, setPanX] = useState(40)
   const [panY, setPanY] = useState(40)
@@ -28,9 +33,15 @@ export function usePathController(layout: LaidOut | null): PathController {
   const [cw, setCw] = useState(0)
   const [ch, setCh] = useState(0)
 
-  // Keep a ref to current pan/zoom so event handlers can read without stale closure
+  // Keep a ref to current pan/zoom so native event handlers can read without
+  // capturing stale closure values.
   const stateRef = useRef({ panX, panY, zoom })
   useEffect(() => { stateRef.current = { panX, panY, zoom } }, [panX, panY, zoom])
+
+  // Keep a stable ref to the empty-click callback so the mousedown handler does
+  // not need to re-bind when the parent passes a new function identity.
+  const onEmptyClickRef = useRef(onEmptyClick)
+  useEffect(() => { onEmptyClickRef.current = onEmptyClick }, [onEmptyClick])
 
   const fitView = useCallback(() => {
     const el = canvasRef.current
@@ -46,10 +57,10 @@ export function usePathController(layout: LaidOut | null): PathController {
     setCh(ch)
   }, [layout])
 
-  // Fit on mount and when layout world dimensions change
+  // Fit on mount and when layout world dimensions change.
   useEffect(() => {
     if (!layout) return
-    // Use rAF so the canvas element has been rendered and measured
+    // rAF so the canvas element has been laid out and is measurable.
     const id = requestAnimationFrame(() => fitView())
     return () => cancelAnimationFrame(id)
   }, [layout?.worldW, layout?.worldH, fitView])
@@ -69,22 +80,31 @@ export function usePathController(layout: LaidOut | null): PathController {
     setZoom(z)
   }, [cw, ch])
 
-  const onWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
-    e.preventDefault()
+  // Wheel zoom: attached as a NON-PASSIVE native listener via useEffect so
+  // e.preventDefault() actually suppresses page scroll. React 19 attaches the
+  // JSX onWheel prop as a passive listener, where preventDefault is a no-op.
+  useEffect(() => {
     const el = canvasRef.current
     if (!el) return
-    const r = el.getBoundingClientRect()
-    const mx = e.clientX - r.left
-    const my = e.clientY - r.top
-    const { panX, panY, zoom } = stateRef.current
-    const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1
-    const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoom * factor))
-    const wx = (mx - panX) / zoom
-    const wy = (my - panY) / zoom
-    setPanX(mx - wx * z)
-    setPanY(my - wy * z)
-    setZoom(z)
-  }, [])
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const r = el.getBoundingClientRect()
+      const mx = e.clientX - r.left
+      const my = e.clientY - r.top
+      const { panX, panY, zoom } = stateRef.current
+      const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1
+      const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoom * factor))
+      const wx = (mx - panX) / zoom
+      const wy = (my - panY) / zoom
+      setPanX(mx - wx * z)
+      setPanY(my - wy * z)
+      setZoom(z)
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+    // Bind once the layout exists so the host div is mounted; subsequent reads
+    // come from stateRef, so no other deps are needed.
+  }, [layout])
 
   const onMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (e.button !== 0) return
@@ -104,12 +124,8 @@ export function usePathController(layout: LaidOut | null): PathController {
     const onUp = () => {
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
-      // If not moved, this was a click on empty canvas — signal via custom event
-      // PathView reads this to clear selection
-      if (!moved) {
-        const el = canvasRef.current
-        if (el) el.dispatchEvent(new CustomEvent('canvas:emptyclick', { bubbles: true }))
-      }
+      // A press that didn't move = click on empty canvas → clear selection.
+      if (!moved) onEmptyClickRef.current?.()
     }
 
     window.addEventListener('mousemove', onMove)
@@ -118,5 +134,5 @@ export function usePathController(layout: LaidOut | null): PathController {
 
   const transform = `translate(${panX}px,${panY}px) scale(${zoom})`
 
-  return { panX, panY, zoom, transform, cw, ch, canvasRef, onMouseDown, onWheel, fitView, zoomBy }
+  return { panX, panY, zoom, transform, cw, ch, canvasRef, onMouseDown, fitView, zoomBy }
 }
