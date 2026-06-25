@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+from collections import defaultdict
 from dataclasses import dataclass, field
 
 
@@ -50,6 +52,29 @@ class ParsedTree:
 
 
 _PROJECT_PREFIX = "/runner/project/"
+
+_TERMINAL: dict[str, str] = {
+    "runner_on_ok": "ok",
+    "runner_on_failed": "failed",
+    "runner_on_unreachable": "unreachable",
+    "runner_on_skipped": "skipped",
+}
+_ITEM: dict[str, str] = {
+    "runner_item_on_ok": "ok",
+    "runner_item_on_failed": "failed",
+    "runner_item_on_skipped": "skipped",
+}
+_RANK: dict[str, int] = {"skipped": 0, "ok": 1, "changed": 2, "failed": 3, "unreachable": 4}
+_MAX_BLOB_CHARS = 64_000
+
+
+def _cap_result(res: dict | None) -> dict | None:
+    if not res:
+        return None
+    s = json.dumps(res, ensure_ascii=False)
+    if len(s) <= _MAX_BLOB_CHARS:
+        return res
+    return {"_truncated": True, "_preview": s[:_MAX_BLOB_CHARS]}
 
 
 def _norm(s: str) -> str:
@@ -197,6 +222,65 @@ def build_tree(events: list[dict]) -> ParsedTree:
             tree.nodes.append(node)
             by_uuid[task_uuid] = node
             continue
+
+        if et in _TERMINAL:
+            node = by_uuid.get(ed.get("task_uuid") or "")
+            if node is None:
+                continue
+            res = ed.get("res") or {}
+            st = _TERMINAL[et]
+            if st == "ok" and res.get("changed"):
+                st = "changed"
+            host = ed.get("host") or ed.get("remote_addr") or "localhost"
+            tree.results.append(TreeResult(
+                node_id=node.node_id, host=host, status=st,
+                changed=bool(res.get("changed")), result=_cap_result(res),
+                skip_reason=res.get("skip_reason"), false_condition=res.get("false_condition"),
+                duration_s=ed.get("duration"),
+            ))
+            if st == "skipped" and res.get("false_condition") and not node.when_expr:
+                node.when_expr = str(res.get("false_condition"))
+            if ed.get("duration") is not None:
+                node.duration_s = ed.get("duration")
+            if node.args is None and ed.get("task_args"):
+                ta = ed.get("task_args")
+                node.args = {"_raw": ta} if isinstance(ta, str) else ta
+            continue
+
+        if et in _ITEM:
+            node = by_uuid.get(ed.get("task_uuid") or "")
+            if node is None:
+                continue
+            res = ed.get("res") or {}
+            st = _ITEM[et]
+            if st == "ok" and res.get("changed"):
+                st = "changed"
+            host = ed.get("host") or ed.get("remote_addr") or "localhost"
+            idx = len([r for r in tree.results if r.node_id == node.node_id and r.item_index is not None])
+            tree.results.append(TreeResult(
+                node_id=node.node_id, host=host, item_index=idx, item_value=res.get("item"),
+                status=st, changed=bool(res.get("changed")), result=_cap_result(res),
+            ))
+            if node.loop_var is None:
+                node.loop_var = ed.get("event_loop")
+            continue
+
+    # Aggregate node-level status/counts and retype loop nodes.
+    by_node: dict[str, list[TreeResult]] = defaultdict(list)
+    for r in tree.results:
+        by_node[r.node_id].append(r)
+    for n in tree.nodes:
+        rs = by_node.get(n.node_id, [])
+        if not rs:
+            continue
+        items = [r for r in rs if r.item_index is not None]
+        if items:
+            n.node_type = "loop"
+            n.item_count = len({r.item_index for r in items})
+        n.host_count = len({r.host for r in rs if r.status != "skipped"})
+        worst = max(rs, key=lambda r: _RANK.get(r.status, 0)).status
+        n.status = worst
+        n.changed = any(r.changed for r in rs)
 
     # Compute child_count for every node after the walk.
     child_counts: dict[str, int] = {}
