@@ -40,6 +40,7 @@
   --included:#2563eb;   --included-bg:#e7eefe; --included-line:#c5d6fb;
   --warn:#b8860b;
   --flow:#7c3aed; --flow-dim:#c4b0ee; --flow-glow:rgba(124,58,237,.30); --flow-soft:rgba(124,58,237,.08); --flow-line:rgba(124,58,237,.30); --decision-bg:rgba(37,99,235,.13);
+  --edge-dim:#dde2e8;
   --scrim: rgba(20,24,33,.42);
 }
 
@@ -68,6 +69,7 @@
   --included:#5a8bff;   --included-bg:#141d33; --included-line:#243663;
   --warn:#e9b04a;
   --flow:#c08cff; --flow-dim:#5e4790; --flow-glow:rgba(192,140,255,.50); --flow-soft:rgba(192,140,255,.12); --flow-line:rgba(192,140,255,.38); --decision-bg:rgba(90,139,255,.22);
+  --edge-dim:#222932;
   --scrim: rgba(0,0,0,.58);
 }
 
