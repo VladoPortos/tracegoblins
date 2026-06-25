@@ -41,6 +41,15 @@ class Run(Base):
     warnings_count: Mapped[int] = mapped_column(Integer, default=0)
     elapsed: Mapped[float | None] = mapped_column(Float, default=None)
     recap: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list)
+    # Path Explorer inputs (M1) — captured from GET /jobs/{id}/. project_id/scm_revision
+    # are unused in M1 but captured now so M2 auto-link + M3 source-fetch are free.
+    project_id: Mapped[int | None] = mapped_column(Integer, default=None)
+    project_name: Mapped[str | None] = mapped_column(Text, default=None)
+    job_template_id: Mapped[int | None] = mapped_column(Integer, default=None)
+    scm_revision: Mapped[str | None] = mapped_column(Text, default=None)
+    awx_limit: Mapped[str | None] = mapped_column(Text, default=None)  # 'limit' is reserved
+    extra_vars: Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=None)
+    survey: Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -108,3 +117,58 @@ class RunRaw(Base):
     content: Mapped[str] = mapped_column(Text)
 
     run: Mapped["Run"] = relationship(back_populates="raw")
+
+
+class RunNode(Base):
+    __tablename__ = "run_nodes"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"), nullable=False)
+    node_id: Mapped[str] = mapped_column(Text)                 # AWX-derived stable id
+    parent_node_id: Mapped[str | None] = mapped_column(Text, default=None)
+    counter: Mapped[int] = mapped_column(Integer, default=0)
+    depth: Mapped[int] = mapped_column(Integer, default=0)
+    node_type: Mapped[str] = mapped_column(String(16))
+    name: Mapped[str] = mapped_column(Text)
+    action: Mapped[str | None] = mapped_column(Text, default=None)
+    task_path: Mapped[str | None] = mapped_column(Text, default=None)
+    ansible_uuid: Mapped[str | None] = mapped_column(Text, default=None)
+    is_conditional: Mapped[bool] = mapped_column(default=False)
+    when_expr: Mapped[str | None] = mapped_column(Text, default=None)
+    loop_var: Mapped[str | None] = mapped_column(Text, default=None)
+    status: Mapped[str] = mapped_column(String(16), default="ok")
+    changed: Mapped[bool] = mapped_column(default=False)
+    host_count: Mapped[int] = mapped_column(Integer, default=0)
+    item_count: Mapped[int] = mapped_column(Integer, default=0)
+    child_count: Mapped[int] = mapped_column(Integer, default=0)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+    duration_s: Mapped[float | None] = mapped_column(Float, default=None)
+    args: Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=None)
+
+    __table_args__ = (
+        UniqueConstraint("run_id", "node_id", name="uq_run_nodes_run_node"),
+        Index("ix_run_nodes_run_parent", "run_id", "parent_node_id"),
+    )
+
+
+class RunNodeResult(Base):
+    __tablename__ = "run_node_results"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"), nullable=False)
+    node_id: Mapped[str] = mapped_column(Text)                 # denormalized RunNode.node_id
+    host: Mapped[str] = mapped_column(Text)
+    item_index: Mapped[int | None] = mapped_column(Integer, default=None)
+    item_value: Mapped[Any | None] = mapped_column(JSONB, default=None)
+    status: Mapped[str] = mapped_column(String(16), default="ok")
+    changed: Mapped[bool] = mapped_column(default=False)
+    result: Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=None)
+    skip_reason: Mapped[str | None] = mapped_column(Text, default=None)
+    false_condition: Mapped[str | None] = mapped_column(Text, default=None)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+    duration_s: Mapped[float | None] = mapped_column(Float, default=None)
+
+    __table_args__ = (
+        Index("ix_run_node_results_run_node", "run_id", "node_id"),
+    )
