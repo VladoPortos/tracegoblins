@@ -64,3 +64,29 @@ export interface RunInputs {
   project_id: number | null
   project_name: string | null
 }
+
+import { useQuery } from '@tanstack/react-query'
+import * as pathSource from './pathSource'
+
+export const pathTreeKey = (id: string, view: PathViewRef, iter: number) =>
+  ['runs', id, 'path', view.type, view.type === 'main' ? '' : view.id, iter] as const
+export const nodeResultsKey = (id: string, nodeId: string) => ['runs', id, 'path', 'results', nodeId] as const
+export const runInputsKey = (id: string) => ['runs', id, 'inputs'] as const
+
+export function useRunTree(id: string, view: PathViewRef, iter = 0) {
+  return useQuery<PathTree>({
+    queryKey: pathTreeKey(id, view, view.type === 'loop' ? iter : 0),
+    queryFn: () => pathSource.fetchTree(id, view, iter),
+    enabled: !!id,
+  })
+}
+export function useNodeResults(id: string, nodeId: string | null, opts: pathSource.NodeResultsOpts = {}, enabled = true) {
+  return useQuery<NodeResultsPage>({
+    queryKey: [...nodeResultsKey(id, nodeId ?? 'none'), opts],
+    queryFn: () => pathSource.fetchNodeResults(id, nodeId!, opts),
+    enabled: !!id && !!nodeId && enabled,
+  })
+}
+export function useRunInputs(id: string) {
+  return useQuery<RunInputs>({ queryKey: runInputsKey(id), queryFn: () => pathSource.fetchInputs(id), enabled: !!id })
+}
