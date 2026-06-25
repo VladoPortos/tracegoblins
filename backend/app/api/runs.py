@@ -12,11 +12,15 @@ from sqlalchemy.exc import IntegrityError
 
 from app.api.collab_schemas import AnnotationCreate, AnnotationOut, CommentCreate, CommentOut, MentionableUser, ShareCreate, ShareOut
 from app.api.deps import CurrentUser, DbSession, GatedUser
+from app.api.path_schemas import (
+    EnterToOut, NodeResultOut, NodeResultsPageOut, PathEdgeOut, PathNodeOut,
+    PathTreeOut, PathViewOut, RunInputsOut,
+)
 from app.api.http_utils import client_ip
 from app.api.kb_schemas import KbSuggestionOut
 from app.api.validation import parse_uuid_or_422, resolve_team_or_422
 from app.api.runs_schemas import FacetController, FacetOrg, FacetsOut, RunCreated, RunDetail, RunDiffOut, RunList, TaskFull, TaskLean
-from app.models import Annotation, AwxController, Comment, ControllerTeam, KbOccurrence, KbSignature, Run, RunRaw, RunShare, Task, Team, TeamMember, User
+from app.models import Annotation, AwxController, Comment, ControllerTeam, KbOccurrence, KbSignature, Run, RunNode, RunNodeResult, RunRaw, RunShare, Task, Team, TeamMember, User
 from app.services.audit import write_audit
 from app.services.notifications import create_mention_notifications, create_share_notifications
 from app.services.collab_query import annotation_to_out, comment_to_out, resolve_visible_mentions, share_to_out
@@ -557,6 +561,130 @@ async def get_raw(run: VisibleRun, db: DbSession):
     if content is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Raw log not found")
     return PlainTextResponse(content)
+
+
+# ---------------------------------------------------------------------------
+# Run Path Explorer — /tree, /nodes/{node_id}/results, /inputs
+# ---------------------------------------------------------------------------
+
+def _sub_for(n: RunNode) -> str | None:
+    if n.node_type == "loop":
+        return f"loop · {n.item_count} items"
+    if n.node_type in ("role", "include", "block"):
+        return f"{n.node_type} · {n.child_count} tasks"
+    return None
+
+
+def _enter_to(n: RunNode) -> EnterToOut | None:
+    if n.node_type == "loop":
+        return EnterToOut(type="loop", id=n.node_id)
+    if n.node_type in ("role", "include", "block") and n.child_count > 0:
+        return EnterToOut(type="container", id=n.node_id)
+    return None
+
+
+def _node_out(n: RunNode) -> PathNodeOut:
+    return PathNodeOut(
+        id=n.node_id, type=n.node_type, label=n.name, sub=_sub_for(n), status=n.status,
+        action=n.action, host_count=n.host_count or None, item_count=n.item_count or None,
+        has_failures=(n.status in ("failed", "unreachable")),
+        is_conditional=n.is_conditional, condition=n.when_expr, branch=None,
+        enter_to=_enter_to(n), child_count=(n.child_count or None),
+        duration_s=n.duration_s, task_path=n.task_path,
+    )
+
+
+def _linear_edges(nodes: list[RunNode]) -> list[PathEdgeOut]:
+    ordered = sorted(nodes, key=lambda n: n.counter)
+    return [PathEdgeOut(from_=ordered[i].node_id, to=ordered[i + 1].node_id, branch=None)
+            for i in range(len(ordered) - 1)]
+
+
+@router.get("/{run_id}/tree", response_model=PathTreeOut,
+            response_model_by_alias=True, response_model_exclude_none=True)
+async def get_run_tree(run: VisibleRun, db: DbSession,
+                       root: str | None = Query(None), iter: int = Query(0, ge=0)):
+    all_nodes = (await db.execute(
+        select(RunNode).where(RunNode.run_id == run.id).order_by(RunNode.counter)
+    )).scalars().all()
+    by_id = {n.node_id: n for n in all_nodes}
+
+    # loop view: synthesize loopRoot -> item -> task -> result from the loop node + its iter-th result
+    if root is not None and (loop := by_id.get(root)) is not None and loop.node_type == "loop":
+        results = (await db.execute(
+            select(RunNodeResult).where(RunNodeResult.run_id == run.id,
+                                        RunNodeResult.node_id == root,
+                                        RunNodeResult.item_index.isnot(None))
+            .order_by(RunNodeResult.item_index)
+        )).scalars().all()
+        sel = results[iter] if 0 <= iter < len(results) else None
+        val = sel.item_value if sel is not None else None
+        st = sel.status if sel is not None else loop.status
+        nodes = [
+            PathNodeOut(id="loopRoot", type="loop", label=loop.name, sub=_sub_for(loop),
+                        status=loop.status, item_count=loop.item_count or None),
+            PathNodeOut(id="item", type="item", label=f'= "{val}"' if val is not None else "item",
+                        sub=f"iteration {iter + 1}", status="ok"),
+            PathNodeOut(id="task", type="task", label=loop.action or loop.name,
+                        sub=(f'name="{val}"' if val is not None else None), status=st,
+                        action=loop.action, host_count=loop.host_count or None,
+                        task_path=loop.task_path),
+            PathNodeOut(id="result", type="result", label="result", sub=st, status=st),
+        ]
+        edges = [PathEdgeOut(from_="loopRoot", to="item", branch=None),
+                 PathEdgeOut(from_="item", to="task", branch=None),
+                 PathEdgeOut(from_="task", to="result", branch=None)]
+        return PathTreeOut(run_id=str(run.id), view=PathViewOut(type="loop", id=root),
+                           nodes=nodes, edges=edges)
+
+    # container view: children of `root`
+    if root is not None and root in by_id:
+        kids = [n for n in all_nodes if n.parent_node_id == root]
+        return PathTreeOut(run_id=str(run.id), view=PathViewOut(type="container", id=root),
+                           nodes=[_node_out(n) for n in kids], edges=_linear_edges(kids))
+
+    # main view: children of the run root; if exactly one play, descend into it (flat task band)
+    roots = [n for n in all_nodes if n.parent_node_id is None]  # the synthetic playbook root(s)
+    top = [n for n in all_nodes if n.parent_node_id in {r.node_id for r in roots}]
+    plays = [n for n in top if n.node_type == "play"]
+    if len(plays) == 1:
+        top = [n for n in all_nodes if n.parent_node_id == plays[0].node_id]
+    return PathTreeOut(run_id=str(run.id), view=PathViewOut(type="main"),
+                       nodes=[_node_out(n) for n in top], edges=_linear_edges(top))
+
+
+@router.get("/{run_id}/nodes/{node_id}/results", response_model=NodeResultsPageOut)
+async def get_node_results(run: VisibleRun, node_id: str, db: DbSession,
+                           host: str | None = Query(None), status: str | None = Query(None),
+                           offset: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=500)):
+    base = select(RunNodeResult).where(RunNodeResult.run_id == run.id,
+                                       RunNodeResult.node_id == node_id)
+    if host:
+        base = base.where(RunNodeResult.host == host)
+    if status:
+        base = base.where(RunNodeResult.status == status)
+    total = await db.scalar(select(func.count()).select_from(base.subquery()))
+    rows = (await db.execute(
+        base.order_by(nulls_last(RunNodeResult.item_index), RunNodeResult.host)
+        .offset(offset).limit(limit)
+    )).scalars().all()
+
+    def _out(r: RunNodeResult) -> NodeResultOut:
+        res = r.result or {}
+        output = res.get("msg") or res.get("stdout") or (json.dumps(res) if res else None)
+        return NodeResultOut(host=r.host, item_index=r.item_index, item_value=r.item_value,
+                             status=r.status, changed=r.changed, output=output,
+                             skip_reason=r.skip_reason or r.false_condition, duration_s=r.duration_s)
+
+    return NodeResultsPageOut(results=[_out(r) for r in rows], total=total or 0)
+
+
+@router.get("/{run_id}/inputs", response_model=RunInputsOut)
+async def get_run_inputs(run: VisibleRun):
+    return RunInputsOut(
+        extra_vars=run.extra_vars or {}, survey=run.survey, limit=run.awx_limit,
+        scm_revision=run.scm_revision, project_id=run.project_id, project_name=run.project_name,
+    )
 
 
 @router.delete("/{run_id}", status_code=204)
