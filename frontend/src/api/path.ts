@@ -16,6 +16,7 @@ export interface PathNode {
   status: PathStatus
   action: string | null            // e.g. "ansible.builtin.apt"
   host_count: number | null
+  taken_hosts: string[] | null     // fork branch nodes only: sorted list of hosts that took this branch
   item_count: number | null        // loop size (loop nodes)
   ok_count: number | null          // loop fan-out summary
   fail_count: number | null

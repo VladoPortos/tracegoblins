@@ -15,7 +15,7 @@ export function packages(): PkgItem[] {
 }
 
 const N = (p: Partial<PathNode> & Pick<PathNode, 'id' | 'type' | 'label' | 'status'>): PathNode => ({
-  sub: null, action: null, host_count: null, item_count: null, ok_count: null, fail_count: null,
+  sub: null, action: null, host_count: null, taken_hosts: null, item_count: null, ok_count: null, fail_count: null,
   has_failures: false, is_conditional: false, condition: null, branch: null, enter_to: null,
   child_count: null, duration_s: null, task_path: null, ...p,
 })

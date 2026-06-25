@@ -1,18 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 
-// Host scope options. The specific host entries (rhel-07, web-13, win-01) are placeholder
-// mock values; a future task will populate this dropdown from the run's actual host list.
-// For now the dropdown is presentational only — selecting 'all' is the fully-functional path.
-const HOST_OPTIONS = [
-  { id: 'all',    label: 'All hosts', tag: 'aggregate' },
-  { id: 'rhel-07', label: 'rhel-07', tag: 'host' },
-  { id: 'web-13', label: 'web-13',  tag: 'host' },
-  { id: 'win-01', label: 'win-01',  tag: 'host' },
-] as const
+// HostScopeId is now a plain string: 'all' is the sentinel; individual host names are the ids.
+export type HostScopeId = string
 
-export type HostScopeId = typeof HOST_OPTIONS[number]['id']
-
-export function HostScopeChip({ value, onPick }: { value: HostScopeId; onPick: (id: HostScopeId) => void }) {
+export function HostScopeChip({ hosts, value, onPick }: { hosts: string[]; value: HostScopeId; onPick: (id: HostScopeId) => void }) {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement | null>(null)
 
@@ -29,6 +20,10 @@ export function HostScopeChip({ value, onPick }: { value: HostScopeId; onPick: (
   }, [open])
 
   const label = value === 'all' ? 'All hosts' : value
+
+  const allOption = { id: 'all', label: 'All hosts', tag: 'aggregate' }
+  const hostOptions = hosts.map(h => ({ id: h, label: h, tag: 'host' }))
+  const options = [allOption, ...hostOptions]
 
   return (
     <div ref={wrapRef} style={{ position: 'relative' }}>
@@ -60,7 +55,7 @@ export function HostScopeChip({ value, onPick }: { value: HostScopeId; onPick: (
           boxShadow: '0 16px 44px rgba(0,0,0,0.45)',
           padding: 5, zIndex: 30,
         }}>
-          {HOST_OPTIONS.map(h => (
+          {options.map(h => (
             <div
               key={h.id}
               onClick={() => { onPick(h.id); setOpen(false) }}

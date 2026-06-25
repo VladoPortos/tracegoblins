@@ -18,6 +18,7 @@ class PathNodeOut(BaseModel):
     status: str
     action: str | None = None
     host_count: int | None = None
+    taken_hosts: list[str] | None = None
     item_count: int | None = None
     ok_count: int | None = None
     fail_count: int | None = None

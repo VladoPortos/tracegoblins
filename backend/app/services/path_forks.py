@@ -53,6 +53,7 @@ def synthesize_forks(
         out_nodes.append(when)
         for b in branches:
             b.branch = b.id
+            b.taken_hosts = sorted(taken_hosts.get(b.id, set()))
             out_nodes.append(b)
             edges.append(PathEdgeOut(from_=when.id, to=b.id, branch=b.id))
 

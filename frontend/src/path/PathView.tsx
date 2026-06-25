@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router'
 import { useRun } from '../api/runs'
 import { useRunTree } from '../api/path'
-import type { PathViewRef } from '../api/path'
+import type { PathViewRef, PathNode } from '../api/path'
 import { FullScreenSpinner } from '../components/atoms/FullScreenSpinner'
 import { layoutTree } from './layout'
 import { PathCanvas } from './PathCanvas'
@@ -24,26 +24,6 @@ export function PathView() {
   const [hostScope, setHostScope] = useState<HostScopeId>('all')
   const [showInputs, setShowInputs] = useState(false)
 
-  // Branch-taken logic: when scope is 'all' every branch is lit (all hosts took some branch).
-  // When a single host is selected we would need per-host NodeResults for each branch node to
-  // know which branch that host took — that requires an additional fetch per branch node and is
-  // deferred to Task 13. For now, a single-host scope keeps all branches lit (no greying) rather
-  // than crashing or showing wrong data. Real forks carry a `branch` field on each branch node;
-  // the structural path still works, only the greying is not yet host-aware.
-  const isBranchTaken = useCallback((_branch: string | null | undefined): boolean => {
-    return true
-  }, [])
-
-  const isTaken = useCallback((e: { branch?: string | null }) => isBranchTaken(e.branch), [isBranchTaken])
-
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-    setReduced(mq.matches)
-    const handler = (e: MediaQueryListEvent) => setReduced(e.matches)
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
-  }, [])
-
   // View navigation state lives here so we can pass it to useRunTree before
   // the controller is initialized (avoids a circular deps problem between
   // ctrl.view → tree → layout → ctrl).
@@ -56,6 +36,39 @@ export function PathView() {
 
   // Drive tree fetch from view state.
   const tree = useRunTree(id, view, iter)
+
+  // Build a map of branchKey → taken_hosts from the current tree's fork branch nodes.
+  // A fork branch node has node.branch != null and node.taken_hosts set by the backend.
+  // Treat absent taken_hosts (e.g. mock fixture nodes) as "taken" to avoid false greying.
+  const takenMap = useMemo<Record<string, string[]>>(() => {
+    if (!tree.data) return {}
+    const map: Record<string, string[]> = {}
+    for (const node of tree.data.nodes as PathNode[]) {
+      if (node.branch != null && node.taken_hosts != null) {
+        map[node.branch] = node.taken_hosts
+      }
+    }
+    return map
+  }, [tree.data])
+
+  // Branch-taken logic: 'all' → every branch lit; single host → grey branches the host didn't take.
+  // Absent taken_hosts means unknown (fixture / old data) → treat as taken, never crash.
+  const isBranchTaken = useCallback((branchKey: string | null | undefined): boolean => {
+    if (hostScope === 'all' || !branchKey) return true
+    const hosts = takenMap[branchKey]
+    if (hosts == null) return true  // absent means unknown → treat as taken
+    return hosts.includes(hostScope)
+  }, [hostScope, takenMap])
+
+  const isTaken = useCallback((e: { branch?: string | null }) => isBranchTaken(e.branch), [isBranchTaken])
+
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    setReduced(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setReduced(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
 
   // Memoize layout. Key on tree.data identity; switching views produces a new
   // tree.data object → new layout object → controller's fit effect fires.
@@ -114,7 +127,7 @@ export function PathView() {
       // Derive breadcrumb label from the loop root node in the tree; fall back to the view id.
       const loopNode = tree.data?.nodes.find(n => n.type === 'loop')
       const loopLabel = loopNode
-        ? `${loopNode.label}${loopTotal != null ? ` ×${loopTotal}` : ''}`
+        ? `${loopNode.label}${loopTotal != null ? ` \xd7${loopTotal}` : ''}`
         : view.id
       crumbs.push({ key: 'loop', label: loopLabel, exitRef: null })
     }
@@ -125,9 +138,9 @@ export function PathView() {
   }, [view, run.data, tree.data, loopTotal])
 
   let viewHint = ''
-  if (view.type === 'main') viewHint = 'execution order · left → right'
+  if (view.type === 'main') viewHint = 'execution order \xb7 left → right'
   if (view.type === 'container') {
-    viewHint = containerTaskCount != null ? `sub-flow · ${containerTaskCount} tasks` : 'sub-flow'
+    viewHint = containerTaskCount != null ? `sub-flow \xb7 ${containerTaskCount} tasks` : 'sub-flow'
   }
   if (view.type === 'loop') viewHint = `iteration ${iter + 1} of ${loopTotal ?? '?'}`
 
@@ -161,6 +174,9 @@ export function PathView() {
       : 'none',
   }
 
+  // Real host list from run recap; falls back to empty array when run data not yet loaded.
+  const hostList = run.data?.recap?.map(r => r.host) ?? []
+
   return (
     <div className="col" style={{ height: '100%', minWidth: 0, background: 'var(--bg)' }}>
       {/* Top bar */}
@@ -186,7 +202,7 @@ export function PathView() {
         >
           Inputs
         </button>
-        <HostScopeChip value={hostScope} onPick={setHostScope} />
+        <HostScopeChip hosts={hostList} value={hostScope} onPick={setHostScope} />
         <span className="dim" style={{ fontSize: 11 }}>{tree.data?.nodes.length ?? 0} steps</span>
       </div>
 
