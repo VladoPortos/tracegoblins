@@ -67,18 +67,25 @@ export function usePathController(
     setCh(ch)
   }, [])
 
-  // Fit ONLY on mount and when the world SIZE genuinely changes. Depends on the
-  // primitive worldW/worldH numbers (NOT the layout object identity, and NOT the
-  // fitView function), so pan/zoom setStates do not re-trigger a fit.
-  const worldW = layout?.worldW
-  const worldH = layout?.worldH
   const layoutMounted = layout != null
+
+  // Fit on mount and on every VIEW SWITCH. The dep is a content signature of the
+  // current layout (node count + first node id + rounded world size), NOT the
+  // worldW/worldH primitives alone: two different views can share the same world
+  // size (e.g. exiting back to a cached `main`), and keying on size alone would
+  // skip the re-fit and leave the new view at the old pan/zoom. fitKey changes
+  // only when layout CONTENT changes, so pan/zoom setStates (layout unchanged) do
+  // NOT re-trigger a fit — no clobber loop. fitView stays stable (reads dims from
+  // layoutRef), so it is safe in the dep array.
+  const fitKey = layout
+    ? `${layout.nodes.length}:${layout.nodes[0]?.id ?? ''}:${Math.round(layout.worldW)}x${Math.round(layout.worldH)}`
+    : ''
   useEffect(() => {
-    if (worldW == null || worldH == null) return
+    if (!fitKey) return
     // rAF so the canvas element has been laid out and is measurable.
     const id = requestAnimationFrame(() => fitView())
     return () => cancelAnimationFrame(id)
-  }, [worldW, worldH, fitView])
+  }, [fitKey, fitView])
 
   const zoomBy = useCallback((factor: number) => {
     const el = canvasRef.current
