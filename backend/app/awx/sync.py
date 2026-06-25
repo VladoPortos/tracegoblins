@@ -15,10 +15,12 @@ from app.awx.client import AwxClient, AwxError
 from app.core.clock import utcnow
 from app.core.crypto import TokenCryptoError, decrypt_token
 from app.kb.service import match_run
+from app.logparser import build_tree
 from app.logparser.job_events import parse_job_events
 from app.models import AwxController, Run, RunRaw
 from app.services.audit import write_audit
 from app.services.ingestion import build_run_from_parsed
+from app.services.run_tree import apply_job_detail, build_run_nodes
 
 logger = logging.getLogger(__name__)
 
@@ -192,6 +194,8 @@ async def sync_controller(db: AsyncSession, controller: AwxController) -> SyncRe
 
                 events = await client.get_job_events(job.id)
                 parsed = parse_job_events(events)
+                tree = build_tree(events)
+                detail = await client.get_job_detail(job.id)
 
                 run, tasks = build_run_from_parsed(
                     parsed,
@@ -217,6 +221,10 @@ async def sync_controller(db: AsyncSession, controller: AwxController) -> SyncRe
                     for t in tasks:
                         t.run_id = run.id
                     db.add_all(tasks)
+                    apply_job_detail(run, detail)
+                    nodes, node_results = build_run_nodes(tree, run.id)
+                    db.add_all(nodes)
+                    db.add_all(node_results)
                     db.add(RunRaw(run_id=run.id, content=_join_stdout_capped(events)))
                     await db.commit()
                 except IntegrityError:
