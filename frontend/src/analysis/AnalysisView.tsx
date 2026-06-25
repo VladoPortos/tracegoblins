@@ -90,6 +90,7 @@ export function AnalysisView() {
           <div className="grow" />
           {firstErr && <button className="btn sm btn-danger" onClick={goFirstFail}><Glyph name="alert" size={14} />First failure</button>}
           {d.template_name && <button className="btn sm btn-ghost" onClick={() => setDiffOpen(true)}><Glyph name="layers" size={14} />Diff vs last green</button>}
+          <button className="btn sm btn-ghost" onClick={() => nav(`/runs/${id}/path`)}><Glyph name="map" size={14} />Path view</button>
           {isOwner && <button className="btn btn-ghost" onClick={() => setShareOpen(true)}><Glyph name="share" size={15} />Share</button>}
           {isOwner && <button className="btn btn-danger" onClick={() => { if (confirm('Delete this run?')) del.mutate(id, { onSuccess: () => nav('/') }) }}><Glyph name="close" size={15} />Delete</button>}
         </div>
