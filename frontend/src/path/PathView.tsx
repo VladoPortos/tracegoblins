@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router'
 import { useRun } from '../api/runs'
 import { useRunTree } from '../api/path'
@@ -24,7 +24,14 @@ export function PathView() {
     return () => mq.removeEventListener('change', handler)
   }, [])
 
-  const layout = tree.data ? layoutTree(tree.data.nodes, tree.data.edges) : null
+  // Memoize so `layout` keeps a stable object identity across renders that don't
+  // change the underlying data. Without this, every pan/zoom setState re-runs
+  // layoutTree → new layout object → the controller's fitView effect re-fires and
+  // clobbers the transform back to the fit value (net-zero pan/zoom).
+  const layout = useMemo(
+    () => (tree.data ? layoutTree(tree.data.nodes, tree.data.edges) : null),
+    [tree.data],
+  )
 
   // Clicking empty canvas (a press that didn't drag) clears the selection.
   const ctrl = usePathController(layout, () => setSelectedId(null))

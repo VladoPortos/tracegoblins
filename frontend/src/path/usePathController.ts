@@ -43,27 +43,41 @@ export function usePathController(
   const onEmptyClickRef = useRef(onEmptyClick)
   useEffect(() => { onEmptyClickRef.current = onEmptyClick }, [onEmptyClick])
 
+  // Keep a ref to the current layout so fitView / zoomBy / the native wheel
+  // listener can read world dimensions without being recreated each render.
+  // This keeps fitView a STABLE function: a previous bug put `layout` in
+  // fitView's deps (and fitView in the fit-effect's deps), so an unstable
+  // `layout` object identity re-ran fitView on every pan/zoom render and
+  // clobbered the transform back to the fit value.
+  const layoutRef = useRef(layout)
+  useEffect(() => { layoutRef.current = layout }, [layout])
+
   const fitView = useCallback(() => {
     const el = canvasRef.current
-    if (!el || !layout) return
+    const lo = layoutRef.current
+    if (!el || !lo) return
     const cw = el.clientWidth
     const ch = el.clientHeight
-    const { worldW, worldH } = layout
+    const { worldW, worldH } = lo
     const z = Math.max(ZOOM_MIN, Math.min(1.1, Math.min(cw / (worldW + PAD * 2), ch / (worldH + PAD * 2))))
     setPanX((cw - worldW * z) / 2)
     setPanY((ch - worldH * z) / 2)
     setZoom(z)
     setCw(cw)
     setCh(ch)
-  }, [layout])
+  }, [])
 
-  // Fit on mount and when layout world dimensions change.
+  // Fit ONLY on mount and when the world SIZE genuinely changes. Depends on the
+  // primitive worldW/worldH numbers (NOT the layout object identity, and NOT the
+  // fitView function), so pan/zoom setStates do not re-trigger a fit.
+  const worldW = layout?.worldW
+  const worldH = layout?.worldH
   useEffect(() => {
-    if (!layout) return
+    if (worldW == null || worldH == null) return
     // rAF so the canvas element has been laid out and is measurable.
     const id = requestAnimationFrame(() => fitView())
     return () => cancelAnimationFrame(id)
-  }, [layout?.worldW, layout?.worldH, fitView])
+  }, [worldW, worldH, fitView])
 
   const zoomBy = useCallback((factor: number) => {
     const el = canvasRef.current
@@ -102,9 +116,10 @@ export function usePathController(
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
-    // Bind once the layout exists so the host div is mounted; subsequent reads
-    // come from stateRef, so no other deps are needed.
-  }, [layout])
+    // Bind once the host div is mounted (layout present); subsequent reads come
+    // from stateRef, so we key on a stable boolean rather than the layout object
+    // to avoid needless re-binding on every pan/zoom render.
+  }, [layout != null])
 
   const onMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (e.button !== 0) return
