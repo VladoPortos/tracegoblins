@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import type { PathNode, PathStatus, NodeResult } from '../api/path'
 import { useNodeResults } from '../api/path'
 import type { HostScopeId } from './HostScopeChip'
@@ -289,6 +289,69 @@ export interface PathDrawerProps {
   onClose: () => void
 }
 
+// ---------- code tab ----------
+
+function CodeTab({ node, args }: { node: PathNode; args: ArgRow[] }) {
+  if (!node.task_path && args.length === 0) {
+    return (
+      <div className="mono" style={{ fontSize: 12, color: 'var(--dim)' }}>
+        No source path for this node.
+      </div>
+    )
+  }
+  return (
+    <div className="col" style={{ gap: 14 }}>
+      {node.task_path && (
+        <div>
+          <div className="eyebrow" style={{ marginBottom: 7 }}>Source path</div>
+          <div
+            className="mono"
+            data-testid="code-tab-path"
+            style={{
+              fontSize: 12, color: 'var(--text)', fontFeatureSettings: "'zero'",
+              padding: '9px 12px', borderRadius: 8,
+              background: 'var(--canvas)', border: '1px solid var(--border)',
+              wordBreak: 'break-all',
+            }}
+          >
+            {node.task_path}
+          </div>
+        </div>
+      )}
+
+      {args.length > 0 && (
+        <div>
+          <div className="eyebrow" style={{ marginBottom: 7 }}>Args</div>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+            {args.map(([k, v], i) => (
+              <div
+                key={i}
+                style={{
+                  display: 'flex', justifyContent: 'space-between', gap: 14,
+                  padding: '8px 11px',
+                  background: i % 2 ? 'var(--surface-2)' : 'transparent',
+                }}
+              >
+                <span className="mono" style={{ fontSize: 12, color: 'var(--dim)', fontFeatureSettings: "'zero'" }}>{k}</span>
+                <span className="mono" style={{ fontSize: 12, color: 'var(--text)', fontFeatureSettings: "'zero'", textAlign: 'right', wordBreak: 'break-all' }}>{v}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={{
+        fontSize: 11.5, color: 'var(--dim)',
+        padding: '9px 12px', borderRadius: 8,
+        background: 'var(--canvas)', border: '1px solid var(--border)',
+        fontStyle: 'italic',
+      }}>
+        Source overlay (the actual YAML, with {'{{ }}'} values resolved) arrives with Projects — M3.
+      </div>
+    </div>
+  )
+}
+
 export function PathDrawer({ runId, node, iter, hostScope, reduced, onClose }: PathDrawerProps) {
   // Loop leaves (item/result) carry per-iteration detail; fetch via the data seam.
   // Hook is called unconditionally; `enabled` gates the actual fetch. The mock
@@ -301,6 +364,10 @@ export function PathDrawer({ runId, node, iter, hostScope, reduced, onClose }: P
   const glyph = nodeGlyph(node)
   const glyphColor = nodeGlyphColor(node)
   const isFail = d.status === 'failed' || d.status === 'unreachable'
+
+  // Tab state: reset to 'details' whenever a new node is selected
+  const [drawerTab, setDrawerTab] = useState<'details' | 'code'>('details')
+  useEffect(() => { setDrawerTab('details') }, [node.id])
 
   // Esc to close
   useEffect(() => {
@@ -343,40 +410,43 @@ export function PathDrawer({ runId, node, iter, hostScope, reduced, onClose }: P
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 2, padding: '8px 12px 0', borderBottom: '1px solid var(--border)' }}>
-        {/* Details tab is always active in Task 11; Code tab is Task 12 */}
-        <TabBtn active={true} onClick={() => {}}>Details</TabBtn>
-        <TabBtn active={false} onClick={() => {}}>&lt;/&gt; Code</TabBtn>
+        <TabBtn active={drawerTab === 'details'} onClick={() => setDrawerTab('details')}>Details</TabBtn>
+        <TabBtn active={drawerTab === 'code'} onClick={() => setDrawerTab('code')}>&lt;/&gt; Code</TabBtn>
       </div>
 
-      {/* Details body */}
+      {/* Tab body */}
       <div className="scroll grow" style={{ padding: 16 }}>
-        <div className="col" style={{ gap: 16 }}>
+        {drawerTab === 'details' ? (
+          <div className="col" style={{ gap: 16 }}>
 
-          {/* Status pill + host text */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <StatusPill status={d.status} />
-            <span className="mono" style={{ fontSize: 11.5, color: 'var(--dim)' }}>{d.hostText}</span>
+            {/* Status pill + host text */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <StatusPill status={d.status} />
+              <span className="mono" style={{ fontSize: 11.5, color: 'var(--dim)' }}>{d.hostText}</span>
+            </div>
+
+            {/* Args table */}
+            {d.args.length > 0 && <ArgsTable rows={d.args} />}
+
+            {/* Output / error box */}
+            {d.output && (
+              <OutputBox
+                label={d.outputLabel ?? (isFail ? 'Error' : 'Output')}
+                text={d.output}
+                isFail={isFail}
+              />
+            )}
+
+            {/* Skip reason */}
+            {d.skipReason && <SkipBox reason={d.skipReason} />}
+
+            {/* Timing */}
+            {d.duration && <TimingRow duration={d.duration} />}
+
           </div>
-
-          {/* Args table */}
-          {d.args.length > 0 && <ArgsTable rows={d.args} />}
-
-          {/* Output / error box */}
-          {d.output && (
-            <OutputBox
-              label={d.outputLabel ?? (isFail ? 'Error' : 'Output')}
-              text={d.output}
-              isFail={isFail}
-            />
-          )}
-
-          {/* Skip reason */}
-          {d.skipReason && <SkipBox reason={d.skipReason} />}
-
-          {/* Timing */}
-          {d.duration && <TimingRow duration={d.duration} />}
-
-        </div>
+        ) : (
+          <CodeTab node={node} args={d.args} />
+        )}
       </div>
     </div>
   )

@@ -11,6 +11,7 @@ import { PathStepper } from './PathStepper'
 import { HostScopeChip } from './HostScopeChip'
 import type { HostScopeId } from './HostScopeChip'
 import { PathDrawer } from './PathDrawer'
+import { InputsPanel } from './InputsPanel'
 
 export function PathView() {
   const { id = '' } = useParams()
@@ -20,6 +21,7 @@ export function PathView() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [reduced, setReduced] = useState(false)
   const [hostScope, setHostScope] = useState<HostScopeId>('all')
+  const [showInputs, setShowInputs] = useState(false)
 
   // Per prototype lines 424–429: all → every branch taken; single RedHat host → redhat only; win-01 → windows only.
   const isBranchTaken = useCallback((branch: string | null | undefined): boolean => {
@@ -140,6 +142,21 @@ export function PathView() {
           <span className="mono" style={{ fontSize: 13, fontWeight: 600 }}>{title}</span>
         </div>
         <div className="grow" />
+        <button
+          data-testid="inputs-toggle"
+          className="btn sm btn-ghost"
+          onClick={() => setShowInputs(v => !v)}
+          style={{
+            fontSize: 11.5, fontWeight: 600,
+            color: showInputs ? 'var(--flow)' : 'var(--dim)',
+            border: showInputs ? '1px solid var(--flow-line, var(--border))' : '1px solid transparent',
+            borderRadius: 6, padding: '3px 9px',
+          }}
+          aria-label="Toggle run inputs panel"
+          aria-expanded={showInputs}
+        >
+          Inputs
+        </button>
         <HostScopeChip value={hostScope} onPick={setHostScope} />
         <span className="dim" style={{ fontSize: 11 }}>{tree.data?.nodes.length ?? 0} steps</span>
       </div>
@@ -206,6 +223,7 @@ export function PathView() {
         {view.type === 'loop' && (
           <PathStepper iter={iter} total={50} onStep={step} />
         )}
+        {showInputs && <InputsPanel runId={id} />}
         {selectedNode && (
           <PathDrawer
             runId={id}
