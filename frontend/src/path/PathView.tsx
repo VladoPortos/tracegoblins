@@ -12,6 +12,7 @@ import { HostScopeChip } from './HostScopeChip'
 import type { HostScopeId } from './HostScopeChip'
 import { PathDrawer } from './PathDrawer'
 import { InputsPanel } from './InputsPanel'
+import { PathMinimap } from './PathMinimap'
 
 export function PathView() {
   const { id = '' } = useParams()
@@ -219,6 +220,17 @@ export function PathView() {
               </div>
             </div>
           </div>
+        )}
+        {layout && ctrl.cw > 0 && (
+          <PathMinimap
+            layout={layout}
+            panX={ctrl.panX}
+            panY={ctrl.panY}
+            zoom={ctrl.zoom}
+            cw={ctrl.cw}
+            ch={ctrl.ch}
+            onJump={ctrl.panTo}
+          />
         )}
         {view.type === 'loop' && (
           <PathStepper iter={iter} total={50} onStep={step} />

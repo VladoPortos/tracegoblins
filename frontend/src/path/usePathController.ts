@@ -17,6 +17,7 @@ export interface PathController {
   onMouseDown: (e: React.MouseEvent<HTMLDivElement>) => void
   fitView: () => void
   zoomBy: (factor: number) => void
+  panTo: (worldX: number, worldY: number) => void
 }
 
 export function usePathController(
@@ -155,7 +156,17 @@ export function usePathController(
     window.addEventListener('mouseup', onUp)
   }, [])
 
+  // Center the canvas on a world-space point (mirrors prototype onMinimapClick lines 833–838).
+  const panTo = useCallback((worldX: number, worldY: number) => {
+    const el = canvasRef.current
+    const cwCur = el ? el.clientWidth : cw
+    const chCur = el ? el.clientHeight : ch
+    const { zoom } = stateRef.current
+    setPanX(cwCur / 2 - worldX * zoom)
+    setPanY(chCur / 2 - worldY * zoom)
+  }, [cw, ch])
+
   const transform = `translate(${panX}px,${panY}px) scale(${zoom})`
 
-  return { panX, panY, zoom, transform, cw, ch, canvasRef, onMouseDown, fitView, zoomBy }
+  return { panX, panY, zoom, transform, cw, ch, canvasRef, onMouseDown, fitView, zoomBy, panTo }
 }
