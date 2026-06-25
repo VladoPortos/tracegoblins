@@ -24,12 +24,15 @@ export function PathView() {
   const [hostScope, setHostScope] = useState<HostScopeId>('all')
   const [showInputs, setShowInputs] = useState(false)
 
-  // Per prototype lines 424–429: all → every branch taken; single RedHat host → redhat only; win-01 → windows only.
-  const isBranchTaken = useCallback((branch: string | null | undefined): boolean => {
-    if (!branch || hostScope === 'all') return true
-    const isWin = hostScope === 'win-01'
-    return isWin ? branch === 'windows' : branch === 'redhat'
-  }, [hostScope])
+  // Branch-taken logic: when scope is 'all' every branch is lit (all hosts took some branch).
+  // When a single host is selected we would need per-host NodeResults for each branch node to
+  // know which branch that host took — that requires an additional fetch per branch node and is
+  // deferred to Task 13. For now, a single-host scope keeps all branches lit (no greying) rather
+  // than crashing or showing wrong data. Real forks carry a `branch` field on each branch node;
+  // the structural path still works, only the greying is not yet host-aware.
+  const isBranchTaken = useCallback((_branch: string | null | undefined): boolean => {
+    return true
+  }, [])
 
   const isTaken = useCallback((e: { branch?: string | null }) => isBranchTaken(e.branch), [isBranchTaken])
 
@@ -83,31 +86,56 @@ export function PathView() {
     triggerAnim()
   }, [triggerAnim])
 
+  // Resolve the view-root node from the current tree (used for breadcrumb label + stepper total).
+  // For loop views the loop root node (first node with item_count) carries item_count.
+  // For container views the first node with child_count carries the task count.
+  const loopTotal = useMemo(() => {
+    if (!tree.data || view.type !== 'loop') return null
+    const loopNode = tree.data.nodes.find(n => n.item_count != null)
+    return loopNode?.item_count ?? null
+  }, [tree.data, view.type])
+
+  const containerTaskCount = useMemo(() => {
+    if (!tree.data || view.type !== 'container') return null
+    // A container tree's nodes are direct children; child_count on the first 'role'/'block'/'include' node
+    // mirrors the original parent's count. Fall back to the total node count in the sub-tree.
+    const meta = tree.data.nodes.find(n => n.child_count != null)
+    return meta?.child_count ?? tree.data.nodes.length
+  }, [tree.data, view.type])
+
   // Breadcrumb array: root always present; container/loop add a second crumb.
   const breadcrumb = useMemo(() => {
     const crumbs: { key: string; label: string; exitRef: PathViewRef | null }[] = [
-      { key: 'root', label: 'Day2Actions', exitRef: { type: 'main' } },
+      { key: 'root', label: run.data?.template_name || 'Run', exitRef: { type: 'main' } },
     ]
     if (view.type === 'container') {
       crumbs.push({ key: 'container', label: view.id, exitRef: null })
     } else if (view.type === 'loop') {
-      crumbs.push({ key: 'loop', label: 'install packages ×50', exitRef: null })
+      // Derive breadcrumb label from the loop root node in the tree; fall back to the view id.
+      const loopNode = tree.data?.nodes.find(n => n.type === 'loop')
+      const loopLabel = loopNode
+        ? `${loopNode.label}${loopTotal != null ? ` ×${loopTotal}` : ''}`
+        : view.id
+      crumbs.push({ key: 'loop', label: loopLabel, exitRef: null })
     }
     return crumbs.map((c, i) => {
       const last = i === crumbs.length - 1
       return { key: c.key, label: c.label, sep: !last, last, exitRef: last ? null : c.exitRef }
     })
-  }, [view])
+  }, [view, run.data, tree.data, loopTotal])
 
   let viewHint = ''
   if (view.type === 'main') viewHint = 'execution order · left → right'
-  if (view.type === 'container') viewHint = 'sub-flow · 12 tasks'
-  if (view.type === 'loop') viewHint = `iteration ${iter + 1} of 50`
+  if (view.type === 'container') {
+    viewHint = containerTaskCount != null ? `sub-flow · ${containerTaskCount} tasks` : 'sub-flow'
+  }
+  if (view.type === 'loop') viewHint = `iteration ${iter + 1} of ${loopTotal ?? '?'}`
 
-  // Stepper: advance/retreat through loop iterations; clamp to 0..49.
+  // Stepper: advance/retreat through loop iterations; clamp to real item_count (or safe default).
+  const stepMax = loopTotal != null ? loopTotal - 1 : 0
   const step = useCallback((dir: 1 | -1) => {
-    setIter(i => Math.max(0, Math.min(49, i + dir)))
-  }, [])
+    setIter(i => Math.max(0, Math.min(stepMax, i + dir)))
+  }, [stepMax])
 
   // Pass layout to the controller. The controller keeps a layoutRef internally
   // and syncs it each render via useEffect, so fitView always uses current dims.
@@ -214,7 +242,6 @@ export function PathView() {
                   onEnter={enter}
                   isTaken={isTaken}
                   isBranchTaken={isBranchTaken}
-                  hostScope={hostScope}
                   reduced={reduced}
                 />
               </div>
@@ -232,8 +259,8 @@ export function PathView() {
             onJump={ctrl.panTo}
           />
         )}
-        {view.type === 'loop' && (
-          <PathStepper iter={iter} total={50} onStep={step} />
+        {view.type === 'loop' && loopTotal != null && loopTotal > 0 && (
+          <PathStepper iter={iter} total={loopTotal} onStep={step} />
         )}
         {showInputs && <InputsPanel runId={id} />}
         {selectedNode && (

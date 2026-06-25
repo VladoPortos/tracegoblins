@@ -1,10 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
 
+// Host scope options. The specific host entries (rhel-07, web-13, win-01) are placeholder
+// mock values; a future task will populate this dropdown from the run's actual host list.
+// For now the dropdown is presentational only — selecting 'all' is the fully-functional path.
 const HOST_OPTIONS = [
-  { id: 'all',    label: 'All 50', tag: 'aggregate' },
-  { id: 'rhel-07', label: 'rhel-07', tag: 'RedHat' },
-  { id: 'web-13', label: 'web-13',  tag: 'RedHat · failed' },
-  { id: 'win-01', label: 'win-01',  tag: 'Windows' },
+  { id: 'all',    label: 'All hosts', tag: 'aggregate' },
+  { id: 'rhel-07', label: 'rhel-07', tag: 'host' },
+  { id: 'web-13', label: 'web-13',  tag: 'host' },
+  { id: 'win-01', label: 'win-01',  tag: 'host' },
 ] as const
 
 export type HostScopeId = typeof HOST_OPTIONS[number]['id']
@@ -25,7 +28,7 @@ export function HostScopeChip({ value, onPick }: { value: HostScopeId; onPick: (
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
-  const label = value === 'all' ? 'All 50' : value
+  const label = value === 'all' ? 'All hosts' : value
 
   return (
     <div ref={wrapRef} style={{ position: 'relative' }}>

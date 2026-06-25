@@ -134,19 +134,26 @@ interface Detail {
   duration?: string
 }
 
-function detailFor(node: PathNode, iter: number, hostScope: HostScopeId, iterResult: NodeResult | null): Detail {
-  const hostScopeText = hostScope === 'all' ? 'all 50 hosts' : 'host: ' + hostScope
+function hostCountText(node: PathNode, hostScope: HostScopeId): string {
+  if (hostScope !== 'all') return 'host: ' + hostScope
+  if (node.host_count != null) return node.host_count === 1 ? '1 host' : `${node.host_count} hosts`
+  return 'all hosts'
+}
 
+function detailFor(node: PathNode, iter: number, hostScope: HostScopeId, iterResult: NodeResult | null): Detail {
   if (node.type === 'loop') {
+    const hc = node.host_count != null ? node.host_count : null
+    const ic = node.item_count != null ? node.item_count : null
+    const hostPart = hc != null ? (hc === 1 ? '1 host' : `${hc} hosts`) : 'hosts'
+    const itemPart = ic != null ? `${ic} items` : 'items'
     return {
       title: node.label,
-      module: `loop · ${node.action ?? 'ansible.builtin.package'}`,
-      status: 'changed',
-      hostText: `${node.host_count ?? 50} hosts × ${node.item_count ?? 50} items`,
+      module: `loop · ${node.action ?? 'task'}`,
+      status: node.status,
+      hostText: `${hostPart} × ${itemPart}`,
       args: [
-        ['loop', `packages (${node.item_count ?? 50})`],
+        ['loop', ic != null ? `items (${ic})` : 'items'],
         ['name', '{{ item }}'],
-        ['state', 'present'],
       ],
       outputLabel: 'Aggregate',
       output: `${node.ok_count ?? 0} ok · ${node.fail_count ?? 0} failed\nEnter to step through every iteration.`,
@@ -155,39 +162,40 @@ function detailFor(node: PathNode, iter: number, hostScope: HostScopeId, iterRes
   }
 
   if (node.type === 'when') {
+    // Build branch summary from node data only — the real counts come from sub-node host_count fields.
+    // We don't have branch counts here without additional fetches; show the condition and a generic hint.
     return {
-      title: 'OS family decision',
+      title: node.label || 'conditional',
       module: 'when condition',
       status: node.status,
-      hostText: hostScopeText,
+      hostText: hostCountText(node, hostScope),
       args: [
         ['when', node.condition ?? ''],
-        ['→ true', '49 hosts → yum repo'],
-        ['→ false', '1 host → choco repo'],
       ],
       outputLabel: 'How it floated',
       output: hostScope === 'all'
-        ? 'Both branches taken (RedHat ×49, Windows ×1).'
-        : hostScope === 'win-01'
-          ? 'win-01 is Windows → false → choco branch.'
-          : `${hostScope} is RedHat → true → yum branch.`,
-      duration: node.duration_s != null ? `${node.duration_s}s` : '0.1s',
+        ? 'Multiple branches taken — select a host to see which branch it followed.'
+        : `Checking which branch ${hostScope} followed.`,
+      duration: node.duration_s != null ? `${node.duration_s}s` : undefined,
     }
   }
 
   if (node.type === 'role' || node.type === 'block' || node.type === 'include') {
+    const cc = node.child_count ?? 0
     return {
       title: node.label,
-      module: `role · ${node.child_count ?? 0} tasks`,
+      module: `role · ${cc} tasks`,
       status: node.status,
-      hostText: `${node.host_count ?? 50} hosts`,
+      hostText: hostCountText(node, hostScope),
       args: [
         ['role', node.label],
-        ['tasks', String(node.child_count ?? 0)],
-        ['result', `${(node.ok_count ?? node.child_count ?? 0)} ok`],
+        ['tasks', String(cc)],
+        ['result', `${node.ok_count ?? cc} ok`],
       ],
       outputLabel: 'Summary',
-      output: `All ${node.child_count ?? 0} tasks completed. Enter to view the sub-flow.`,
+      output: cc > 0
+        ? `${cc} task${cc === 1 ? '' : 's'} in sub-flow. Enter to inspect.`
+        : 'Enter to view the sub-flow.',
       duration: node.duration_s != null ? `${node.duration_s}s` : undefined,
     }
   }
@@ -199,8 +207,8 @@ function detailFor(node: PathNode, iter: number, hostScope: HostScopeId, iterRes
     return {
       title: `item ${node.label}`,
       module: 'loop variable',
-      status: 'ok',
-      hostText: `iteration ${iter + 1} / ${node.item_count ?? 50}`,
+      status: iterResult?.status ?? node.status,
+      hostText: `iteration ${iter + 1}${node.item_count != null ? ` / ${node.item_count}` : ''}`,
       args: [
         ['item', itemVal],
         ['index', String(iterResult?.item_index ?? iter)],
@@ -214,9 +222,9 @@ function detailFor(node: PathNode, iter: number, hostScope: HostScopeId, iterRes
     const isFail = status === 'failed' || status === 'unreachable'
     return {
       title: 'result',
-      module: node.action ?? 'ansible.builtin.package',
+      module: node.action ?? (node.sub ?? 'task'),
       status,
-      hostText: `iteration ${iter + 1} / 50`,
+      hostText: `iteration ${iter + 1}`,
       outputLabel: isFail ? 'Error' : 'Output',
       output: iterResult?.output ?? undefined,
       duration: iterResult?.duration_s != null ? `${iterResult.duration_s}s` : undefined,
@@ -227,30 +235,26 @@ function detailFor(node: PathNode, iter: number, hostScope: HostScopeId, iterRes
   // generic task
   const isFail = node.status === 'failed' || node.status === 'unreachable'
   const module = node.action ?? (node.sub ? `ansible.builtin.${node.sub}` : 'task')
-  const hostText = node.host_count != null
-    ? (hostScope === 'all' ? `${node.host_count} hosts` : '1 host')
-    : hostScopeText
 
+  // Output: for failed tasks show a generic message (real output comes from NodeResults in future);
+  // for ok/changed tasks summarise the host count. No hardcoded node IDs or host names.
   let output: string | undefined
-  if (node.id === 'restart') {
-    output = 'web-13: FAILED — Job for app.service failed; see "systemctl status app.service".'
-  } else if (isFail) {
-    output = 'Task failed on 1 host.'
-  } else {
-    output = `ok: ${node.host_count ?? 50} hosts`
+  if (isFail) {
+    const fc = node.fail_count
+    output = fc != null && fc > 0 ? `Task failed on ${fc} host${fc === 1 ? '' : 's'}.` : 'Task failed.'
+  } else if (node.status !== 'skipped') {
+    const hc = node.host_count
+    output = hc != null ? `ok: ${hc} host${hc === 1 ? '' : 's'}` : undefined
   }
 
-  const skipReason = node.status === 'skipped' ? "Conditional 'when' evaluated to false" : undefined
+  const skipReason = node.status === 'skipped' ? (node.condition ? `when: ${node.condition}` : "Conditional 'when' evaluated to false") : undefined
 
   return {
     title: node.label,
     module,
     status: node.status,
-    hostText,
-    args: [
-      ['module', node.sub ?? module],
-      ['state', 'present'],
-    ],
+    hostText: hostCountText(node, hostScope),
+    args: node.sub ? [['module', node.sub]] : [],
     outputLabel: isFail ? 'Error' : 'Result',
     output,
     skipReason,
@@ -354,11 +358,11 @@ function CodeTab({ node, args }: { node: PathNode; args: ArgRow[] }) {
 
 export function PathDrawer({ runId, node, iter, hostScope, reduced, onClose }: PathDrawerProps) {
   // Loop leaves (item/result) carry per-iteration detail; fetch via the data seam.
-  // Hook is called unconditionally; `enabled` gates the actual fetch. The mock
-  // fetchNodeResults returns all 50 results (ignores iter), so we index by iter.
+  // Pass offset=iter&limit=1 so the API returns exactly the result for this iteration.
+  // results[0] is the single page item matching the current iteration.
   const isLoopLeaf = node.type === 'result' || node.type === 'item'
-  const nodeResults = useNodeResults(runId, node.id, {}, isLoopLeaf)
-  const iterResult = nodeResults.data?.results?.[iter] ?? null
+  const nodeResults = useNodeResults(runId, node.id, { offset: iter, limit: 1 }, isLoopLeaf)
+  const iterResult = nodeResults.data?.results?.[0] ?? null
 
   const d = detailFor(node, iter, hostScope, iterResult)
   const glyph = nodeGlyph(node)
