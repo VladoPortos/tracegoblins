@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
-import type { PathNode, PathStatus } from '../api/path'
-import { loopResults } from '../api/pathFixture'
+import type { PathNode, PathStatus, NodeResult } from '../api/path'
+import { useNodeResults } from '../api/path'
 import type { HostScopeId } from './HostScopeChip'
 import { Glyph } from '../components/atoms/Glyph'
 
@@ -134,7 +134,7 @@ interface Detail {
   duration?: string
 }
 
-function detailFor(node: PathNode, iter: number, hostScope: HostScopeId): Detail {
+function detailFor(node: PathNode, iter: number, hostScope: HostScopeId, iterResult: NodeResult | null): Detail {
   const hostScopeText = hostScope === 'all' ? 'all 50 hosts' : 'host: ' + hostScope
 
   if (node.type === 'loop') {
@@ -193,33 +193,33 @@ function detailFor(node: PathNode, iter: number, hostScope: HostScopeId): Detail
   }
 
   if (node.type === 'item') {
-    // label carries the item value e.g. `= "nginx"`
-    const itemVal = node.label.replace(/^=\s*/, '')
+    // node.label already carries the item value e.g. `= "nginx"`; keep the leading `=`.
+    // item_value from nodeResults gives the canonical rendered value for the args row.
+    const itemVal = iterResult?.item_value != null ? `"${iterResult.item_value}"` : node.label.replace(/^=\s*/, '')
     return {
-      title: `item ${itemVal}`,
+      title: `item ${node.label}`,
       module: 'loop variable',
       status: 'ok',
       hostText: `iteration ${iter + 1} / ${node.item_count ?? 50}`,
       args: [
         ['item', itemVal],
-        ['index', String(iter)],
+        ['index', String(iterResult?.item_index ?? iter)],
       ],
       duration: undefined,
     }
   }
 
   if (node.type === 'result') {
-    const results = loopResults()
-    const res = results[iter] ?? results[0]
-    const isFail = res.status === 'failed' || res.status === 'unreachable'
+    const status = iterResult?.status ?? node.status
+    const isFail = status === 'failed' || status === 'unreachable'
     return {
       title: 'result',
       module: node.action ?? 'ansible.builtin.package',
-      status: res.status,
+      status,
       hostText: `iteration ${iter + 1} / 50`,
       outputLabel: isFail ? 'Error' : 'Output',
-      output: res.output ?? undefined,
-      duration: res.duration_s != null ? `${res.duration_s}s` : undefined,
+      output: iterResult?.output ?? undefined,
+      duration: iterResult?.duration_s != null ? `${iterResult.duration_s}s` : undefined,
       args: [],
     }
   }
@@ -289,8 +289,15 @@ export interface PathDrawerProps {
   onClose: () => void
 }
 
-export function PathDrawer({ node, iter, hostScope, reduced, onClose }: PathDrawerProps) {
-  const d = detailFor(node, iter, hostScope)
+export function PathDrawer({ runId, node, iter, hostScope, reduced, onClose }: PathDrawerProps) {
+  // Loop leaves (item/result) carry per-iteration detail; fetch via the data seam.
+  // Hook is called unconditionally; `enabled` gates the actual fetch. The mock
+  // fetchNodeResults returns all 50 results (ignores iter), so we index by iter.
+  const isLoopLeaf = node.type === 'result' || node.type === 'item'
+  const nodeResults = useNodeResults(runId, node.id, {}, isLoopLeaf)
+  const iterResult = nodeResults.data?.results?.[iter] ?? null
+
+  const d = detailFor(node, iter, hostScope, iterResult)
   const glyph = nodeGlyph(node)
   const glyphColor = nodeGlyphColor(node)
   const isFail = d.status === 'failed' || d.status === 'unreachable'

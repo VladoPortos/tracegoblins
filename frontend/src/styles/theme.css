@@ -207,6 +207,7 @@ body {
 @keyframes zoomIn { from { transform:scale(.93); } to { transform:scale(1); } }
 @keyframes zoomOut { from { transform:scale(1.05); } to { transform:scale(1); } }
 @keyframes haloPulse { 0%,100%{ box-shadow:0 0 0 2px var(--flow), 0 6px 24px var(--flow-glow); } 50%{ box-shadow:0 0 0 2px var(--flow), 0 6px 34px var(--flow-glow); } }
+@keyframes drawerIn { from { transform:translateX(24px); } to { transform:translateX(0); } }
 @media (prefers-reduced-motion: reduce){
   .errpulse, .errpulse-cell { animation:none !important; }
   /* Neutralize ALL decorative motion (pulse/spin/indeterminate/…) and
