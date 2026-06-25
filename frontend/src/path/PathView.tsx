@@ -161,7 +161,7 @@ export function PathView() {
   }, [selectedId, layout])
 
   if (tree.isPending && !layout) return <FullScreenSpinner />
-  const title = run.data?.template_name || 'Day2Actions'
+  const title = run.data?.template_name || 'Run'
 
   const doAnim = animate && !reduced
   const worldAnimStyle: React.CSSProperties = {

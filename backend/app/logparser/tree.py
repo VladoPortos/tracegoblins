@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 
 
@@ -129,6 +129,10 @@ def build_tree(events: list[dict]) -> ParsedTree:
     containers: dict[tuple, TreeNode] = {}
     # active include stack: list of (stripped_included_file, basename) in push order
     include_stack: list[tuple[str, str]] = []  # (stripped_path, basename)
+
+    # Per-(node_id, host) running counter for loop item events — avoids the O(n²)
+    # list scan and keeps each host's item indices independent (0..K-1 per host).
+    _item_counter: dict[tuple[str, str], int] = {}
 
     for ev in sorted(events, key=lambda e: e.get("counter") or 0):
         et = _norm(ev.get("event", ""))
@@ -259,7 +263,9 @@ def build_tree(events: list[dict]) -> ParsedTree:
             if st == "ok" and res.get("changed"):
                 st = "changed"
             host = ed.get("host") or ed.get("remote_addr") or "localhost"
-            idx = len([r for r in tree.results if r.node_id == node.node_id and r.item_index is not None])
+            _key = (node.node_id, host)
+            idx = _item_counter.get(_key, 0)
+            _item_counter[_key] = idx + 1
             tree.results.append(TreeResult(
                 node_id=node.node_id, host=host, item_index=idx, item_value=res.get("item"),
                 status=st, changed=bool(res.get("changed")), result=_cap_result(res),
@@ -280,7 +286,8 @@ def build_tree(events: list[dict]) -> ParsedTree:
         items = [r for r in rs if r.item_index is not None]
         if items:
             n.node_type = "loop"
-            n.item_count = len({r.item_index for r in items})
+            host_counts = Counter(r.host for r in items)
+            n.item_count = max(host_counts.values()) if host_counts else 0
         n.host_count = len({r.host for r in rs if r.status != "skipped"})
         worst = max(rs, key=lambda r: _RANK.get(r.status, 0)).status
         n.status = worst
