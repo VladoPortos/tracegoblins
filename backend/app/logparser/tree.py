@@ -63,9 +63,35 @@ def _strip_project_path(p: str | None) -> str | None:
     return p[len(_PROJECT_PREFIX):] if p.startswith(_PROJECT_PREFIX) else p
 
 
+def _task_file(task_path: str | None) -> str | None:
+    """Return the file portion of a stripped task_path (drop :lineno suffix)."""
+    if not task_path:
+        return None
+    return task_path.rsplit(":", 1)[0]
+
+
 def build_tree(events: list[dict]) -> ParsedTree:
     """Reconstruct the structural execution tree from AWX job_events. Pure. Built up across
-    Tasks 2–4; single-pass walk in counter order."""
+    Tasks 2–4; single-pass walk in counter order.
+
+    Container reconstruction (Task 3)
+    ----------------------------------
+    AWX flattens all tasks under their play — every task's parent_uuid is the play.  We
+    reconstruct logical nesting from two signals:
+
+    1. ``playbook_on_include`` events carry ``included_file``.  We maintain an *active include
+       stack* (one entry per open include).  When a task starts, we scan the stack from the
+       top; if its ``task_path`` file matches a stack entry we pop down to that entry and place
+       the task under the corresponding include container.  If no entry matches, the task is
+       top-level (parented directly to the play) and the stack is cleared.
+
+    2. ``event_data.role`` — tasks carrying a role name that are not captured by an active
+       include are placed under a ``role`` container within the play.
+
+    Limitation: Ansible ``block:`` boundaries emit no events, so block containers cannot be
+    reconstructed here (M3 will add them via a static overlay).  Nested includes-within-includes
+    collapse to the innermost matching file container.
+    """
     tree = ParsedTree()
     root = TreeNode(node_id="root", parent_id=None, counter=0, depth=-1,
                     node_type="playbook", name="playbook")
@@ -74,8 +100,12 @@ def build_tree(events: list[dict]) -> ParsedTree:
     cur_play: TreeNode | None = None
     # index nodes by their ansible uuid so later events (results, includes) can find them
     by_uuid: dict[str, TreeNode] = {}
+    # container cache: (play_id, kind, key) -> container TreeNode
+    containers: dict[tuple, TreeNode] = {}
+    # active include stack: list of (stripped_included_file, basename) in push order
+    include_stack: list[tuple[str, str]] = []  # (stripped_path, basename)
 
-    for ev in events:
+    for ev in sorted(events, key=lambda e: e.get("counter") or 0):
         et = _norm(ev.get("event", ""))
         ed = ev.get("event_data") or {}
         counter = ev.get("counter") or 0
@@ -89,6 +119,14 @@ def build_tree(events: list[dict]) -> ParsedTree:
             )
             tree.nodes.append(cur_play)
             by_uuid[play_uuid] = cur_play
+            # new play resets include state
+            include_stack.clear()
+            continue
+
+        if et == "playbook_on_include":
+            inc_file = _strip_project_path(ed.get("included_file") or "") or ""
+            base = inc_file.rsplit("/", 1)[-1] or inc_file
+            include_stack.append((inc_file, base))
             continue
 
         if et in ("playbook_on_task_start", "playbook_on_handler_task_start"):
@@ -96,12 +134,61 @@ def build_tree(events: list[dict]) -> ParsedTree:
                 cur_play = TreeNode(node_id=f"play-{counter}", parent_id=root.node_id,
                                     counter=counter, depth=0, node_type="play", name="play")
                 tree.nodes.append(cur_play)
+
             task_uuid = ed.get("task_uuid") or ed.get("uuid") or f"task-{counter}"
+            raw_path = _strip_project_path(ed.get("task_path"))
+            task_file = _task_file(raw_path)
+
+            # Resolve the active include container for this task.
+            # Scan the stack from the top; pop entries that don't match this task's file.
+            # If no entry matches, the task is top-level (stack is emptied).
+            active_inc: tuple[str, str] | None = None
+            if include_stack and task_file:
+                for i in range(len(include_stack) - 1, -1, -1):
+                    if include_stack[i][0] == task_file:
+                        # Pop any deeper includes that are now closed
+                        del include_stack[i + 1:]
+                        active_inc = include_stack[i]
+                        break
+                else:
+                    # Task file matches no open include → top-level, clear stack
+                    include_stack.clear()
+
+            # Determine structural parent (include container > role container > play)
+            role = ed.get("role") or None
+            if active_inc is not None:
+                inc_path, inc_base = active_inc
+                key = (cur_play.node_id, "include", inc_path)
+                cont = containers.get(key)
+                if cont is None:
+                    cont = TreeNode(
+                        node_id=f"inc:{cur_play.node_id}:{inc_base}",
+                        parent_id=cur_play.node_id, counter=counter, depth=1,
+                        node_type="include", name=inc_base,
+                    )
+                    tree.nodes.append(cont)
+                    containers[key] = cont
+                parent, task_depth = cont, 2
+            elif role:
+                key = (cur_play.node_id, "role", role)
+                cont = containers.get(key)
+                if cont is None:
+                    cont = TreeNode(
+                        node_id=f"role:{cur_play.node_id}:{role}",
+                        parent_id=cur_play.node_id, counter=counter, depth=1,
+                        node_type="role", name=role,
+                    )
+                    tree.nodes.append(cont)
+                    containers[key] = cont
+                parent, task_depth = cont, 2
+            else:
+                parent, task_depth = cur_play, 1
+
             node = TreeNode(
-                node_id=task_uuid, parent_id=cur_play.node_id, counter=counter, depth=1,
+                node_id=task_uuid, parent_id=parent.node_id, counter=counter, depth=task_depth,
                 node_type="task", name=ed.get("task") or ed.get("name") or "task",
                 action=ed.get("task_action") or ed.get("resolved_action"),
-                task_path=_strip_project_path(ed.get("task_path")),
+                task_path=raw_path,
                 ansible_uuid=task_uuid,
                 is_conditional=bool(ed.get("is_conditional")),
             )
@@ -109,6 +196,14 @@ def build_tree(events: list[dict]) -> ParsedTree:
             by_uuid[task_uuid] = node
             continue
 
+    # Compute child_count for every node after the walk.
+    child_counts: dict[str, int] = {}
+    for n in tree.nodes:
+        if n.parent_id is not None:
+            child_counts[n.parent_id] = child_counts.get(n.parent_id, 0) + 1
+    for n in tree.nodes:
+        n.child_count = child_counts.get(n.node_id, 0)
+
     # stash for later tasks
-    tree.__dict__["_by_uuid"] = by_uuid  # internal handoff to Task 3/4 passes; not serialized
+    tree.__dict__["_by_uuid"] = by_uuid  # internal handoff to Task 4; not serialized
     return tree
