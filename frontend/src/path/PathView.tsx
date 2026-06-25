@@ -10,6 +10,7 @@ import { usePathController } from './usePathController'
 import { PathStepper } from './PathStepper'
 import { HostScopeChip } from './HostScopeChip'
 import type { HostScopeId } from './HostScopeChip'
+import { PathDrawer } from './PathDrawer'
 
 export function PathView() {
   const { id = '' } = useParams()
@@ -109,6 +110,12 @@ export function PathView() {
   // and syncs it each render via useEffect, so fitView always uses current dims.
   const ctrl = usePathController(layout, () => setSelectedId(null))
 
+  // Resolve selected node from current tree data (layout nodes are PositionedNode which extends PathNode)
+  const selectedNode = useMemo(() => {
+    if (!selectedId || !layout) return null
+    return layout.nodes.find(n => n.id === selectedId) ?? null
+  }, [selectedId, layout])
+
   if (tree.isPending && !layout) return <FullScreenSpinner />
   const title = run.data?.template_name || 'Day2Actions'
 
@@ -198,6 +205,16 @@ export function PathView() {
         )}
         {view.type === 'loop' && (
           <PathStepper iter={iter} total={50} onStep={step} />
+        )}
+        {selectedNode && (
+          <PathDrawer
+            runId={id}
+            node={selectedNode}
+            iter={iter}
+            hostScope={hostScope}
+            reduced={reduced}
+            onClose={() => setSelectedId(null)}
+          />
         )}
       </div>
     </div>
