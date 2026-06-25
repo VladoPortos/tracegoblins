@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router'
 import { useRun } from '../api/runs'
 import { useRunTree } from '../api/path'
 import { FullScreenSpinner } from '../components/atoms/FullScreenSpinner'
 import { layoutTree } from './layout'
 import { PathCanvas } from './PathCanvas'
+import { usePathController } from './usePathController'
 
 export function PathView() {
   const { id = '' } = useParams()
@@ -23,14 +24,26 @@ export function PathView() {
     return () => mq.removeEventListener('change', handler)
   }, [])
 
-  if (tree.isPending) return <FullScreenSpinner />
-  const title = run.data?.template_name || 'Day2Actions'
-
   const layout = tree.data ? layoutTree(tree.data.nodes, tree.data.edges) : null
+
+  const ctrl = usePathController(layout)
+
+  // Clear selection when user clicks empty canvas (no drag)
+  const hostRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const el = hostRef.current
+    if (!el) return
+    const handler = () => setSelectedId(null)
+    el.addEventListener('canvas:emptyclick', handler)
+    return () => el.removeEventListener('canvas:emptyclick', handler)
+  }, [])
 
   const onEnter = (_t: { type: 'container' | 'loop'; id: string }) => {
     // no-op for now; Task 7+ will navigate into containers/loops
   }
+
+  if (tree.isPending) return <FullScreenSpinner />
+  const title = run.data?.template_name || 'Day2Actions'
 
   return (
     <div className="col" style={{ height: '100%', minWidth: 0, background: 'var(--bg)' }}>
@@ -44,7 +57,18 @@ export function PathView() {
         <div className="grow" />
         <span className="dim" style={{ fontSize: 11 }}>{tree.data?.nodes.length ?? 0} steps</span>
       </div>
-      <div className="grow" data-testid="path-canvas" style={{ position: 'relative', overflow: 'hidden', minHeight: 0 }}>
+      <div
+        ref={(el) => {
+          // bind both our local hostRef and the controller's canvasRef
+          hostRef.current = el
+          ;(ctrl.canvasRef as React.MutableRefObject<HTMLDivElement | null>).current = el
+        }}
+        className="grow"
+        data-testid="path-canvas"
+        style={{ position: 'relative', overflow: 'hidden', minHeight: 0, cursor: 'grab' }}
+        onMouseDown={ctrl.onMouseDown}
+        onWheel={ctrl.onWheel}
+      >
         {layout && (
           <PathCanvas
             layout={layout}
@@ -53,7 +77,7 @@ export function PathView() {
             onEnter={onEnter}
             isTaken={() => true}
             reduced={reduced}
-            transform="translate(40px,40px) scale(0.62)"
+            transform={ctrl.transform}
           />
         )}
       </div>
