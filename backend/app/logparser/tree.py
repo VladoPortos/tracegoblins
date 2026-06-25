@@ -142,6 +142,8 @@ def build_tree(events: list[dict]) -> ParsedTree:
             # Resolve the active include container for this task.
             # Scan the stack from the top; pop entries that don't match this task's file.
             # If no entry matches, the task is top-level (stack is emptied).
+            # Note: a task with no task_path falls through to play-level (does not consult
+            # or clear the stack) — see the `if include_stack and task_file:` guard below.
             active_inc: tuple[str, str] | None = None
             if include_stack and task_file:
                 for i in range(len(include_stack) - 1, -1, -1):
@@ -162,7 +164,7 @@ def build_tree(events: list[dict]) -> ParsedTree:
                 cont = containers.get(key)
                 if cont is None:
                     cont = TreeNode(
-                        node_id=f"inc:{cur_play.node_id}:{inc_base}",
+                        node_id=f"inc:{cur_play.node_id}:{inc_path}",
                         parent_id=cur_play.node_id, counter=counter, depth=1,
                         node_type="include", name=inc_base,
                     )
