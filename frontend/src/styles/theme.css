@@ -39,6 +39,7 @@
   --failed:#d7382f;     --failed-bg:#fbe9e7;
   --included:#2563eb;   --included-bg:#e7eefe; --included-line:#c5d6fb;
   --warn:#b8860b;
+  --flow:#7c3aed; --flow-dim:#c4b0ee; --flow-glow:rgba(124,58,237,.30); --flow-soft:rgba(124,58,237,.08); --flow-line:rgba(124,58,237,.30); --decision-bg:rgba(37,99,235,.13);
   --scrim: rgba(20,24,33,.42);
 }
 
@@ -66,6 +67,7 @@
   --failed:#f0635a;     --failed-bg:#2c1614;
   --included:#5a8bff;   --included-bg:#141d33; --included-line:#243663;
   --warn:#e9b04a;
+  --flow:#c08cff; --flow-dim:#5e4790; --flow-glow:rgba(192,140,255,.50); --flow-soft:rgba(192,140,255,.12); --flow-line:rgba(192,140,255,.38); --decision-bg:rgba(90,139,255,.22);
   --scrim: rgba(0,0,0,.58);
 }
 
@@ -199,6 +201,10 @@ body {
 @keyframes spin360 { to { transform: rotate(360deg); } }
 @keyframes errpulse { 0%,100%{ box-shadow:0 0 0 0 var(--unreachable); filter:brightness(1); } 50%{ box-shadow:0 0 7px 1.5px var(--unreachable); filter:brightness(1.25); } }
 @keyframes errpulse-cell { 0%,100%{ box-shadow:0 0 0 0 transparent; } 50%{ box-shadow:0 0 0 2px var(--unreachable-line), 0 0 9px 0 var(--unreachable); } }
+@keyframes dashflow { to { stroke-dashoffset:-48; } }
+@keyframes zoomIn { from { transform:scale(.93); } to { transform:scale(1); } }
+@keyframes zoomOut { from { transform:scale(1.05); } to { transform:scale(1); } }
+@keyframes haloPulse { 0%,100%{ box-shadow:0 0 0 2px var(--flow), 0 6px 24px var(--flow-glow); } 50%{ box-shadow:0 0 0 2px var(--flow), 0 6px 34px var(--flow-glow); } }
 @media (prefers-reduced-motion: reduce){
   .errpulse, .errpulse-cell { animation:none !important; }
   /* Neutralize ALL decorative motion (pulse/spin/indeterminate/…) and
