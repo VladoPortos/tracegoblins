@@ -30,6 +30,7 @@ from app.services.ingestion import MAX_UPLOAD_BYTES, ingest_upload
 from app.services.run_diff import diff_tasks, find_baseline, recap_newly_unreachable
 from app.services.run_time import run_when_expr
 from app.services.runs_query import run_to_card, run_to_detail, task_to_full, task_to_lean
+from app.services.path_forks import synthesize_forks
 from app.kb.signature import extract_signature
 from app.kb.service import visible_occurrence_count
 
@@ -600,6 +601,23 @@ def _linear_edges(nodes: list[RunNode]) -> list[PathEdgeOut]:
             for i in range(len(ordered) - 1)]
 
 
+async def _taken_hosts(db, run_id, node_ids: list[str]) -> dict[str, set[str]]:
+    """node_id -> set of hosts that did NOT skip (status != 'skipped'); only the ids asked for."""
+    if not node_ids:
+        return {}
+    rows = (await db.execute(
+        select(RunNodeResult.node_id, RunNodeResult.host).where(
+            RunNodeResult.run_id == run_id,
+            RunNodeResult.node_id.in_(node_ids),
+            RunNodeResult.status != "skipped",
+        )
+    )).all()
+    out: dict[str, set[str]] = {}
+    for nid, host in rows:
+        out.setdefault(nid, set()).add(host)
+    return out
+
+
 @router.get("/{run_id}/tree", response_model=PathTreeOut,
             response_model_by_alias=True)
 async def get_run_tree(run: VisibleRun, db: DbSession,
@@ -640,8 +658,11 @@ async def get_run_tree(run: VisibleRun, db: DbSession,
     # container view: children of `root`
     if root is not None and root in by_id:
         kids = [n for n in all_nodes if n.parent_node_id == root]
+        mapped = [_node_out(n) for n in kids]
+        taken = await _taken_hosts(db, run.id, [n.node_id for n in kids if n.is_conditional])
+        fnodes, fedges = synthesize_forks(mapped, taken)
         return PathTreeOut(run_id=str(run.id), view=PathViewOut(type="container", id=root),
-                           nodes=[_node_out(n) for n in kids], edges=_linear_edges(kids))
+                           nodes=fnodes, edges=fedges)
 
     # main view: children of the run root; if exactly one play, descend into it (flat task band)
     roots = [n for n in all_nodes if n.parent_node_id is None]  # the synthetic playbook root(s)
@@ -649,8 +670,11 @@ async def get_run_tree(run: VisibleRun, db: DbSession,
     plays = [n for n in top if n.node_type == "play"]
     if len(plays) == 1:
         top = [n for n in all_nodes if n.parent_node_id == plays[0].node_id]
+    mapped = [_node_out(n) for n in top]
+    taken = await _taken_hosts(db, run.id, [n.node_id for n in top if n.is_conditional])
+    fnodes, fedges = synthesize_forks(mapped, taken)
     return PathTreeOut(run_id=str(run.id), view=PathViewOut(type="main"),
-                       nodes=[_node_out(n) for n in top], edges=_linear_edges(top))
+                       nodes=fnodes, edges=fedges)
 
 
 @router.get("/{run_id}/nodes/{node_id}/results", response_model=NodeResultsPageOut)
