@@ -579,7 +579,7 @@ def _sub_for(n: RunNode) -> str | None:
 def _enter_to(n: RunNode) -> EnterToOut | None:
     if n.node_type == "loop":
         return EnterToOut(type="loop", id=n.node_id)
-    if n.node_type in ("role", "include", "block") and n.child_count > 0:
+    if n.node_type in ("play", "role", "include", "block") and n.child_count > 0:
         return EnterToOut(type="container", id=n.node_id)
     return None
 
