@@ -236,8 +236,11 @@ def build_tree(events: list[dict]) -> ParsedTree:
                 node_id=node.node_id, host=host, status=st,
                 changed=bool(res.get("changed")), result=_cap_result(res),
                 skip_reason=res.get("skip_reason"), false_condition=res.get("false_condition"),
+                started_at=ed.get("start"), ended_at=ed.get("end"),
                 duration_s=ed.get("duration"),
             ))
+            if node.started_at is None and ed.get("start"):
+                node.started_at = ed.get("start")
             if st == "skipped" and res.get("false_condition") and not node.when_expr:
                 node.when_expr = str(res.get("false_condition"))
             if ed.get("duration") is not None:
@@ -260,6 +263,7 @@ def build_tree(events: list[dict]) -> ParsedTree:
             tree.results.append(TreeResult(
                 node_id=node.node_id, host=host, item_index=idx, item_value=res.get("item"),
                 status=st, changed=bool(res.get("changed")), result=_cap_result(res),
+                started_at=ed.get("start"), ended_at=ed.get("end"),
             ))
             if node.loop_var is None:
                 node.loop_var = ed.get("event_loop")
