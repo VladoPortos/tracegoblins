@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_serializer
 
 
 class EnterToOut(BaseModel):
@@ -41,6 +41,10 @@ class PathEdgeOut(BaseModel):
 class PathViewOut(BaseModel):
     type: str
     id: str | None = None
+
+    @model_serializer
+    def _ser(self) -> dict:
+        return {"type": self.type} if self.id is None else {"type": self.type, "id": self.id}
 
 
 class PathTreeOut(BaseModel):

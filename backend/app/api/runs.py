@@ -569,9 +569,9 @@ async def get_raw(run: VisibleRun, db: DbSession):
 
 def _sub_for(n: RunNode) -> str | None:
     if n.node_type == "loop":
-        return f"loop · {n.item_count} items"
+        return f"loop · {n.item_count or 0} items"
     if n.node_type in ("role", "include", "block"):
-        return f"{n.node_type} · {n.child_count} tasks"
+        return f"{n.node_type} · {n.child_count or 0} tasks"
     return None
 
 
@@ -601,7 +601,7 @@ def _linear_edges(nodes: list[RunNode]) -> list[PathEdgeOut]:
 
 
 @router.get("/{run_id}/tree", response_model=PathTreeOut,
-            response_model_by_alias=True, response_model_exclude_none=True)
+            response_model_by_alias=True)
 async def get_run_tree(run: VisibleRun, db: DbSession,
                        root: str | None = Query(None), iter: int = Query(0, ge=0)):
     all_nodes = (await db.execute(
