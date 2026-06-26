@@ -97,3 +97,44 @@ async def is_run_visible(db: AsyncSession, run: Run, user: User) -> bool:
         if awx_visible is not None:
             return True
     return False
+
+
+async def project_visible_cond(db: AsyncSession, user: User):
+    """SQL predicate over `Project`: visible iff its controller is assigned to a team U is in
+    (org-aware), mirroring run-visibility's AWX path #5. Admin role grants NO path; a user in
+    no team sees nothing.
+    """
+    from app.models import Project
+
+    team_ids = await my_team_ids(db, user)
+    if not team_ids:
+        return sa.false()
+    return Project.controller_id.in_(
+        select(ControllerTeam.controller_id).where(
+            ControllerTeam.team_id.in_(team_ids),
+            or_(
+                ControllerTeam.awx_organization_id.is_(None),
+                ControllerTeam.awx_organization_id == Project.organization_id,
+            ),
+        )
+    )
+
+
+async def is_project_visible(db: AsyncSession, project, user: User) -> bool:
+    """True iff U can see this project: its controller is assigned to one of U's teams, with the
+    assignment either all-orgs or matching the project's organization. Mirrors is_run_visible #5.
+    """
+    team_ids = await my_team_ids(db, user)
+    if not team_ids:
+        return False
+    found = await db.scalar(
+        select(ControllerTeam.id).where(
+            ControllerTeam.controller_id == project.controller_id,
+            ControllerTeam.team_id.in_(team_ids),
+            or_(
+                ControllerTeam.awx_organization_id.is_(None),
+                ControllerTeam.awx_organization_id == project.organization_id,
+            ),
+        ).limit(1)
+    )
+    return found is not None
