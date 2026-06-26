@@ -52,7 +52,7 @@ def create_app() -> FastAPI:
     app.include_router(meta)
     from app.api import (
         admin, analytics, annotations, auth, comments, controllers, invites, kb,
-        mfa, notifications, runs, setup, users,
+        mfa, notifications, projects, runs, setup, users,
     )
 
     app.include_router(setup.router)
@@ -63,6 +63,7 @@ def create_app() -> FastAPI:
     app.include_router(invites.public_router)
     app.include_router(admin.router)
     app.include_router(runs.router)  # M2
+    app.include_router(projects.router)  # M2 Projects subsystem
     app.include_router(users.router)  # M3
     app.include_router(annotations.router)  # M3 Phase B
     app.include_router(comments.router)  # M3 Phase B
