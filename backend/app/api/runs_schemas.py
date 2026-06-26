@@ -42,6 +42,7 @@ class RunCard(BaseModel):
     awx_organization_name: str | None = None
     awx_launch_type: str | None = None
     elapsed: float | None = None
+    scm_revision: str | None = None
 
 
 class RunDetail(RunCard):

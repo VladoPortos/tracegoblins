@@ -99,6 +99,7 @@ export interface RunCard {
   awx_organization_name?: string | null
   awx_launch_type?: string | null
   elapsed?: number | null
+  scm_revision?: string | null
 }
 export interface RunDetail extends RunCard { owner_user_id: string | null }
 export interface TaskLean {
