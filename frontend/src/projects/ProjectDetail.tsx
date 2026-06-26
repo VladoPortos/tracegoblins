@@ -5,7 +5,7 @@ import { PageShell } from '../components/atoms/PageShell'
 import { Badge } from '../components/atoms/Badge'
 import { Glyph } from '../components/atoms/Glyph'
 import { errorMessage } from '../api/client'
-import { useProject, useProjectRuns, useCloneProject, useRefreshMirror } from '../api/projects'
+import { useProject, useProjectRuns, useCloneProject } from '../api/projects'
 import { LinkGitModal } from './LinkGitModal'
 import { UploadDropzone } from './UploadDropzone'
 import { FileBrowser } from './FileBrowser'
@@ -21,7 +21,6 @@ export function ProjectDetail() {
   const project = useProject(id)
   const runs = useProjectRuns(id)
   const clone = useCloneProject(id)
-  const refresh = useRefreshMirror(id)
   const [showLink, setShowLink] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   // Tracks a clone we kicked off, so the "pending" status (also used right after Link git)
@@ -46,11 +45,6 @@ export function ProjectDetail() {
   // Live clone state: actively cloning, or a clone WE triggered that's still queued (pending).
   const cloneInProgress = clone.isPending || p.status === 'cloning' || (cloneTriggered && p.status === 'pending')
 
-  async function act(fn: () => Promise<unknown>) {
-    setErr(null)
-    try { await fn() } catch (e) { setErr(errorMessage(e)) }
-  }
-
   // Refresh source = trigger a clone/fetch. Clears any prior error immediately and marks the
   // clone in-flight so the UI shows live "Cloning…" until it converges (poll-driven).
   async function doClone() {
@@ -70,20 +64,15 @@ export function ProjectDetail() {
             <Badge status={STATUS_BADGE[p.status] ?? 'skipped'} withLabel={false} />
             <span className="chip" style={{ fontSize: 10.5 }}>{p.status}</span>
             <div className="grow" />
-            {/* Refresh mirror — available to all members */}
-            <button className="btn btn-ghost sm" onClick={() => act(() => refresh.mutateAsync())}
-              disabled={refresh.isPending}>
-              <Glyph name="spinner" size={14} />Refresh
-            </button>
-            {/* Admin-only: link git settings */}
+            {/* Admin-only: link git (saving auto-starts the clone) */}
             {isAdmin && (
               <button className="btn btn-ghost sm" onClick={() => setShowLink(true)}>
                 <Glyph name="settings" size={14} />Link git
               </button>
             )}
-            {/* Admin-only: trigger a fresh clone/pull */}
-            {isAdmin && (
-              <button className="btn btn-primary sm"
+            {/* Admin-only: re-pull an already-linked repo (fetch new revisions). Hidden until linked. */}
+            {isAdmin && p.git_auth_type !== null && (
+              <button className="btn btn-ghost sm"
                 onClick={doClone}
                 disabled={cloneInProgress || p.scm_type !== 'git'}>
                 <Glyph name={cloneInProgress ? 'spinner' : 'chevD'} size={14} />
@@ -144,7 +133,10 @@ export function ProjectDetail() {
           </div>
         </div>
       </div>
-      {showLink && <LinkGitModal project={p} onClose={() => setShowLink(false)} />}
+      {showLink && (
+        <LinkGitModal project={p} onClose={() => setShowLink(false)}
+          onSaved={() => { void doClone() }} />
+      )}
     </PageShell>
   )
 }

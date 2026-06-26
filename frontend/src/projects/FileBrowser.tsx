@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Glyph } from '../components/atoms/Glyph'
 import { OutputViewer } from '../drawer/OutputViewer'
 import { useProjectTree, fetchProjectBlob } from '../api/projects'
@@ -66,6 +66,14 @@ export function FileBrowser({ projectId, project, runs }: {
   const [gitRef, setGitRef] = useState<string>(opts[0]?.value ?? 'HEAD')
   const [viewer, setViewer] = useState<{ title: string; value: string } | null>(null)
 
+  // When a clone finishes (status → cloned), jump to the default branch so the source tree
+  // appears automatically — no manual ref switch / button press needed.
+  const prevStatus = useRef(project.status)
+  useEffect(() => {
+    if (prevStatus.current !== 'cloned' && project.status === 'cloned') setGitRef('HEAD')
+    prevStatus.current = project.status
+  }, [project.status])
+
   async function open(path: string) {
     try {
       const blob = await fetchProjectBlob(projectId, gitRef, path)
@@ -88,7 +96,7 @@ export function FileBrowser({ projectId, project, runs }: {
       </div>
       {viewer && (
         <OutputViewer open onOpenChange={(o) => { if (!o) setViewer(null) }}
-          title={viewer.title} value={viewer.value} />
+          title={viewer.title} value={viewer.value} filename={viewer.title} />
       )}
     </div>
   )

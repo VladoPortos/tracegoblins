@@ -3,6 +3,9 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { EditorState } from '@codemirror/state'
 import { EditorView, lineNumbers } from '@codemirror/view'
 import { json } from '@codemirror/lang-json'
+import { yaml } from '@codemirror/lang-yaml'
+import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
+import { tags as t } from '@lezer/highlight'
 import { Glyph } from '../components/atoms/Glyph'
 import { useCopied } from '../components/atoms/useCopied'
 
@@ -24,14 +27,35 @@ function isJson(s: string): boolean {
   try { JSON.parse(s); return true } catch { return false }
 }
 
-function CmPane({ value }: { value: string }) {
+// Syntax colours tuned to read on BOTH the light and dark file-viewer surface (mid-saturation
+// tones). CodeMirror's language packages only PARSE — without a highlight style nothing is
+// coloured, which is why YAML/JSON looked monochrome before.
+const tgHighlight = HighlightStyle.define([
+  { tag: t.comment, color: '#6a9a5b', fontStyle: 'italic' },
+  { tag: [t.keyword, t.bool, t.null, t.atom, t.operatorKeyword], color: '#a072c4' },
+  { tag: [t.string, t.special(t.string)], color: '#c7794a' },
+  { tag: [t.number, t.integer, t.float], color: '#3f9f8f' },
+  { tag: [t.propertyName, t.definition(t.propertyName)], color: '#2a7bd6', fontWeight: '600' },
+  { tag: [t.meta, t.documentMeta, t.processingInstruction], color: '#8a8a8a' },
+  { tag: t.invalid, color: '#d14' },
+])
+
+// Pick a CodeMirror language by file extension when a filename is known (the project file
+// browser passes one — Ansible source is mostly YAML). With no filename (the run-log viewer)
+// fall back to the JSON-or-plain heuristic so log output isn't mis-tokenized.
+function languageFor(value: string, filename?: string) {
+  const ext = filename?.toLowerCase().split('.').pop()
+  if (ext === 'yml' || ext === 'yaml') return [yaml()]
+  if (ext === 'json') return [json()]
+  if (filename === undefined && isJson(value)) return [json()]
+  return []
+}
+
+function CmPane({ value, filename }: { value: string; filename?: string }) {
   const host = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
     if (!host.current) return
-    // Only tokenize as JSON when the content actually parses as JSON; otherwise
-    // (YAML/plain text/tracebacks) the json() lexer would paint every line as a
-    // parse error. prettyJson upstream already leaves non-JSON output as raw text.
-    const lang = isJson(value) ? [json()] : []
+    const lang = languageFor(value, filename)
     const view = new EditorView({
       parent: host.current,
       state: EditorState.create({
@@ -39,6 +63,7 @@ function CmPane({ value }: { value: string }) {
         extensions: [
           lineNumbers(),
           ...lang,
+          syntaxHighlighting(tgHighlight),
           EditorView.lineWrapping,
           EditorState.readOnly.of(true),
           EditorView.editable.of(false),
@@ -51,12 +76,12 @@ function CmPane({ value }: { value: string }) {
       }),
     })
     return () => view.destroy()
-  }, [value])
+  }, [value, filename])
   return <div ref={host} style={{ height: '70vh', overflow: 'auto', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }} />
 }
 
-export function OutputViewer({ open, onOpenChange, title, value }: {
-  open: boolean; onOpenChange: (o: boolean) => void; title: string; value: string
+export function OutputViewer({ open, onOpenChange, title, value, filename }: {
+  open: boolean; onOpenChange: (o: boolean) => void; title: string; value: string; filename?: string
 }) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -74,7 +99,7 @@ export function OutputViewer({ open, onOpenChange, title, value }: {
               <button className="btn icon sm btn-ghost" aria-label="Close"><Glyph name="close" size={16} /></button>
             </Dialog.Close>
           </div>
-          <CmPane value={value} />
+          <CmPane value={value} filename={filename} />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

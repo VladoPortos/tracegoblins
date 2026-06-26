@@ -5,7 +5,9 @@ import { errorMessage } from '../api/client'
 import { useSetProjectGit } from '../api/projects'
 import type { Project } from '../api/projects'
 
-export function LinkGitModal({ project, onClose }: { project: Project; onClose: () => void }) {
+export function LinkGitModal({ project, onClose, onSaved }: {
+  project: Project; onClose: () => void; onSaved?: () => void
+}) {
   const [url, setUrl] = useState(project.git_url_override ?? project.scm_url ?? '')
   const [authType, setAuthType] = useState<'none' | 'token' | 'userpass'>(project.git_auth_type ?? 'none')
   const [username, setUsername] = useState(project.git_username ?? '')
@@ -24,6 +26,8 @@ export function LinkGitModal({ project, onClose }: { project: Project; onClose: 
         // omit `secret` entirely when blank so the backend sentinel leaves it intact
         ...(secret ? { secret } : {}),
       })
+      // Auto-kick the clone so the user sees progress immediately without a second button.
+      onSaved?.()
       onClose()
     } catch (e) { setError(errorMessage(e)) }
   }
