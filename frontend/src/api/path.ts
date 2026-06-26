@@ -28,6 +28,7 @@ export interface PathNode {
   child_count: number | null       // container child count
   duration_s: number | null
   task_path: string | null         // "roles/app/tasks/main.yml:42" (Code tab)
+  never_run?: boolean              // ghost node — present in source, never executed
 }
 
 export interface PathEdge { from: string; to: string; branch: string | null }
@@ -66,6 +67,29 @@ export interface RunInputs {
   project_name: string | null
 }
 
+export interface ResolvedValue {
+  key: string
+  expr: string | null
+  value: unknown | null
+  source: 'module_args' | 'task_args' | 'item' | 'when' | 'extra_vars'
+  recorded: boolean
+  host: string | null
+}
+export type SourceUnavailable =
+  | 'not_linked' | 'not_cloned' | 'revision_missing' | 'no_path' | 'binary' | 'too_large'
+export interface NodeSource {
+  project_id: string | null
+  path: string | null
+  ref: string | null
+  content: string | null
+  focus_line: number | null
+  executed_lines: number[]
+  never_run_lines: number[]
+  resolved: ResolvedValue[]
+  hosts: string[]
+  unavailable: SourceUnavailable | null
+}
+
 import { useQuery } from '@tanstack/react-query'
 import * as pathSource from './pathSource'
 
@@ -73,11 +97,20 @@ export const pathTreeKey = (id: string, view: PathViewRef, iter: number) =>
   ['runs', id, 'path', view.type, view.type === 'main' ? '' : view.id, iter] as const
 export const nodeResultsKey = (id: string, nodeId: string) => ['runs', id, 'path', 'results', nodeId] as const
 export const runInputsKey = (id: string) => ['runs', id, 'inputs'] as const
+export const nodeSourceKey = (id: string, nodeId: string) => ['runs', id, 'path', 'source', nodeId] as const
 
-export function useRunTree(id: string, view: PathViewRef, iter = 0) {
+export function useNodeSource(id: string, nodeId: string | null, enabled = true) {
+  return useQuery<NodeSource>({
+    queryKey: nodeSourceKey(id, nodeId ?? 'none'),
+    queryFn: () => pathSource.fetchNodeSource(id, nodeId!),
+    enabled: !!id && !!nodeId && enabled,
+  })
+}
+
+export function useRunTree(id: string, view: PathViewRef, iter = 0, includeNeverRun = false) {
   return useQuery<PathTree>({
-    queryKey: pathTreeKey(id, view, view.type === 'loop' ? iter : 0),
-    queryFn: () => pathSource.fetchTree(id, view, iter),
+    queryKey: [...pathTreeKey(id, view, view.type === 'loop' ? iter : 0), includeNeverRun],
+    queryFn: () => pathSource.fetchTree(id, view, iter, includeNeverRun),
     enabled: !!id,
   })
 }

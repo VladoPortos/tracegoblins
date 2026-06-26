@@ -2,16 +2,21 @@
 // The backend (Tasks 1-10) implements the same contract as the hand-authored path.ts types,
 // so no consumer changes are needed — only this file swapped from mock to apiFetch.
 import { apiFetch } from './client'
-import type { PathTree, NodeResultsPage, RunInputs, PathViewRef } from './path'
+import type { PathTree, NodeResultsPage, RunInputs, PathViewRef, NodeSource } from './path'
 
 export interface NodeResultsOpts { iter?: number; host?: string; status?: string; offset?: number; limit?: number }
 
-export function fetchTree(runId: string, view: PathViewRef, iter = 0): Promise<PathTree> {
+export function fetchTree(runId: string, view: PathViewRef, iter = 0, includeNeverRun = false): Promise<PathTree> {
   const params = new URLSearchParams()
   if (view.type === 'container' || view.type === 'loop') params.set('root', view.id)
   if (view.type === 'loop') params.set('iter', String(iter))
+  if (includeNeverRun && view.type !== 'loop') params.set('never_run', '1')
   const qs = params.toString()
   return apiFetch<PathTree>(`/runs/${runId}/tree${qs ? `?${qs}` : ''}`)
+}
+
+export function fetchNodeSource(runId: string, nodeId: string): Promise<NodeSource> {
+  return apiFetch<NodeSource>(`/runs/${runId}/nodes/${nodeId}/source`)
 }
 
 export function fetchNodeResults(runId: string, nodeId: string, opts: NodeResultsOpts = {}): Promise<NodeResultsPage> {
