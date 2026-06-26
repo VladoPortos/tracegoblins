@@ -30,7 +30,7 @@ LABEL org.opencontainers.image.source="https://github.com/VladoPortos/tracegobli
       org.opencontainers.image.title="Tracegoblins" \
       org.opencontainers.image.description="Self-hosted AWX/Ansible log analyzer + team collaboration platform"
 RUN apt-get update \
- && apt-get install -y --no-install-recommends curl \
+ && apt-get install -y --no-install-recommends curl git \
  && rm -rf /var/lib/apt/lists/* \
  && groupadd --system --gid 999 app \
  && useradd  --system --gid 999 --uid 999 --create-home app

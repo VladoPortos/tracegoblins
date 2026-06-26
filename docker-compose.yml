@@ -16,6 +16,7 @@ services:
     # if you deliberately want it reachable from the network without a proxy in front.
     ports: ["127.0.0.1:8000:8000"]
     restart: unless-stopped
+    volumes: ["appdata:/app/data"]
 
   db:
     image: postgres:16-bookworm
@@ -34,3 +35,4 @@ services:
 
 volumes:
   pgdata:
+  appdata:

@@ -59,6 +59,15 @@ class Settings(BaseSettings):
     # Exact signature_key always wins; fuzzy hits below this similarity are ignored.
     kb_match_threshold: float = Field(0.35)
 
+    # Projects subsystem (M2) — local git-clone + upload storage on the appdata volume.
+    projects_data_dir: str = "/app/data/projects"
+    git_clone_max_bytes: int = 500 * 1024 * 1024       # abort clone + set status=error above this
+    git_clone_timeout_seconds: int = 300               # clone/fetch subprocess timeout
+    project_blob_max_bytes: int = 2 * 1024 * 1024      # file-viewer cap; larger → "too large" marker
+    project_upload_max_bytes: int = 50 * 1024 * 1024   # total bytes per upload request
+    project_upload_max_files: int = 2000               # max parts per upload request
+    project_refetch_interval_minutes: int = 1440       # periodic git re-fetch for cloned projects (daily)
+
     # App
     app_name: str = "Tracegoblins"
     environment: str = "production"
