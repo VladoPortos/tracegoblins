@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.path_schemas import NodeSourceOut, ResolvedValueOut  # noqa: F401 (ResolvedValueOut exported for future tasks)
+from app.logparser import parse_task_file
 from app.core.config import settings
 from app.models import Project, Run, RunNode, RunNodeResult
 from app.projects.git import GitError, read_blob, revision_exists
@@ -117,6 +118,8 @@ async def build_node_source(db: AsyncSession, run: Run, node: RunNode) -> NodeSo
     if blob.binary or blob.text is None:
         return NodeSourceOut(**base, unavailable="binary")
 
-    base.update(content=blob.text,
-                executed_lines=await _executed_lines_for_file(db, run.id, file))
+    executed = await _executed_lines_for_file(db, run.id, file)
+    statics = parse_task_file(blob.text)
+    never_run = sorted({st.line for st in statics if st.line not in set(executed)})
+    base.update(content=blob.text, executed_lines=executed, never_run_lines=never_run)
     return NodeSourceOut(**base)
