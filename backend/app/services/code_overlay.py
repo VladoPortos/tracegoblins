@@ -127,6 +127,87 @@ async def build_node_source(db: AsyncSession, run: Run, node: RunNode) -> NodeSo
     return NodeSourceOut(**base)
 
 
+def _build_file_ghosts(file: str, statics: list, execed: set[int],
+                       anchors: list[tuple[int, str]]) -> tuple[list[PathNodeOut], list[PathEdgeOut]]:
+    """Nested never-run ghost sub-tree for one file. Never-run leaf tasks and wholly-never-run
+    blocks become ghost nodes; a ghost block's children nest under it, sibling ghosts chain in
+    source order, and each top-level chain branches off its nearest preceding executed view node
+    (`anchors` = sorted [(line, node_id)] of the file's executed view nodes). Pure (no DB/HTTP)."""
+    children_of: dict[int | None, list] = {}
+    for st in statics:  # statics arrive sorted by line, so child lists stay in source order
+        children_of.setdefault(st.parent_line, []).append(st)
+
+    memo: dict[int, bool] = {}
+
+    def block_ran(block_line: int) -> bool:
+        """A block 'ran' if any descendant leaf task executed — such a block is NOT a ghost."""
+        if block_line in memo:
+            return memo[block_line]
+        memo[block_line] = False  # cycle guard
+        ran = False
+        for ch in children_of.get(block_line, []):
+            if (block_ran(ch.line) if ch.is_block else ch.line in execed):
+                ran = True
+                break
+        memo[block_line] = ran
+        return ran
+
+    def is_ghost(st) -> bool:
+        # a leaf task is a ghost if it never executed; a block is a ghost if it wholly never ran
+        return (not block_ran(st.line)) if st.is_block else (st.line not in execed)
+
+    ghost_lines = {st.line for st in statics if is_ghost(st)}
+    if not ghost_lines or not anchors:
+        return [], []
+
+    def gid(line: int) -> str:
+        return f"nr:{file}:{line}"
+
+    nodes: list[PathNodeOut] = []
+    for st in statics:
+        if st.line not in ghost_lines:
+            continue
+        if st.is_block:
+            nodes.append(PathNodeOut(id=gid(st.line), type="block", label=st.name or "block",
+                                     sub="block", status="skipped", condition=st.when,
+                                     is_conditional=bool(st.when), never_run=True,
+                                     task_path=f"{file}:{st.line}"))
+        else:
+            nodes.append(PathNodeOut(id=gid(st.line), type="task",
+                                     label=st.name or st.action or "task", sub=st.action,
+                                     status="skipped", action=st.action, condition=st.when,
+                                     is_conditional=bool(st.when), never_run=True,
+                                     task_path=f"{file}:{st.line}"))
+
+    edges: list[PathEdgeOut] = []
+    # nest: each ghost block's ghost children chain under it
+    for st in statics:
+        if st.line in ghost_lines and st.is_block:
+            prev: int | None = None
+            for ch in children_of.get(st.line, []):
+                if ch.line not in ghost_lines:
+                    continue
+                frm = gid(st.line) if prev is None else gid(prev)
+                edges.append(PathEdgeOut(from_=frm, to=gid(ch.line), branch="never_run"))
+                prev = ch.line
+
+    # top-level ghosts (not nested under a ghost block) branch off the nearest preceding executed
+    # view node; consecutive top-level ghosts sharing an anchor chain together (one dashed path).
+    anchor_lines = [ln for ln, _ in anchors]
+    prev_node: str | None = None
+    prev_anchor: str | None = None
+    for st in statics:
+        if st.line not in ghost_lines or st.parent_line in ghost_lines:
+            continue
+        i = bisect_right(anchor_lines, st.line)
+        anchor_id = anchors[i - 1][1] if i > 0 else anchors[0][1]
+        frm = prev_node if (prev_node is not None and anchor_id == prev_anchor) else anchor_id
+        edges.append(PathEdgeOut(from_=frm, to=gid(st.line), branch="never_run"))
+        prev_node, prev_anchor = gid(st.line), anchor_id
+
+    return nodes, edges
+
+
 async def never_run_branches(db: AsyncSession, run: Run,
                              view_nodes: list[RunNode]) -> tuple[list[PathNodeOut], list[PathEdgeOut]]:
     """Ghost nodes for tasks present in the touched source but never executed. Each ghost hangs off
@@ -172,19 +253,7 @@ async def never_run_branches(db: AsyncSession, run: Run,
         if not blob.text:
             continue
         execed = executed_by_file.get(file, set())
-        anchor_lines = [ln for ln, _ in anchors]
-        for st in parse_task_file(blob.text):
-            if st.is_block or st.line in execed:
-                continue
-            # nearest PRECEDING executed view node by source line; fall back to the first node.
-            i = bisect_right(anchor_lines, st.line)
-            anchor_id = anchors[i - 1][1] if i > 0 else anchors[0][1]
-            gid = f"nr:{file}:{st.line}"
-            ghosts.append(PathNodeOut(
-                id=gid, type="task", label=st.name or st.action or "task",
-                sub=st.action, status="skipped", action=st.action,
-                condition=st.when, is_conditional=bool(st.when),
-                never_run=True, task_path=f"{file}:{st.line}",
-            ))
-            edges.append(PathEdgeOut(from_=anchor_id, to=gid, branch="never_run"))
+        fnodes, fedges = _build_file_ghosts(file, parse_task_file(blob.text), execed, anchors)
+        ghosts += fnodes
+        edges += fedges
     return ghosts, edges

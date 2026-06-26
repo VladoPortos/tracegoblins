@@ -31,6 +31,7 @@ class StaticTask:
     action: str | None        # module key, e.g. "ansible.builtin.apt"; None for blocks
     when: str | None          # raw `when:` expression text, if present
     is_block: bool = False
+    parent_line: int | None = None  # line of the enclosing block; None = top-level of the file/play
 
 
 def _line_of(node: yaml.nodes.Node) -> int:
@@ -54,39 +55,41 @@ def parse_task_file(text: str) -> list[StaticTask]:
         return []
     out: list[StaticTask] = []
     if root is not None:
-        _walk(root, out)
+        _walk(root, out, None)
     out.sort(key=lambda t: t.line)
     return out
 
 
-def _walk(node: yaml.nodes.Node, out: list[StaticTask]) -> None:
+def _walk(node: yaml.nodes.Node, out: list[StaticTask], parent_line: int | None) -> None:
     if isinstance(node, yaml.SequenceNode):
         for item in node.value:
-            _walk_item(item, out)
+            _walk_item(item, out, parent_line)
     elif isinstance(node, yaml.MappingNode):
         keys = _keymap(node)
         for tk in _PLAY_TASK_KEYS:
             if tk in keys:
-                _walk(keys[tk], out)
+                _walk(keys[tk], out, parent_line)
 
 
-def _walk_item(item: yaml.nodes.Node, out: list[StaticTask]) -> None:
+def _walk_item(item: yaml.nodes.Node, out: list[StaticTask], parent_line: int | None) -> None:
     if not isinstance(item, yaml.MappingNode):
         return
     keys = _keymap(item)
-    # block / rescue / always construct → emit the block, then recurse its children
+    # block / rescue / always construct → emit the block, then recurse its children under it
     if any(bk in keys for bk in _BLOCK_KEYS):
-        out.append(StaticTask(line=_line_of(item), name=_scalar(keys.get("name")),
-                              action=None, when=_scalar(keys.get("when")), is_block=True))
+        line = _line_of(item)
+        out.append(StaticTask(line=line, name=_scalar(keys.get("name")),
+                              action=None, when=_scalar(keys.get("when")), is_block=True,
+                              parent_line=parent_line))
         for bk in _BLOCK_KEYS:
             if bk in keys:
-                _walk(keys[bk], out)
+                _walk(keys[bk], out, line)
         return
     # play construct (hosts + a task-bearing key) → descend, do not emit as a task
     if "hosts" in keys and any(k in keys for k in (*_PLAY_TASK_KEYS, "roles")):
         for tk in _PLAY_TASK_KEYS:
             if tk in keys:
-                _walk(keys[tk], out)
+                _walk(keys[tk], out, parent_line)
         return
     # otherwise a task: the module is the first key that is not a directive
     action: str | None = None
@@ -95,4 +98,5 @@ def _walk_item(item: yaml.nodes.Node, out: list[StaticTask]) -> None:
             action = k.value
             break
     out.append(StaticTask(line=_line_of(item), name=_scalar(keys.get("name")),
-                          action=action, when=_scalar(keys.get("when")), is_block=False))
+                          action=action, when=_scalar(keys.get("when")), is_block=False,
+                          parent_line=parent_line))
