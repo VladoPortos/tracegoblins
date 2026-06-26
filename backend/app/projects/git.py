@@ -45,7 +45,12 @@ def is_clonable_git_url(url: str | None) -> bool:
         parts = urlsplit(url.strip())
     except ValueError:
         return False
-    return parts.scheme == "https" and bool(parts.netloc)
+    return (
+        parts.scheme == "https"
+        and not parts.username
+        and not parts.password
+        and bool(parts.hostname)
+    )
 
 
 def _validate_ref(ref: str) -> str:

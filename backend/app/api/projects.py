@@ -13,8 +13,8 @@ from app.api.projects_schemas import (
     TreeEntryOut, TreeOut,
 )
 from app.awx.client import AwxClient, AwxError
-from app.core.config import settings
 from app.awx.projects_sync import sync_projects
+from app.core.config import settings
 from app.core.crypto import decrypt_token, encrypt_token
 from app.models import AwxController, ControllerTeam, Project, Run
 from app.projects import git as gitmod
@@ -174,6 +174,8 @@ async def refresh_mirror(
         select(ControllerTeam.team_id).where(ControllerTeam.controller_id == project.controller_id)
     )).scalars().all())
     mine = await my_team_ids(db, user)
+    # Defense-in-depth: unreachable for a visible project (VisibleProject already requires
+    # controller-team membership, a subset of assigned&mine) — kept in case the dep changes.
     if not (assigned & mine):
         raise HTTPException(status.HTTP_403_FORBIDDEN,
                             detail="Not a member of any team assigned to this controller")
@@ -265,7 +267,7 @@ async def upload_files(
         data = await f.read()
         total += len(data)
         if total > settings.project_upload_max_bytes:
-            raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="Upload too large")
+            raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, detail="Upload too large")
         payload.append((rel, data))
     try:
         n = uploadsmod.save_uploads(
