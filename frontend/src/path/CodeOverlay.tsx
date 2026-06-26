@@ -6,7 +6,7 @@ import { syntaxHighlighting } from '@codemirror/language'
 import { Glyph } from '../components/atoms/Glyph'
 import { tgHighlight, languageFor } from '../drawer/cmHighlight'
 import { useNodeSource } from '../api/path'
-import type { PathNode } from '../api/path'
+import type { PathNode, NodeSource } from '../api/path'
 
 const runLine = Decoration.line({ attributes: { style: 'background: rgba(192,140,255,.16); box-shadow: inset 3px 0 0 var(--flow);' } })
 const deadLine = Decoration.line({ attributes: { style: 'opacity:.5; filter:grayscale(.7);' } })
@@ -53,6 +53,28 @@ function CodePane({ value, filename, executed, neverRun, focus }: {
   return <div ref={host} style={{ flex: 1, minHeight: 0, overflow: 'auto', borderRadius: 'var(--r-md)', border: '1px solid var(--border)' }} />
 }
 
+function ResolvedSidebar({ resolved }: { resolved: NodeSource['resolved'] }) {
+  return (
+    <div data-testid="resolved-sidebar" style={{
+      flex: '0 0 300px', overflow: 'auto', background: 'var(--surface-2)',
+      border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 12 }}>
+      <div className="eyebrow" style={{ marginBottom: 8 }}>Resolved · this run</div>
+      {resolved.length === 0 && <div className="dim mono" style={{ fontSize: 12 }}>No recorded values.</div>}
+      {resolved.map((r, i) => (
+        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '4px 0' }}>
+          <span className="mono dim" style={{ fontSize: 12 }}>{r.key}</span>
+          {r.recorded
+            ? <span className="mono" style={{ fontSize: 12, color: 'var(--ok, var(--changed))', textAlign: 'right', wordBreak: 'break-all' }}>
+                {typeof r.value === 'string' ? `"${r.value}"` : JSON.stringify(r.value)}
+                {r.host ? <span className="dim"> · {r.host}</span> : null}
+              </span>
+            : <span className="mono dim" style={{ fontSize: 12, fontStyle: 'italic', textAlign: 'right' }}>(not recorded)</span>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 const UNAVAILABLE_MSG: Record<string, string> = {
   not_linked: 'This run has no linked project — no source to show.',
   not_cloned: 'Project source is not cloned yet. Clone it from Projects to view code.',
@@ -94,7 +116,7 @@ export function CodeOverlay({ runId, node, onClose }: { runId: string; node: Pat
             <div style={{ display: 'flex', gap: 12, flex: 1, minHeight: 0 }}>
               <CodePane value={d.content} filename={d.path ?? undefined}
                         executed={d.executed_lines} neverRun={d.never_run_lines} focus={d.focus_line} />
-              {/* Resolved-values sidebar is added in Task 6. */}
+              <ResolvedSidebar resolved={d.resolved} />
             </div>
           )}
         </Dialog.Content>
