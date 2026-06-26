@@ -42,6 +42,7 @@ export function TopBar({ me }: { me: Me }) {
         {navItem('/', 'Logs', 'inbox', loc.pathname === '/')}
         {navLink('/analytics', 'Analytics', 'chart', loc.pathname.startsWith('/analytics'))}
         {navLink('/kb', 'Knowledge base', 'sparkle', loc.pathname.startsWith('/kb'))}
+        {navLink('/projects', 'Projects', 'folder', loc.pathname.startsWith('/projects'))}
         {me.role === 'admin' && navItem('/admin/users', 'Admin', 'users', loc.pathname.startsWith('/admin'))}
       </div>
       <div className="grow" />
