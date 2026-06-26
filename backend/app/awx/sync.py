@@ -12,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
 
 from app.awx.client import AwxClient, AwxError
+from app.awx.projects_sync import sync_projects
 from app.core.clock import utcnow
 from app.core.crypto import TokenCryptoError, decrypt_token
 from app.kb.service import match_run
@@ -254,6 +255,17 @@ async def sync_controller(db: AsyncSession, controller: AwxController) -> SyncRe
                     await match_run(db, run)
                 except Exception:
                     logger.exception("kb match_run failed for awx run %s", run.id)
+
+            # Best-effort AWX project-metadata mirror, piggybacked on the run sync. A failure
+            # here MUST NOT abort the run sync or roll back imported jobs — it commits its own
+            # work. Run inside the open client (one cheap extra paginated call).
+            try:
+                await sync_projects(db, controller, client)
+                await db.refresh(controller)  # sync_projects committed → refresh before later writes
+            except Exception:
+                logger.exception("sync_projects failed for controller %s", controller.id)
+                await db.rollback()
+                await db.refresh(controller)
 
         final_cursor = _durable_cursor()
         controller.last_synced_job_id = final_cursor
