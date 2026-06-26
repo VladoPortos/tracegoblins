@@ -23,11 +23,14 @@ function refOptions(project: { status: string }, runs: RunCard[]): RefOption[] {
   return opts
 }
 
-function TreeLevel({ projectId, gitRef, path, onOpen }: {
-  projectId: string; gitRef: string; path: string; onOpen: (p: string) => void
+function TreeLevel({ projectId, gitRef, path, enabled, onOpen }: {
+  projectId: string; gitRef: string; path: string; enabled: boolean; onOpen: (p: string) => void
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  const tree = useProjectTree(projectId, gitRef, path)
+  // Disabled (not yet browsable, e.g. a git ref while the clone is still running) → don't fire
+  // the request: it would 409 and cache an error. Once enabled it fetches fresh automatically.
+  const tree = useProjectTree(projectId, gitRef, path, enabled)
+  if (!enabled) return <div className="muted" style={{ fontSize: 12, padding: '4px 8px' }}>Waiting for the clone to finish…</div>
   if (tree.isPending) return <div className="muted" style={{ fontSize: 12, padding: '4px 8px' }}>Loading…</div>
   if (tree.isError) return <div style={{ fontSize: 12, color: 'var(--unreachable)', padding: '4px 8px' }}>Not available at this ref.</div>
   return (
@@ -49,7 +52,7 @@ function TreeLevel({ projectId, gitRef, path, onOpen }: {
             </button>
             {e.type === 'tree' && isOpen && (
               <div style={{ marginLeft: 16 }}>
-                <TreeLevel projectId={projectId} gitRef={gitRef} path={full} onOpen={onOpen} />
+                <TreeLevel projectId={projectId} gitRef={gitRef} path={full} enabled={enabled} onOpen={onOpen} />
               </div>
             )}
           </div>
@@ -92,7 +95,11 @@ export function FileBrowser({ projectId, project, runs }: {
         {opts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
       <div className="card" style={{ padding: 8, maxHeight: '52vh', overflow: 'auto' }}>
-        <TreeLevel projectId={projectId} gitRef={gitRef} path="" onOpen={open} />
+        {/* Uploads are always browsable; a git ref only once the clone has finished. A disabled
+            query fetches fresh the moment it becomes enabled — so the tree appears automatically
+            when the clone completes, with no 409 churn while it runs. */}
+        <TreeLevel projectId={projectId} gitRef={gitRef} path=""
+          enabled={gitRef === 'uploads' || project.status === 'cloned'} onOpen={open} />
       </div>
       {viewer && (
         <OutputViewer open onOpenChange={(o) => { if (!o) setViewer(null) }}
