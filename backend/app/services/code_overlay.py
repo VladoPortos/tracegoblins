@@ -9,8 +9,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.path_schemas import NodeSourceOut, PathEdgeOut, PathNodeOut, ResolvedValueOut  # noqa: F401 (ResolvedValueOut exported for future tasks)
-from app.logparser import parse_task_file
 from app.core.config import settings
+from app.logparser import parse_task_file
 from app.models import Project, Run, RunNode, RunNodeResult
 from app.projects.git import GitError, read_blob, revision_exists
 from app.projects.storage import project_repo_path
@@ -20,8 +20,7 @@ def _jsonable(v):
     return v if isinstance(v, (str, int, float, bool, list, dict)) or v is None else str(v)
 
 
-def resolved_values(node: RunNode, results: list[RunNodeResult],
-                    extra_vars: dict) -> list[ResolvedValueOut]:
+def resolved_values(node: RunNode, results: list[RunNodeResult]) -> list[ResolvedValueOut]:
     """What `{{ }}` resolved to for THIS run — only values Ansible actually recorded.
     Priority for module args: a result's res.invocation.module_args (fully rendered, per host),
     else the node's representative task_args (raw template → marked not-recorded)."""
@@ -32,7 +31,7 @@ def resolved_values(node: RunNode, results: list[RunNodeResult],
         inv = rep.result.get("invocation")
         if isinstance(inv, dict) and isinstance(inv.get("module_args"), dict):
             margs = inv["module_args"]
-    if margs:
+    if margs is not None:
         for k, v in margs.items():
             out.append(ResolvedValueOut(key=k, expr=None, value=_jsonable(v),
                                         source="module_args", recorded=True, host=rep.host))
@@ -89,7 +88,7 @@ async def build_node_source(db: AsyncSession, run: Run, node: RunNode) -> NodeSo
         select(RunNodeResult).where(RunNodeResult.run_id == run.id,
                                     RunNodeResult.node_id == node.node_id)
     )).scalars().all()
-    resolved = resolved_values(node, results, run.extra_vars or {})
+    resolved = resolved_values(node, results)
     hosts = sorted({r.host for r in results})
     base = dict(project_id=None, path=None, ref=run.scm_revision, content=None,
                 focus_line=None, executed_lines=[], never_run_lines=[],
@@ -120,7 +119,8 @@ async def build_node_source(db: AsyncSession, run: Run, node: RunNode) -> NodeSo
 
     executed = await _executed_lines_for_file(db, run.id, file)
     statics = parse_task_file(blob.text)
-    never_run = sorted({st.line for st in statics if st.line not in set(executed)})
+    executed_set = set(executed)
+    never_run = sorted({st.line for st in statics if not st.is_block and st.line not in executed_set})
     base.update(content=blob.text, executed_lines=executed, never_run_lines=never_run)
     return NodeSourceOut(**base)
 
@@ -161,7 +161,7 @@ async def never_run_branches(db: AsyncSession, run: Run,
             try:
                 blob = await read_blob(repo, run.scm_revision, file, cap)
             except GitError:
-                parsed[file] = []
+                parsed[file] = []  # unreadable/binary/too-large blob → no ghosts for this file
                 continue
             parsed[file] = parse_task_file(blob.text) if blob.text else []
         execed = executed_by_file.get(file, set())

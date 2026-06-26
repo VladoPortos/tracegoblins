@@ -113,14 +113,18 @@ export function CodeOverlay({ runId, node, onClose }: { runId: string; node: Pat
                    boxShadow: 'var(--shadow-3)', padding: 14, display: 'flex', flexDirection: 'column' }}>
           <div className="row gap2" style={{ alignItems: 'center', marginBottom: 10 }}>
             <Dialog.Title className="mono" style={{ fontSize: 13, fontWeight: 600 }}>
-              {d?.path ?? node.label}{d?.ref ? <span className="dim">  @ {d.ref.slice(0, 8)}</span> : null}
+              {d?.path ?? node.label}{d?.ref ? <span className="dim" style={{ marginLeft: 4 }}>@ {d.ref.slice(0, 8)}</span> : null}
             </Dialog.Title>
+            <Dialog.Description style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
+              Source overlay for {d?.path ?? node.label}
+            </Dialog.Description>
             <div className="grow" />
             <Dialog.Close asChild>
               <button className="btn icon sm btn-ghost" aria-label="Close"><Glyph name="close" size={16} /></button>
             </Dialog.Close>
           </div>
           {src.isPending && <div className="dim mono" style={{ padding: 24 }}>Loading source…</div>}
+          {src.isError && <div className="dim mono" style={{ padding: 24 }}>Failed to load source.</div>}
           {d && d.unavailable && (
             <div data-testid="code-overlay-unavailable" className="dim mono" style={{ padding: 24 }}>
               {UNAVAILABLE_MSG[d.unavailable] ?? 'Source unavailable.'}

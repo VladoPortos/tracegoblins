@@ -18,7 +18,7 @@ _DIRECTIVES = {
     "ignore_unreachable", "changed_when", "failed_when", "check_mode", "diff",
     "environment", "no_log", "args", "block", "rescue", "always", "until", "retries",
     "delay", "listen", "any_errors_fatal", "throttle", "timeout", "connection",
-    "remote_user", "module_defaults", "collections", "action", "local_action", "when:",
+    "remote_user", "module_defaults", "collections", "action", "local_action",
 }
 _PLAY_TASK_KEYS = ("pre_tasks", "tasks", "post_tasks", "handlers")
 _BLOCK_KEYS = ("block", "rescue", "always")
