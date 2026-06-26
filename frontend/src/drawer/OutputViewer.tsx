@@ -2,12 +2,10 @@ import { useEffect, useRef } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { EditorState } from '@codemirror/state'
 import { EditorView, lineNumbers } from '@codemirror/view'
-import { json } from '@codemirror/lang-json'
-import { yaml } from '@codemirror/lang-yaml'
-import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
-import { tags as t } from '@lezer/highlight'
+import { syntaxHighlighting } from '@codemirror/language'
 import { Glyph } from '../components/atoms/Glyph'
 import { useCopied } from '../components/atoms/useCopied'
+import { tgHighlight, languageFor } from './cmHighlight'
 
 function CopyBtn({ text }: { text: string }) {
   const { copied, copy } = useCopied()
@@ -21,34 +19,6 @@ function CopyBtn({ text }: { text: string }) {
       <Glyph name={copied ? 'check' : 'copy'} size={14} />{copied ? 'Copied' : 'Copy'}
     </button>
   )
-}
-
-function isJson(s: string): boolean {
-  try { JSON.parse(s); return true } catch { return false }
-}
-
-// Syntax colours tuned to read on BOTH the light and dark file-viewer surface (mid-saturation
-// tones). CodeMirror's language packages only PARSE — without a highlight style nothing is
-// coloured, which is why YAML/JSON looked monochrome before.
-const tgHighlight = HighlightStyle.define([
-  { tag: t.comment, color: '#6a9a5b', fontStyle: 'italic' },
-  { tag: [t.keyword, t.bool, t.null, t.atom, t.operatorKeyword], color: '#a072c4' },
-  { tag: [t.string, t.special(t.string)], color: '#c7794a' },
-  { tag: [t.number, t.integer, t.float], color: '#3f9f8f' },
-  { tag: [t.propertyName, t.definition(t.propertyName)], color: '#2a7bd6', fontWeight: '600' },
-  { tag: [t.meta, t.documentMeta, t.processingInstruction], color: '#8a8a8a' },
-  { tag: t.invalid, color: '#d14' },
-])
-
-// Pick a CodeMirror language by file extension when a filename is known (the project file
-// browser passes one — Ansible source is mostly YAML). With no filename (the run-log viewer)
-// fall back to the JSON-or-plain heuristic so log output isn't mis-tokenized.
-function languageFor(value: string, filename?: string) {
-  const ext = filename?.toLowerCase().split('.').pop()
-  if (ext === 'yml' || ext === 'yaml') return [yaml()]
-  if (ext === 'json') return [json()]
-  if (filename === undefined && isJson(value)) return [json()]
-  return []
 }
 
 function CmPane({ value, filename }: { value: string; filename?: string }) {

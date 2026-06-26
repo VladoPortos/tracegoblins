@@ -291,72 +291,42 @@ export interface PathDrawerProps {
   hostScope: HostScopeId
   reduced: boolean
   onClose: () => void
+  onViewSource?: (node: PathNode) => void
 }
 
 // ---------- code tab ----------
 
-function CodeTab({ node, args }: { node: PathNode; args: ArgRow[] }) {
+function CodeTab({ node, args, onViewSource }: { node: PathNode; args: ArgRow[]; onViewSource?: (n: PathNode) => void }) {
   if (!node.task_path && args.length === 0) {
-    return (
-      <div className="mono" style={{ fontSize: 12, color: 'var(--dim)' }}>
-        No source path for this node.
-      </div>
-    )
+    return <div className="mono" style={{ fontSize: 12, color: 'var(--dim)' }}>No source path for this node.</div>
   }
   return (
     <div className="col" style={{ gap: 14 }}>
       {node.task_path && (
         <div>
           <div className="eyebrow" style={{ marginBottom: 7 }}>Source path</div>
-          <div
-            className="mono"
-            data-testid="code-tab-path"
-            style={{
-              fontSize: 12, color: 'var(--text)', fontFeatureSettings: "'zero'",
-              padding: '9px 12px', borderRadius: 8,
-              background: 'var(--canvas)', border: '1px solid var(--border)',
-              wordBreak: 'break-all',
-            }}
-          >
+          <div className="mono" data-testid="code-tab-path" style={{
+            fontSize: 12, color: 'var(--text)', fontFeatureSettings: "'zero'", padding: '9px 12px',
+            borderRadius: 8, background: 'var(--canvas)', border: '1px solid var(--border)', wordBreak: 'break-all' }}>
             {node.task_path}
           </div>
         </div>
       )}
-
       {args.length > 0 && (
-        <div>
-          <div className="eyebrow" style={{ marginBottom: 7 }}>Args</div>
-          <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-            {args.map(([k, v], i) => (
-              <div
-                key={i}
-                style={{
-                  display: 'flex', justifyContent: 'space-between', gap: 14,
-                  padding: '8px 11px',
-                  background: i % 2 ? 'var(--surface-2)' : 'transparent',
-                }}
-              >
-                <span className="mono" style={{ fontSize: 12, color: 'var(--dim)', fontFeatureSettings: "'zero'" }}>{k}</span>
-                <span className="mono" style={{ fontSize: 12, color: 'var(--text)', fontFeatureSettings: "'zero'", textAlign: 'right', wordBreak: 'break-all' }}>{v}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <ArgsTable rows={args} />
       )}
-
-      <div style={{
-        fontSize: 11.5, color: 'var(--dim)',
-        padding: '9px 12px', borderRadius: 8,
-        background: 'var(--canvas)', border: '1px solid var(--border)',
-        fontStyle: 'italic',
-      }}>
-        Source overlay (the actual YAML, with {'{{ }}'} values resolved) arrives with Projects — M3.
-      </div>
+      {node.task_path && onViewSource && (
+        <button data-testid="view-source-btn" className="btn sm"
+                onClick={() => onViewSource(node)}
+                style={{ alignSelf: 'flex-start', color: 'var(--flow)', borderColor: 'var(--flow-line, var(--border))' }}>
+          ⤢ View source
+        </button>
+      )}
     </div>
   )
 }
 
-export function PathDrawer({ runId, node, iter, hostScope, reduced, onClose }: PathDrawerProps) {
+export function PathDrawer({ runId, node, iter, hostScope, reduced, onClose, onViewSource }: PathDrawerProps) {
   // Loop leaves (item/result) carry per-iteration detail; fetch via the data seam.
   // Pass offset=iter&limit=1 so the API returns exactly the result for this iteration.
   // results[0] is the single page item matching the current iteration.
@@ -449,7 +419,7 @@ export function PathDrawer({ runId, node, iter, hostScope, reduced, onClose }: P
 
           </div>
         ) : (
-          <CodeTab node={node} args={d.args} />
+          <CodeTab node={node} args={d.args} onViewSource={onViewSource} />
         )}
       </div>
     </div>

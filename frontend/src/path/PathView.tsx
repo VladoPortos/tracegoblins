@@ -11,6 +11,7 @@ import { PathStepper } from './PathStepper'
 import { HostScopeChip } from './HostScopeChip'
 import type { HostScopeId } from './HostScopeChip'
 import { PathDrawer } from './PathDrawer'
+import { CodeOverlay } from './CodeOverlay'
 import { InputsPanel } from './InputsPanel'
 import { PathMinimap } from './PathMinimap'
 
@@ -20,6 +21,7 @@ export function PathView() {
   const run = useRun(id)
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [sourceNodeId, setSourceNodeId] = useState<string | null>(null)
   const [reduced, setReduced] = useState(false)
   const [hostScope, setHostScope] = useState<HostScopeId>('all')
   const [showInputs, setShowInputs] = useState(false)
@@ -160,6 +162,11 @@ export function PathView() {
     return layout.nodes.find(n => n.id === selectedId) ?? null
   }, [selectedId, layout])
 
+  const sourceNode = useMemo(
+    () => (sourceNodeId && layout ? layout.nodes.find(n => n.id === sourceNodeId) ?? null : null),
+    [sourceNodeId, layout],
+  )
+
   if (tree.isPending && !layout) return <FullScreenSpinner />
   const title = run.data?.template_name || 'Run'
 
@@ -287,7 +294,11 @@ export function PathView() {
             hostScope={hostScope}
             reduced={reduced}
             onClose={() => setSelectedId(null)}
+            onViewSource={(n) => setSourceNodeId(n.id)}
           />
+        )}
+        {sourceNode && (
+          <CodeOverlay runId={id} node={sourceNode} onClose={() => setSourceNodeId(null)} />
         )}
       </div>
     </div>
