@@ -3,17 +3,26 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
 from sqlalchemy import and_, func, select
 
-from app.api.deps import CurrentUser, DbSession, require_password_current
-from app.api.projects_schemas import ProjectListItem, ProjectListOut, ProjectOut
-from app.models import AwxController, Project, Run
+from app.api.deps import AdminUser, CurrentUser, DbSession, require_password_current
+from app.api.http_utils import client_ip
+from app.api.projects_schemas import (
+    UNCHANGED_SECRET, ProjectGitIn, ProjectListItem, ProjectListOut, ProjectOut,
+)
+from app.awx.client import AwxClient, AwxError
+from app.awx.projects_sync import sync_projects
+from app.core.crypto import decrypt_token, encrypt_token
+from app.models import AwxController, ControllerTeam, Project, Run
+from app.projects.git import is_clonable_git_url
+from app.projects.worker import run_clone
+from app.services.audit import write_audit
 from app.services.projects_query import (
     linked_run_count, linked_runs_cond, project_to_out,
 )
 from app.services.runs_query import run_to_card
-from app.services.visibility import is_project_visible, project_visible_cond
+from app.services.visibility import is_project_visible, my_team_ids, project_visible_cond
 
 router = APIRouter(
     prefix="/api/projects",
@@ -93,3 +102,86 @@ async def get_project_runs(
         .offset(offset).limit(limit)
     )).scalars().all()
     return {"items": [run_to_card(r) for r in rows], "total": total}
+
+
+@router.put("/{project_id}/git", response_model=ProjectOut)
+async def set_project_git(
+    project: VisibleProject, payload: ProjectGitIn,
+    request: Request, db: DbSession, user: AdminUser,
+):
+    """Admin: link/update the project's git source + write-only secret. Sets status=pending."""
+    if payload.git_url_override:
+        if not is_clonable_git_url(payload.git_url_override):
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+                                detail="git_url_override must be an https URL (no SSH/http)")
+        project.git_url_override = payload.git_url_override.strip()
+    else:
+        project.git_url_override = None
+
+    project.git_auth_type = payload.auth_type
+    project.git_username = payload.username or None
+
+    # write-only secret: sentinel/omitted → leave intact; "" → clear; non-empty value → (re)encrypt.
+    if payload.secret == UNCHANGED_SECRET:
+        pass  # leave git_secret_encrypted untouched
+    elif payload.secret == "":
+        project.git_secret_encrypted = None
+    elif payload.secret is not None:
+        project.git_secret_encrypted = encrypt_token(payload.secret)
+
+    project.status = "pending"
+    await write_audit(db, action="project_git_link", actor_id=user.id,
+                      target_type="project", target_id=str(project.id), ip=client_ip(request),
+                      metadata={"auth_type": payload.auth_type, "secret": "***redacted***"})
+    await db.commit()
+    await db.refresh(project)
+    return await project_to_out(db, project)
+
+
+@router.post("/{project_id}/clone", status_code=202)
+async def clone_project(
+    project: VisibleProject, background: BackgroundTasks,
+    request: Request, db: DbSession, user: AdminUser,
+):
+    """Admin: enqueue a background clone/fetch. The per-project advisory lock dedupes."""
+    if project.scm_type != "git":
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+                            detail="Only scm_type='git' projects can be cloned")
+    effective_url = project.git_url_override or project.scm_url
+    if not is_clonable_git_url(effective_url):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+                            detail="No https git URL — set an https override first")
+    project.status = "pending"
+    await write_audit(db, action="project_clone", actor_id=user.id,
+                      target_type="project", target_id=str(project.id), ip=client_ip(request))
+    await db.commit()
+    background.add_task(run_clone, str(project.id))
+    return {"status": "started"}
+
+
+@router.post("/{project_id}/refresh-mirror", response_model=ProjectOut)
+async def refresh_mirror(
+    project: VisibleProject, request: Request, db: DbSession, user: CurrentUser,
+):
+    """Member: re-pull AWX metadata for this project's controller (read-only). Member must be in
+    a team assigned to the controller (admin role alone is not a path — mirrors sync_now)."""
+    assigned = set((await db.execute(
+        select(ControllerTeam.team_id).where(ControllerTeam.controller_id == project.controller_id)
+    )).scalars().all())
+    mine = await my_team_ids(db, user)
+    if not (assigned & mine):
+        raise HTTPException(status.HTTP_403_FORBIDDEN,
+                            detail="Not a member of any team assigned to this controller")
+
+    controller = await db.get(AwxController, project.controller_id)
+    await write_audit(db, action="project_refresh_mirror", actor_id=user.id,
+                      target_type="project", target_id=str(project.id), ip=client_ip(request))
+    await db.commit()
+    try:
+        token = decrypt_token(controller.auth_token_encrypted)
+        async with AwxClient(controller.base_url, token, controller.verify_ssl) as client:
+            await sync_projects(db, controller, client)
+    except AwxError as e:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, detail=f"AWX refresh failed: {e}")
+    await db.refresh(project)
+    return await project_to_out(db, project)
