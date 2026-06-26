@@ -5,6 +5,8 @@ and the project's bare clone. Run-visibility is enforced by the caller (VisibleR
 """
 from __future__ import annotations
 
+from bisect import bisect_right
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -127,9 +129,10 @@ async def build_node_source(db: AsyncSession, run: Run, node: RunNode) -> NodeSo
 
 async def never_run_branches(db: AsyncSession, run: Run,
                              view_nodes: list[RunNode]) -> tuple[list[PathNodeOut], list[PathEdgeOut]]:
-    """Ghost nodes for tasks present in the touched source but never executed, each hung off an
-    executed view node via a `never_run` branch edge. Empty when the project isn't cloned / the
-    revision isn't fetched (the flow toggle then simply shows nothing extra)."""
+    """Ghost nodes for tasks present in the touched source but never executed. Each ghost hangs off
+    the executed view node that is its nearest PRECEDING sibling by source line, so never-run
+    branches distribute across the flow at the point they would have run (a tree) rather than all
+    stemming from the first node. Empty when the project isn't cloned / the revision isn't fetched."""
     proj = await resolve_project_for_run(db, run)
     if proj is None or proj.status != "cloned" or not run.scm_revision:
         return [], []
@@ -147,31 +150,35 @@ async def never_run_branches(db: AsyncSession, run: Run,
         if sp:
             executed_by_file.setdefault(sp[0], set()).add(sp[1])
 
-    ghosts: list[PathNodeOut] = []
-    edges: list[PathEdgeOut] = []
-    seen: set[tuple[str, int]] = set()
-    parsed: dict[str, list] = {}
-    cap = settings.project_blob_max_bytes
+    # Anchor candidates per file: the executed view nodes that carry a source line, sorted by line.
+    # A never-run task attaches to the nearest preceding one (bisect) so ghosts branch off the flow
+    # where they would have run, rather than all stemming from the first node.
+    anchors_by_file: dict[str, list[tuple[int, str]]] = {}
     for vn in view_nodes:
         sp = split_task_path(vn.task_path)
-        if sp is None:
+        if sp:
+            anchors_by_file.setdefault(sp[0], []).append((sp[1], vn.node_id))
+    for f in anchors_by_file:
+        anchors_by_file[f].sort()
+
+    ghosts: list[PathNodeOut] = []
+    edges: list[PathEdgeOut] = []
+    cap = settings.project_blob_max_bytes
+    for file, anchors in anchors_by_file.items():
+        try:
+            blob = await read_blob(repo, run.scm_revision, file, cap)
+        except GitError:
+            continue  # unreadable/binary/too-large blob → no ghosts for this file
+        if not blob.text:
             continue
-        file = sp[0]
-        if file not in parsed:
-            try:
-                blob = await read_blob(repo, run.scm_revision, file, cap)
-            except GitError:
-                parsed[file] = []  # unreadable/binary/too-large blob → no ghosts for this file
-                continue
-            parsed[file] = parse_task_file(blob.text) if blob.text else []
         execed = executed_by_file.get(file, set())
-        for st in parsed[file]:
+        anchor_lines = [ln for ln, _ in anchors]
+        for st in parse_task_file(blob.text):
             if st.is_block or st.line in execed:
                 continue
-            key = (file, st.line)
-            if key in seen:
-                continue
-            seen.add(key)
+            # nearest PRECEDING executed view node by source line; fall back to the first node.
+            i = bisect_right(anchor_lines, st.line)
+            anchor_id = anchors[i - 1][1] if i > 0 else anchors[0][1]
             gid = f"nr:{file}:{st.line}"
             ghosts.append(PathNodeOut(
                 id=gid, type="task", label=st.name or st.action or "task",
@@ -179,5 +186,5 @@ async def never_run_branches(db: AsyncSession, run: Run,
                 condition=st.when, is_conditional=bool(st.when),
                 never_run=True, task_path=f"{file}:{st.line}",
             ))
-            edges.append(PathEdgeOut(from_=vn.node_id, to=gid, branch="never_run"))
+            edges.append(PathEdgeOut(from_=anchor_id, to=gid, branch="never_run"))
     return ghosts, edges
