@@ -3,19 +3,24 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy import and_, func, select
 
 from app.api.deps import AdminUser, CurrentUser, DbSession, require_password_current
 from app.api.http_utils import client_ip
 from app.api.projects_schemas import (
-    UNCHANGED_SECRET, ProjectGitIn, ProjectListItem, ProjectListOut, ProjectOut,
+    UNCHANGED_SECRET, BlobOut, ProjectGitIn, ProjectListItem, ProjectListOut, ProjectOut,
+    TreeEntryOut, TreeOut,
 )
 from app.awx.client import AwxClient, AwxError
+from app.core.config import settings
 from app.awx.projects_sync import sync_projects
 from app.core.crypto import decrypt_token, encrypt_token
 from app.models import AwxController, ControllerTeam, Project, Run
+from app.projects import git as gitmod
+from app.projects import uploads as uploadsmod
 from app.projects.git import is_clonable_git_url
+from app.projects.storage import project_repo_path, project_uploads_path
 from app.projects.worker import run_clone
 from app.services.audit import write_audit
 from app.services.projects_query import (
@@ -185,3 +190,93 @@ async def refresh_mirror(
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, detail=f"AWX refresh failed: {e}")
     await db.refresh(project)
     return await project_to_out(db, project)
+
+
+@router.get("/{project_id}/tree", response_model=TreeOut)
+async def get_project_tree(
+    project: VisibleProject, db: DbSession,
+    ref: str = Query("HEAD"), path: str = Query(""),
+):
+    if ref == "uploads":
+        try:
+            entries = uploadsmod.list_uploads_tree(project_uploads_path(project.id), path)
+        except uploadsmod.UploadError:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Invalid path")
+        return TreeOut(ref=ref, path=path,
+                       entries=[TreeEntryOut(name=e.name, type=e.type, size=e.size, mode=e.mode)
+                                for e in entries])
+
+    repo = project_repo_path(project.id)
+    if project.status != "cloned" or not repo.exists():
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="Project source not cloned yet")
+    if not await gitmod.revision_exists(repo, ref):
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            detail="Revision not in clone — refresh source")
+    try:
+        entries = await gitmod.list_tree(repo, ref, path)
+    except gitmod.GitError:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Invalid ref or path")
+    return TreeOut(ref=ref, path=path,
+                   entries=[TreeEntryOut(name=e.name, type=e.type, size=e.size, mode=e.mode)
+                            for e in entries])
+
+
+@router.get("/{project_id}/blob", response_model=BlobOut)
+async def get_project_blob(
+    project: VisibleProject, db: DbSession,
+    ref: str = Query("HEAD"), path: str = Query(...),
+):
+    cap = settings.project_blob_max_bytes
+    if ref == "uploads":
+        try:
+            blob = uploadsmod.read_upload_blob(project_uploads_path(project.id), path, cap)
+        except uploadsmod.UploadError:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="File not found")
+        return BlobOut(ref=ref, path=path, content=blob.text, size=blob.size,
+                       too_large=blob.too_large, binary=blob.binary)
+
+    repo = project_repo_path(project.id)
+    if project.status != "cloned" or not repo.exists():
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="Project source not cloned yet")
+    if not await gitmod.revision_exists(repo, ref):
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            detail="Revision not in clone — refresh source")
+    try:
+        blob = await gitmod.read_blob(repo, ref, path, cap)
+    except gitmod.GitError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="File not found at revision")
+    return BlobOut(ref=ref, path=path, content=blob.text, size=blob.size,
+                   too_large=blob.too_large, binary=blob.binary)
+
+
+@router.post("/{project_id}/uploads", status_code=201)
+async def upload_files(
+    project: VisibleProject, request: Request, db: DbSession, user: AdminUser,
+    files: list[UploadFile] = File(...), paths: list[str] = Form(...),
+):
+    """Admin: drop-zone upload of files+folders. Each file is paired with its relative path
+    (webkitRelativePath) by list index; traversal + size/count caps enforced."""
+    if len(files) != len(paths):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+                            detail="files and paths length mismatch")
+    payload: list[tuple[str, bytes]] = []
+    total = 0
+    for f, rel in zip(files, paths):
+        data = await f.read()
+        total += len(data)
+        if total > settings.project_upload_max_bytes:
+            raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="Upload too large")
+        payload.append((rel, data))
+    try:
+        n = uploadsmod.save_uploads(
+            project_uploads_path(project.id), payload,
+            max_bytes=settings.project_upload_max_bytes,
+            max_files=settings.project_upload_max_files,
+        )
+    except uploadsmod.UploadError as e:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(e))
+    await write_audit(db, action="project_upload", actor_id=user.id,
+                      target_type="project", target_id=str(project.id), ip=client_ip(request),
+                      metadata={"files": n})
+    await db.commit()
+    return {"uploaded": n}
