@@ -15,7 +15,7 @@ export function PathCanvas({ layout, selectedId, onSelect, onEnter, isTaken, isB
       {layout.nodes.map((n) => {
         // Status comes directly from the real API node — no mock overrides.
         // Branch greying: notTaken when a branch key is set and isBranchTaken returns false.
-        const notTaken = !!n.branch && !isBranchTaken(n.branch)
+        const notTaken = (!!n.branch && !isBranchTaken(n.branch)) || !!n.never_run
         return (
           <PathNodeCard
             key={n.id}

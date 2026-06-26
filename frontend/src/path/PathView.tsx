@@ -25,6 +25,7 @@ export function PathView() {
   const [reduced, setReduced] = useState(false)
   const [hostScope, setHostScope] = useState<HostScopeId>('all')
   const [showInputs, setShowInputs] = useState(false)
+  const [showNeverRun, setShowNeverRun] = useState(false)
 
   // View navigation state lives here so we can pass it to useRunTree before
   // the controller is initialized (avoids a circular deps problem between
@@ -37,7 +38,7 @@ export function PathView() {
   const animTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Drive tree fetch from view state.
-  const tree = useRunTree(id, view, iter)
+  const tree = useRunTree(id, view, iter, showNeverRun)
 
   // Build a map of branchKey → taken_hosts from the current tree's fork branch nodes.
   // A fork branch node has node.branch != null and node.taken_hosts set by the backend.
@@ -56,6 +57,7 @@ export function PathView() {
   // Branch-taken logic: 'all' → every branch lit; single host → grey branches the host didn't take.
   // Absent taken_hosts means unknown (fixture / old data) → treat as taken, never crash.
   const isBranchTaken = useCallback((branchKey: string | null | undefined): boolean => {
+    if (branchKey === 'never_run') return false        // ghost branch — always greyed
     if (hostScope === 'all' || !branchKey) return true
     const hosts = takenMap[branchKey]
     if (hosts == null) return true  // absent means unknown → treat as taken
@@ -208,6 +210,21 @@ export function PathView() {
           aria-expanded={showInputs}
         >
           Inputs
+        </button>
+        <button
+          data-testid="never-run-toggle"
+          className="btn sm btn-ghost"
+          onClick={() => setShowNeverRun(v => !v)}
+          style={{
+            fontSize: 11.5, fontWeight: 600,
+            color: showNeverRun ? 'var(--flow)' : 'var(--dim)',
+            border: showNeverRun ? '1px solid var(--flow-line, var(--border))' : '1px solid transparent',
+            borderRadius: 6, padding: '3px 9px',
+          }}
+          aria-pressed={showNeverRun}
+          aria-label="Toggle never-run branches"
+        >
+          Never-run
         </button>
         <HostScopeChip hosts={hostList} value={hostScope} onPick={setHostScope} />
         <span className="dim" style={{ fontSize: 11 }}>{tree.data?.nodes.length ?? 0} steps</span>
