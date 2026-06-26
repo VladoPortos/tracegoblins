@@ -84,6 +84,17 @@ async def _register_all(scheduler: AsyncIOScheduler, db: AsyncSession) -> None:
         coalesce=True,
     )
 
+    from app.core.config import settings as _settings
+
+    scheduler.add_job(
+        _run_project_refetch,
+        trigger=IntervalTrigger(minutes=_settings.project_refetch_interval_minutes),
+        id="project_refetch",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+
 
 async def _run_sync(controller_id: str) -> None:
     """APScheduler target: fresh session, load the controller, run one sync.
@@ -109,6 +120,13 @@ async def _run_retention() -> None:
     from app.awx.retention import run_retention_sweep
 
     await run_retention_sweep()
+
+
+async def _run_project_refetch() -> None:
+    """APScheduler target: re-fetch all cloned project repos."""
+    from app.projects.worker import refetch_cloned_projects
+
+    await refetch_cloned_projects()
 
 
 # ---------------------------------------------------------------------------
