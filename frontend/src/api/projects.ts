@@ -79,14 +79,17 @@ export function useSetProjectGit(id: string) {
   const qc = useQueryClient()
   return useMutation<Project, unknown, ProjectGitIn>({
     mutationFn: (body) => apiFetch<Project>(`/projects/${id}/git`, { method: 'PUT', body: JSON.stringify(body) }),
-    onSuccess: () => { void qc.invalidateQueries({ queryKey: projectKey(id) }); void qc.invalidateQueries({ queryKey: projectsKey }) },
+    // EXACT: refresh only the detail (status) query — NOT the broad ['projects'] prefix, which
+    // would also refetch the source tree mid-clone (the repo is briefly un-browsable → 409).
+    // The status poll + the file browser's enabled-on-cloned gate drive the tree refresh.
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: projectKey(id), exact: true }) },
   })
 }
 export function useCloneProject(id: string) {
   const qc = useQueryClient()
   return useMutation<{ status: string }, unknown, void>({
     mutationFn: () => apiFetch<{ status: string }>(`/projects/${id}/clone`, { method: 'POST' }),
-    onSuccess: () => { void qc.invalidateQueries({ queryKey: projectKey(id) }); void qc.invalidateQueries({ queryKey: projectsKey }) },
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: projectKey(id), exact: true }) },
   })
 }
 export function useRefreshMirror(id: string) {
