@@ -173,34 +173,56 @@ def _build_file_ghosts(file: str, statics: list, execed: set[int],
                                      is_conditional=bool(st.when), never_run=True,
                                      task_path=f"{file}:{st.line}"))
         else:
+            sub = st.action
+            if st.section in ("rescue", "always"):  # surface error-handler sections on the ghost
+                sub = f"{st.section}: {st.action}" if st.action else st.section
             nodes.append(PathNodeOut(id=gid(st.line), type="task",
-                                     label=st.name or st.action or "task", sub=st.action,
+                                     label=st.name or st.action or "task", sub=sub,
                                      status="skipped", action=st.action, condition=st.when,
                                      is_conditional=bool(st.when), never_run=True,
                                      task_path=f"{file}:{st.line}"))
 
     edges: list[PathEdgeOut] = []
-    # nest: each ghost block's ghost children chain under it
+    # nest: each ghost block's ghost children chain under it, grouped by section so that block /
+    # rescue / always render as separate sub-branches off the block (not one flat chain).
     for st in statics:
         if st.line in ghost_lines and st.is_block:
-            prev: int | None = None
-            for ch in children_of.get(st.line, []):
-                if ch.line not in ghost_lines:
-                    continue
-                frm = gid(st.line) if prev is None else gid(prev)
-                edges.append(PathEdgeOut(from_=frm, to=gid(ch.line), branch="never_run"))
-                prev = ch.line
+            kids = [c for c in children_of.get(st.line, []) if c.line in ghost_lines]
+            for sect in ("block", "rescue", "always"):
+                prev: int | None = None
+                for ch in kids:
+                    if (ch.section or "block") != sect:
+                        continue
+                    frm = gid(st.line) if prev is None else gid(prev)
+                    edges.append(PathEdgeOut(from_=frm, to=gid(ch.line), branch="never_run"))
+                    prev = ch.line
 
-    # top-level ghosts (not nested under a ghost block) branch off the nearest preceding executed
-    # view node; consecutive top-level ghosts sharing an anchor chain together (one dashed path).
+    # top-level ghosts (not nested under a ghost block).
+    top = [st for st in statics if st.line in ghost_lines and st.parent_line not in ghost_lines]
+    first_line = anchors[0][0]
+
+    # prefix ghosts (before the first executed anchor) chain in source order and LEAD INTO the
+    # first executed node — rather than incorrectly branching off a task that comes after them.
+    prefix_prev: int | None = None
+    for st in top:
+        if st.line >= first_line:
+            continue
+        if prefix_prev is not None:
+            edges.append(PathEdgeOut(from_=gid(prefix_prev), to=gid(st.line), branch="never_run"))
+        prefix_prev = st.line
+    if prefix_prev is not None:
+        edges.append(PathEdgeOut(from_=gid(prefix_prev), to=anchors[0][1], branch="never_run"))
+
+    # remaining top-level ghosts branch off their nearest preceding executed view node; consecutive
+    # same-anchor ghosts chain together into one dashed road-not-taken.
     anchor_lines = [ln for ln, _ in anchors]
     prev_node: str | None = None
     prev_anchor: str | None = None
-    for st in statics:
-        if st.line not in ghost_lines or st.parent_line in ghost_lines:
+    for st in top:
+        if st.line < first_line:
             continue
         i = bisect_right(anchor_lines, st.line)
-        anchor_id = anchors[i - 1][1] if i > 0 else anchors[0][1]
+        anchor_id = anchors[i - 1][1]  # st.line >= first_line ⇒ i >= 1, so a preceding anchor exists
         frm = prev_node if (prev_node is not None and anchor_id == prev_anchor) else anchor_id
         edges.append(PathEdgeOut(from_=frm, to=gid(st.line), branch="never_run"))
         prev_node, prev_anchor = gid(st.line), anchor_id

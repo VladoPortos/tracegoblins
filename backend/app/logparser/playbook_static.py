@@ -32,6 +32,7 @@ class StaticTask:
     when: str | None          # raw `when:` expression text, if present
     is_block: bool = False
     parent_line: int | None = None  # line of the enclosing block; None = top-level of the file/play
+    section: str | None = None      # which part of the enclosing block: block | rescue | always
 
 
 def _line_of(node: yaml.nodes.Node) -> int:
@@ -44,52 +45,66 @@ def _scalar(node: yaml.nodes.Node | None) -> str | None:
     return None
 
 
+def _when(node: yaml.nodes.Node | None) -> str | None:
+    """A `when:` may be a scalar or a YAML list of conditions (implicitly AND-ed by Ansible).
+    Join list conditions with ' and ' so a list-form `when` keeps its condition on the ghost."""
+    if isinstance(node, yaml.ScalarNode):
+        return str(node.value)
+    if isinstance(node, yaml.SequenceNode):
+        parts = [str(c.value) for c in node.value if isinstance(c, yaml.ScalarNode)]
+        return " and ".join(parts) if parts else None
+    return None
+
+
 def _keymap(mapping: yaml.MappingNode) -> dict[str, yaml.nodes.Node]:
     return {k.value: v for k, v in mapping.value if isinstance(k, yaml.ScalarNode)}
 
 
 def parse_task_file(text: str) -> list[StaticTask]:
     try:
-        root = yaml.compose(text, Loader=yaml.SafeLoader)
+        docs = list(yaml.compose_all(text, Loader=yaml.SafeLoader))
     except yaml.YAMLError:
         return []
     out: list[StaticTask] = []
-    if root is not None:
-        _walk(root, out, None)
+    for root in docs:  # compose_all handles multi-document files; marks stay file-absolute
+        if root is not None:
+            _walk(root, out, None, None)
     out.sort(key=lambda t: t.line)
     return out
 
 
-def _walk(node: yaml.nodes.Node, out: list[StaticTask], parent_line: int | None) -> None:
+def _walk(node: yaml.nodes.Node, out: list[StaticTask],
+          parent_line: int | None, section: str | None) -> None:
     if isinstance(node, yaml.SequenceNode):
         for item in node.value:
-            _walk_item(item, out, parent_line)
+            _walk_item(item, out, parent_line, section)
     elif isinstance(node, yaml.MappingNode):
         keys = _keymap(node)
         for tk in _PLAY_TASK_KEYS:
             if tk in keys:
-                _walk(keys[tk], out, parent_line)
+                _walk(keys[tk], out, parent_line, None)
 
 
-def _walk_item(item: yaml.nodes.Node, out: list[StaticTask], parent_line: int | None) -> None:
+def _walk_item(item: yaml.nodes.Node, out: list[StaticTask],
+               parent_line: int | None, section: str | None) -> None:
     if not isinstance(item, yaml.MappingNode):
         return
     keys = _keymap(item)
-    # block / rescue / always construct → emit the block, then recurse its children under it
+    # block / rescue / always construct → emit the block, then recurse each part with its section
     if any(bk in keys for bk in _BLOCK_KEYS):
         line = _line_of(item)
         out.append(StaticTask(line=line, name=_scalar(keys.get("name")),
-                              action=None, when=_scalar(keys.get("when")), is_block=True,
-                              parent_line=parent_line))
+                              action=None, when=_when(keys.get("when")), is_block=True,
+                              parent_line=parent_line, section=section))
         for bk in _BLOCK_KEYS:
             if bk in keys:
-                _walk(keys[bk], out, line)
+                _walk(keys[bk], out, line, bk)
         return
     # play construct (hosts + a task-bearing key) → descend, do not emit as a task
     if "hosts" in keys and any(k in keys for k in (*_PLAY_TASK_KEYS, "roles")):
         for tk in _PLAY_TASK_KEYS:
             if tk in keys:
-                _walk(keys[tk], out, parent_line)
+                _walk(keys[tk], out, parent_line, None)
         return
     # otherwise a task: the module is the first key that is not a directive
     action: str | None = None
@@ -98,5 +113,5 @@ def _walk_item(item: yaml.nodes.Node, out: list[StaticTask], parent_line: int | 
             action = k.value
             break
     out.append(StaticTask(line=_line_of(item), name=_scalar(keys.get("name")),
-                          action=action, when=_scalar(keys.get("when")), is_block=False,
-                          parent_line=parent_line))
+                          action=action, when=_when(keys.get("when")), is_block=False,
+                          parent_line=parent_line, section=section))
