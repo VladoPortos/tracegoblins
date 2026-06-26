@@ -67,6 +67,7 @@ class Run(Base):
         Index("ix_runs_owner_created", "owner_user_id", created_at.desc()),
         Index("ix_runs_team_created", "team_id", created_at.desc()),
         Index("ix_runs_controller_created", "controller_id", created_at.desc()),
+        Index("ix_runs_controller_project", "controller_id", "project_id"),
         Index("ix_runs_org", "awx_organization_id"),
         Index("ix_runs_status", "status"),
         Index("ix_runs_awx_user", "awx_user"),
