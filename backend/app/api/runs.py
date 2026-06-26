@@ -13,7 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from app.api.collab_schemas import AnnotationCreate, AnnotationOut, CommentCreate, CommentOut, MentionableUser, ShareCreate, ShareOut
 from app.api.deps import CurrentUser, DbSession, GatedUser
 from app.api.path_schemas import (
-    EnterToOut, NodeResultOut, NodeResultsPageOut, PathEdgeOut, PathNodeOut,
+    EnterToOut, NodeResultOut, NodeResultsPageOut, NodeSourceOut, PathEdgeOut, PathNodeOut,
     PathTreeOut, PathViewOut, RunInputsOut,
 )
 from app.api.http_utils import client_ip
@@ -30,6 +30,7 @@ from app.services.ingestion import MAX_UPLOAD_BYTES, ingest_upload
 from app.services.run_diff import diff_tasks, find_baseline, recap_newly_unreachable
 from app.services.run_time import run_when_expr
 from app.services.runs_query import run_to_card, run_to_detail, task_to_full, task_to_lean
+from app.services.code_overlay import build_node_source
 from app.services.path_forks import synthesize_forks
 from app.kb.signature import extract_signature
 from app.kb.service import visible_occurrence_count
@@ -709,6 +710,19 @@ async def get_run_inputs(run: VisibleRun):
         extra_vars=run.extra_vars or {}, survey=run.survey, limit=run.awx_limit,
         scm_revision=run.scm_revision, project_id=run.project_id, project_name=run.project_name,
     )
+
+
+@router.get("/{run_id}/nodes/{node_id}/source", response_model=NodeSourceOut)
+async def get_node_source(run: VisibleRun, node_id: str, db: DbSession):
+    """The full-screen code overlay payload for one node's file at the run's revision.
+    Degrades (200 + `unavailable`) when the project isn't linked/cloned or the file is
+    missing/binary/too large; 404 only when the node id isn't part of this run."""
+    node = await db.scalar(
+        select(RunNode).where(RunNode.run_id == run.id, RunNode.node_id == node_id)
+    )
+    if node is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Node not found")
+    return await build_node_source(db, run, node)
 
 
 @router.delete("/{run_id}", status_code=204)

@@ -30,6 +30,7 @@ class PathNodeOut(BaseModel):
     child_count: int | None = None
     duration_s: float | None = None
     task_path: str | None = None
+    never_run: bool = False
 
 
 class PathEdgeOut(BaseModel):
@@ -78,3 +79,25 @@ class RunInputsOut(BaseModel):
     scm_revision: str | None = None
     project_id: int | None = None
     project_name: str | None = None
+
+
+class ResolvedValueOut(BaseModel):
+    key: str
+    expr: str | None = None         # source template, if known (e.g. "{{ pkg }}")
+    value: Any | None = None        # rendered value; None when not recorded
+    source: str                     # module_args | task_args | item | when | extra_vars
+    recorded: bool = True           # False → render raw expr + "not recorded"
+    host: str | None = None         # representative host when value is per-host
+
+
+class NodeSourceOut(BaseModel):
+    project_id: str | None = None
+    path: str | None = None
+    ref: str | None = None
+    content: str | None = None
+    focus_line: int | None = None
+    executed_lines: list[int] = []
+    never_run_lines: list[int] = []
+    resolved: list[ResolvedValueOut] = []
+    hosts: list[str] = []
+    unavailable: str | None = None  # not_linked|not_cloned|revision_missing|no_path|binary|too_large
