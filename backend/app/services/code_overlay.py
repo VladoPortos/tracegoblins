@@ -15,6 +15,46 @@ from app.projects.git import GitError, read_blob, revision_exists
 from app.projects.storage import project_repo_path
 
 
+def _jsonable(v):
+    return v if isinstance(v, (str, int, float, bool, list, dict)) or v is None else str(v)
+
+
+def resolved_values(node: RunNode, results: list[RunNodeResult],
+                    extra_vars: dict) -> list[ResolvedValueOut]:
+    """What `{{ }}` resolved to for THIS run — only values Ansible actually recorded.
+    Priority for module args: a result's res.invocation.module_args (fully rendered, per host),
+    else the node's representative task_args (raw template → marked not-recorded)."""
+    out: list[ResolvedValueOut] = []
+    rep = next((r for r in results if isinstance(r.result, dict)), None)
+    margs = None
+    if rep is not None:
+        inv = rep.result.get("invocation")
+        if isinstance(inv, dict) and isinstance(inv.get("module_args"), dict):
+            margs = inv["module_args"]
+    if margs:
+        for k, v in margs.items():
+            out.append(ResolvedValueOut(key=k, expr=None, value=_jsonable(v),
+                                        source="module_args", recorded=True, host=rep.host))
+    elif node.args:
+        args = node.args.get("_raw") if set(node.args) == {"_raw"} else node.args
+        if isinstance(args, dict):
+            for k, v in args.items():
+                unrendered = isinstance(v, str) and "{{" in v
+                out.append(ResolvedValueOut(
+                    key=k, expr=v if unrendered else None,
+                    value=None if unrendered else _jsonable(v),
+                    source="task_args", recorded=not unrendered, host=None))
+    item_res = next((r for r in results if r.item_value is not None), None)
+    if item_res is not None:
+        out.append(ResolvedValueOut(key="item", expr="{{ item }}", value=_jsonable(item_res.item_value),
+                                    source="item", recorded=True, host=item_res.host))
+    when = node.when_expr or next((r.false_condition for r in results if r.false_condition), None)
+    if when:
+        out.append(ResolvedValueOut(key="when", expr=when, value=None, source="when",
+                                    recorded=True, host=None))
+    return out
+
+
 def split_task_path(task_path: str | None) -> tuple[str, int] | None:
     """'roles/app/tasks/main.yml:42' -> ('roles/app/tasks/main.yml', 42); None if no line."""
     if not task_path or ":" not in task_path:
@@ -44,8 +84,15 @@ async def _executed_lines_for_file(db: AsyncSession, run_id, file: str) -> list[
 
 
 async def build_node_source(db: AsyncSession, run: Run, node: RunNode) -> NodeSourceOut:
+    results = (await db.execute(
+        select(RunNodeResult).where(RunNodeResult.run_id == run.id,
+                                    RunNodeResult.node_id == node.node_id)
+    )).scalars().all()
+    resolved = resolved_values(node, results, run.extra_vars or {})
+    hosts = sorted({r.host for r in results})
     base = dict(project_id=None, path=None, ref=run.scm_revision, content=None,
-                focus_line=None, executed_lines=[], never_run_lines=[], resolved=[], hosts=[])
+                focus_line=None, executed_lines=[], never_run_lines=[],
+                resolved=resolved, hosts=hosts)
     sp = split_task_path(node.task_path)
     if sp is None:
         return NodeSourceOut(**base, unavailable="no_path")
