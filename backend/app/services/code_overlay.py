@@ -8,7 +8,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.path_schemas import NodeSourceOut, ResolvedValueOut  # noqa: F401 (ResolvedValueOut exported for future tasks)
+from app.api.path_schemas import NodeSourceOut, PathEdgeOut, PathNodeOut, ResolvedValueOut  # noqa: F401 (ResolvedValueOut exported for future tasks)
 from app.logparser import parse_task_file
 from app.core.config import settings
 from app.models import Project, Run, RunNode, RunNodeResult
@@ -123,3 +123,61 @@ async def build_node_source(db: AsyncSession, run: Run, node: RunNode) -> NodeSo
     never_run = sorted({st.line for st in statics if st.line not in set(executed)})
     base.update(content=blob.text, executed_lines=executed, never_run_lines=never_run)
     return NodeSourceOut(**base)
+
+
+async def never_run_branches(db: AsyncSession, run: Run,
+                             view_nodes: list[RunNode]) -> tuple[list[PathNodeOut], list[PathEdgeOut]]:
+    """Ghost nodes for tasks present in the touched source but never executed, each hung off an
+    executed view node via a `never_run` branch edge. Empty when the project isn't cloned / the
+    revision isn't fetched (the flow toggle then simply shows nothing extra)."""
+    proj = await resolve_project_for_run(db, run)
+    if proj is None or proj.status != "cloned" or not run.scm_revision:
+        return [], []
+    repo = project_repo_path(proj.id)
+    if not repo.exists() or not await revision_exists(repo, run.scm_revision):
+        return [], []
+
+    # Executed lines per file across the WHOLE run (so a sibling executed outside this view counts).
+    all_paths = (await db.execute(
+        select(RunNode.task_path).where(RunNode.run_id == run.id, RunNode.task_path.isnot(None))
+    )).scalars().all()
+    executed_by_file: dict[str, set[int]] = {}
+    for tp in all_paths:
+        sp = split_task_path(tp)
+        if sp:
+            executed_by_file.setdefault(sp[0], set()).add(sp[1])
+
+    ghosts: list[PathNodeOut] = []
+    edges: list[PathEdgeOut] = []
+    seen: set[tuple[str, int]] = set()
+    parsed: dict[str, list] = {}
+    cap = settings.project_blob_max_bytes
+    for vn in view_nodes:
+        sp = split_task_path(vn.task_path)
+        if sp is None:
+            continue
+        file = sp[0]
+        if file not in parsed:
+            try:
+                blob = await read_blob(repo, run.scm_revision, file, cap)
+            except GitError:
+                parsed[file] = []
+                continue
+            parsed[file] = parse_task_file(blob.text) if blob.text else []
+        execed = executed_by_file.get(file, set())
+        for st in parsed[file]:
+            if st.is_block or st.line in execed:
+                continue
+            key = (file, st.line)
+            if key in seen:
+                continue
+            seen.add(key)
+            gid = f"nr:{file}:{st.line}"
+            ghosts.append(PathNodeOut(
+                id=gid, type="task", label=st.name or st.action or "task",
+                sub=st.action, status="skipped", action=st.action,
+                condition=st.when, is_conditional=bool(st.when),
+                never_run=True, task_path=f"{file}:{st.line}",
+            ))
+            edges.append(PathEdgeOut(from_=vn.node_id, to=gid, branch="never_run"))
+    return ghosts, edges

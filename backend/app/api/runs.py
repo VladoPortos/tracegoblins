@@ -30,7 +30,7 @@ from app.services.ingestion import MAX_UPLOAD_BYTES, ingest_upload
 from app.services.run_diff import diff_tasks, find_baseline, recap_newly_unreachable
 from app.services.run_time import run_when_expr
 from app.services.runs_query import run_to_card, run_to_detail, task_to_full, task_to_lean
-from app.services.code_overlay import build_node_source
+from app.services.code_overlay import build_node_source, never_run_branches
 from app.services.path_forks import synthesize_forks
 from app.kb.signature import extract_signature
 from app.kb.service import visible_occurrence_count
@@ -622,7 +622,8 @@ async def _taken_hosts(db, run_id, node_ids: list[str]) -> dict[str, set[str]]:
 @router.get("/{run_id}/tree", response_model=PathTreeOut,
             response_model_by_alias=True)
 async def get_run_tree(run: VisibleRun, db: DbSession,
-                       root: str | None = Query(None), iter: int = Query(0, ge=0)):
+                       root: str | None = Query(None), iter: int = Query(0, ge=0),
+                       never_run: int = Query(0)):
     all_nodes = (await db.execute(
         select(RunNode).where(RunNode.run_id == run.id).order_by(RunNode.counter)
     )).scalars().all()
@@ -662,6 +663,9 @@ async def get_run_tree(run: VisibleRun, db: DbSession,
         mapped = [_node_out(n) for n in kids]
         taken = await _taken_hosts(db, run.id, [n.node_id for n in kids if n.is_conditional])
         fnodes, fedges = synthesize_forks(mapped, taken)
+        if never_run:
+            g_nodes, g_edges = await never_run_branches(db, run, kids)
+            fnodes += g_nodes; fedges += g_edges
         return PathTreeOut(run_id=str(run.id), view=PathViewOut(type="container", id=root),
                            nodes=fnodes, edges=fedges)
 
@@ -674,6 +678,9 @@ async def get_run_tree(run: VisibleRun, db: DbSession,
     mapped = [_node_out(n) for n in top]
     taken = await _taken_hosts(db, run.id, [n.node_id for n in top if n.is_conditional])
     fnodes, fedges = synthesize_forks(mapped, taken)
+    if never_run:
+        g_nodes, g_edges = await never_run_branches(db, run, top)
+        fnodes += g_nodes; fedges += g_edges
     return PathTreeOut(run_id=str(run.id), view=PathViewOut(type="main"),
                        nodes=fnodes, edges=fedges)
 
