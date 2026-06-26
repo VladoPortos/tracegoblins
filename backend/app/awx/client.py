@@ -86,6 +86,20 @@ class JobDetail:
     survey: dict | None = None        # M1: None (survey answers live inside extra_vars)
 
 
+@dataclass(frozen=True)
+class ProjectSummary:
+    id: int
+    name: str
+    description: str | None
+    scm_type: str                 # 'git' | '' | 'hg' | 'svn' ...
+    scm_url: str | None
+    scm_branch: str | None
+    scm_revision: str | None
+    status: str | None
+    organization_id: int | None   # summary_fields.organization.id (fallback top-level organization)
+    organization_name: str | None
+
+
 def _to_summary(job: dict) -> JobSummary:
     """Map a raw AWX job dict (with summary_fields) to a JobSummary."""
     sf = job.get("summary_fields") or {}
@@ -110,6 +124,26 @@ def _to_summary(job: dict) -> JobSummary:
         created_by_username=created_by.get("username"),
         workflow_name=workflow_job.get("name") if workflow_job else None,
         url=job["url"],
+    )
+
+
+def _to_project_summary(p: dict) -> ProjectSummary:
+    """Map a raw AWX project dict (with summary_fields) to a ProjectSummary."""
+    sf = p.get("summary_fields") or {}
+    org = sf.get("organization") or {}
+    org_id = org.get("id") if org else p.get("organization")
+    org_name = org.get("name") if org else None
+    return ProjectSummary(
+        id=p["id"],
+        name=p.get("name") or "",
+        description=p.get("description") or None,
+        scm_type=p.get("scm_type") or "",
+        scm_url=p.get("scm_url") or None,
+        scm_branch=p.get("scm_branch") or None,
+        scm_revision=p.get("scm_revision") or None,
+        status=p.get("status") or None,
+        organization_id=org_id,
+        organization_name=org_name,
     )
 
 
@@ -232,3 +266,18 @@ class AwxClient:
     async def get_job_detail(self, job_id: int) -> JobDetail:
         """GET /api/v2/jobs/{id}/ for inputs (extra_vars/limit/scm_revision/project/template)."""
         return _to_job_detail(await self._get_json(f"/api/v2/jobs/{job_id}/"))
+
+    async def list_projects(self) -> list[ProjectSummary]:
+        """List all projects on the controller (paginated, SSRF-safe `next`).
+
+        GET /api/v2/projects/?page_size=200&order_by=id. Used by sync_projects to mirror
+        AWX project metadata into our `projects` table.
+        """
+        url: str | None = f"/api/v2/projects/?page_size={PAGE_SIZE}&order_by=id"
+        out: list[ProjectSummary] = []
+        while url is not None:
+            data = await self._get_json(url)
+            for p in data.get("results") or []:
+                out.append(_to_project_summary(p))
+            url = _safe_next(self._base, data.get("next"))
+        return out
