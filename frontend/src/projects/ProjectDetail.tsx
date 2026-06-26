@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router'
 import { useMe } from '../api/queries'
 import { PageShell } from '../components/atoms/PageShell'
@@ -24,6 +24,13 @@ export function ProjectDetail() {
   const refresh = useRefreshMirror(id)
   const [showLink, setShowLink] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  // Tracks a clone we kicked off, so the "pending" status (also used right after Link git)
+  // only reads as in-progress when WE triggered it. Reset once the clone reaches a terminal state.
+  const [cloneTriggered, setCloneTriggered] = useState(false)
+  const status = project.data?.status
+  useEffect(() => {
+    if (status === 'cloned' || status === 'error') setCloneTriggered(false)
+  }, [status])
 
   if (project.isPending) return (
     <PageShell>
@@ -36,10 +43,20 @@ export function ProjectDetail() {
     </PageShell>
   )
   const p = project.data
+  // Live clone state: actively cloning, or a clone WE triggered that's still queued (pending).
+  const cloneInProgress = clone.isPending || p.status === 'cloning' || (cloneTriggered && p.status === 'pending')
 
   async function act(fn: () => Promise<unknown>) {
     setErr(null)
     try { await fn() } catch (e) { setErr(errorMessage(e)) }
+  }
+
+  // Refresh source = trigger a clone/fetch. Clears any prior error immediately and marks the
+  // clone in-flight so the UI shows live "Cloning…" until it converges (poll-driven).
+  async function doClone() {
+    setErr(null)
+    setCloneTriggered(true)
+    try { await clone.mutateAsync() } catch (e) { setErr(errorMessage(e)); setCloneTriggered(false) }
   }
 
   return (
@@ -67,10 +84,10 @@ export function ProjectDetail() {
             {/* Admin-only: trigger a fresh clone/pull */}
             {isAdmin && (
               <button className="btn btn-primary sm"
-                onClick={() => act(() => clone.mutateAsync())}
-                disabled={clone.isPending || p.scm_type !== 'git'}>
-                {/* No download glyph — chevD (chevron-down) is closest to "pull from remote" */}
-                <Glyph name="chevD" size={14} />Refresh source
+                onClick={doClone}
+                disabled={cloneInProgress || p.scm_type !== 'git'}>
+                <Glyph name={cloneInProgress ? 'spinner' : 'chevD'} size={14} />
+                {cloneInProgress ? 'Cloning…' : 'Refresh source'}
               </button>
             )}
           </div>
@@ -78,8 +95,24 @@ export function ProjectDetail() {
             {p.controller_name} · {p.scm_type || 'no scm'}{p.scm_branch ? ` · ${p.scm_branch}` : ''}
             {p.effective_git_url ? ` · ${p.effective_git_url}` : ''}
           </div>
-          {p.last_clone_error && (
-            <div style={{ fontSize: 12, color: 'var(--unreachable)' }}>Clone error: {p.last_clone_error}</div>
+          {/* Live clone status — wipes the stale error while a new attempt is in flight */}
+          {cloneInProgress && (
+            <div className="row gap2" style={{ fontSize: 12, color: 'var(--accent)', alignItems: 'center',
+              animation: 'pulse 1.4s ease-in-out infinite' }}>
+              <Glyph name="spinner" size={13} />
+              Cloning source{p.effective_git_url ? ` from ${p.effective_git_url}` : ''}…
+            </div>
+          )}
+          {!cloneInProgress && p.status === 'error' && p.last_clone_error && (
+            <div style={{ fontSize: 12, color: 'var(--unreachable)', padding: '8px 10px', borderRadius: 6,
+              background: 'var(--surface-2)', border: '1px solid color-mix(in srgb, var(--unreachable) 50%, transparent)' }}>
+              <strong>Clone failed:</strong> {p.last_clone_error}
+            </div>
+          )}
+          {!cloneInProgress && p.status === 'cloned' && (
+            <div style={{ fontSize: 12, color: 'var(--ok)' }}>
+              ✓ Source cloned{p.clone_size_bytes ? ` · ${(p.clone_size_bytes / 1048576).toFixed(1)} MB` : ''}
+            </div>
           )}
           {err && <div style={{ fontSize: 12, color: 'var(--unreachable)' }}>{err}</div>}
           {/* Upload drop-zone only visible to admins */}

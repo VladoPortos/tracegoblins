@@ -103,7 +103,11 @@ def _askpass_env(auth_type: str, username: str | None, secret: str | None) -> tu
     if auth_type == "none" or not secret:
         return {}, None
     if auth_type == "token":
-        user = "x-access-token"          # GitHub/GitLab accept any non-empty user + token as pass
+        # Pair the PAT with the supplied username when given (GitHub Enterprise / GitLab require
+        # the real account username + PAT-as-password), else fall back to the github.com / app-
+        # token convention. Sending "x-access-token" to GitHub Enterprise yields a 403
+        # "Password authentication is not available", so the username field matters there.
+        user = username or "x-access-token"
         password = secret
     else:                                # userpass
         user = username or ""
