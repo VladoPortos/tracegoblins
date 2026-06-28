@@ -63,7 +63,8 @@ async def run_visible_cond(db: AsyncSession, user: User):
 
 
 async def is_run_visible(db: AsyncSession, run: Run, user: User) -> bool:
-    """True iff U can see R: owner ∪ team-owned ∪ direct-share ∪ team-share.
+    """True iff U can see R: owner ∪ team-owned ∪ direct-share ∪ team-share ∪ AWX-via-controller_teams
+    (the same 5 branches as run_visible_cond — VIS1).
 
     A1: an admin role grants NO path here — visibility is purely relationship-based.
     """

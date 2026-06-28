@@ -5,7 +5,6 @@ import hashlib
 import logging
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
 
 from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
@@ -13,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
 
 from app.awx.client import AwxClient, AwxError
 from app.awx.projects_sync import sync_projects
-from app.core.clock import utcnow
+from app.core.clock import parse_iso as _parse_iso, utcnow
 from app.core.crypto import TokenCryptoError, decrypt_token
 from app.kb.service import match_run
 from app.logparser import build_tree
@@ -100,19 +99,6 @@ def _abs_url(base: str, rel: str | None) -> str | None:
     if rel.startswith(("http://", "https://")):
         return rel
     return f"{base.rstrip('/')}/{rel.lstrip('/')}"
-
-
-def _parse_iso(s: str | None) -> datetime | None:
-    """ISO-8601 ('Z' -> '+00:00') -> aware UTC datetime; None on absence/parse failure."""
-    if not s:
-        return None
-    try:
-        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
-    except (ValueError, AttributeError):
-        return None
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
 
 
 async def sync_controller(db: AsyncSession, controller: AwxController) -> SyncResult:

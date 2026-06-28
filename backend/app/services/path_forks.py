@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from app.api.path_schemas import PathEdgeOut, PathNodeOut
-
-_RANK = {"skipped": 0, "ok": 1, "changed": 2, "failed": 3, "unreachable": 4}
+from app.core import statuses
 
 
 def _disjoint(sets: list[set[str]]) -> bool:
@@ -43,7 +42,7 @@ def synthesize_forks(
             out_nodes.append(u["node"])
             continue
         branches = u["branches"]
-        worst = max((b.status for b in branches), key=lambda s: _RANK.get(s, 0))
+        worst = max((b.status for b in branches), key=statuses.rank)
         when = PathNodeOut(
             id=f"when:{branches[0].id}", type="when", label="decision", sub="decision",
             status=worst, is_conditional=True, condition=branches[0].condition,

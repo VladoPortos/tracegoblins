@@ -33,6 +33,7 @@ def decrypt_token(ciphertext: str) -> str:
 
 
 def mask_token(plaintext: str) -> str:
-    """Display-safe mask: 'awx_pat_••••<last4>'. Short/empty -> 'awx_pat_••••'."""
-    last4 = plaintext[-4:] if len(plaintext) >= 4 else ""
+    """Display-safe mask: 'awx_pat_••••<last4>'. Reveals the last 4 only when the token is
+    comfortably longer than that — a <=8-char secret is fully masked, never echoed (CRYPTO1)."""
+    last4 = plaintext[-4:] if len(plaintext) > 8 else ""
     return f"awx_pat_••••{last4}"

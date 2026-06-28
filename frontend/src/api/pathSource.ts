@@ -4,7 +4,7 @@
 import { apiFetch } from './client'
 import type { PathTree, NodeResultsPage, RunInputs, PathViewRef, NodeSource } from './path'
 
-export interface NodeResultsOpts { iter?: number; host?: string; status?: string; offset?: number; limit?: number }
+export interface NodeResultsOpts { host?: string; status?: string; offset?: number; limit?: number }
 
 export function fetchTree(runId: string, view: PathViewRef, iter = 0, includeNeverRun = false): Promise<PathTree> {
   const params = new URLSearchParams()
@@ -16,6 +16,14 @@ export function fetchTree(runId: string, view: PathViewRef, iter = 0, includeNev
 }
 
 export function fetchNodeSource(runId: string, nodeId: string): Promise<NodeSource> {
+  // Never-run ghost ids are `nr:{file}:{line}`; the file contains '/', so fetch via query params
+  // (a dedicated endpoint) rather than a path segment that routing would split (OV5).
+  if (nodeId.startsWith('nr:')) {
+    const body = nodeId.slice(3)
+    const i = body.lastIndexOf(':')
+    const params = new URLSearchParams({ file: body.slice(0, i), line: body.slice(i + 1) })
+    return apiFetch<NodeSource>(`/runs/${runId}/ghost-source?${params.toString()}`)
+  }
   return apiFetch<NodeSource>(`/runs/${runId}/nodes/${nodeId}/source`)
 }
 
@@ -31,4 +39,10 @@ export function fetchNodeResults(runId: string, nodeId: string, opts: NodeResult
 
 export function fetchInputs(runId: string): Promise<RunInputs> {
   return apiFetch<RunInputs>(`/runs/${runId}/inputs`)
+}
+
+// Whole-run Markdown summary (status, per-host recap, path-to-failure) for tickets/KB.
+// The endpoint returns text/plain; apiFetch falls back to the raw string for non-JSON bodies.
+export function fetchRunSummary(runId: string): Promise<string> {
+  return apiFetch<string>(`/runs/${runId}/summary`)
 }

@@ -43,12 +43,16 @@ async def add_member(db: AsyncSession, team_id: uuid.UUID, user_id: uuid.UUID) -
 
 async def remove_member(db: AsyncSession, team_id: uuid.UUID, user_id: uuid.UUID) -> None:
     await _lock_team_invariant(db)  # serialize the last-team check vs. concurrent removals
+    # Verify the membership exists BEFORE the last-team invariant (TEAM1): removing a user from a
+    # team they don't belong to is a no-op and must not raise LastTeamError just because that user
+    # happens to be in exactly one (other) team.
+    tm = await db.get(TeamMember, (team_id, user_id))
+    if tm is None:
+        return
     if await count_user_teams(db, user_id) <= 1:
         raise LastTeamError()
-    tm = await db.get(TeamMember, (team_id, user_id))
-    if tm is not None:
-        await db.delete(tm)
-        await db.flush()
+    await db.delete(tm)
+    await db.flush()
 
 
 async def delete_team(db: AsyncSession, team: Team) -> None:

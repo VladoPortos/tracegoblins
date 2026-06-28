@@ -4,7 +4,9 @@ import hashlib
 import logging
 import uuid
 
-from sqlalchemy import select
+from datetime import timedelta
+
+from sqlalchemy import and_, or_, select
 
 from app.awx.sync import _engine_of, release_controller_lock, try_acquire_controller_lock
 from app.core.clock import utcnow
@@ -109,15 +111,31 @@ async def run_clone(project_id: str) -> None:
             await lock_conn.close()
 
 
+# A pending/cloning project untouched for this long is treated as orphaned by a crashed worker and
+# retried (REL1); an actively-running clone bumps updated_at well within the window, and the
+# per-project advisory lock dedupes anyway, so a live clone is never double-fired.
+_STALE_CLONE_MINUTES = 15
+
+
+async def _projects_to_refetch(db) -> list[uuid.UUID]:
+    """Cloned projects (routine refresh) PLUS pending/cloning projects orphaned by a crash (REL1)."""
+    stale_before = utcnow() - timedelta(minutes=_STALE_CLONE_MINUTES)
+    return list((await db.scalars(
+        select(Project.id).where(
+            or_(Project.status == "cloned",
+                and_(Project.status.in_(("pending", "cloning")),
+                     Project.updated_at < stale_before))
+        )
+    )).all())
+
+
 async def refetch_cloned_projects() -> None:
     """Periodic job: fetch updates for every already-cloned project so revisions referenced by
-    newly-synced runs become browsable. Each project re-uses run_clone (which fetches when the
-    bare repo already exists). Per-project errors are swallowed so one bad project cannot abort
-    the rest of the sweep."""
+    newly-synced runs become browsable, AND retry projects left in pending/cloning by a crashed
+    worker (REL1). Each project re-uses run_clone (which fetches when the bare repo already exists).
+    Per-project errors are swallowed so one bad project cannot abort the rest of the sweep."""
     async with SessionLocal() as db:
-        ids = (await db.scalars(
-            select(Project.id).where(Project.status == "cloned")
-        )).all()
+        ids = await _projects_to_refetch(db)
     for pid in ids:
         try:
             await run_clone(str(pid))

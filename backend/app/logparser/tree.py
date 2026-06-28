@@ -4,6 +4,10 @@ import json
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 
+from app.core import statuses
+from app.logparser.job_events import _host as resolve_host
+from app.services.status_rollup import rolled_up_status
+
 
 @dataclass
 class TreeNode:
@@ -17,6 +21,7 @@ class TreeNode:
     task_path: str | None = None      # file:line, repo-root relative (no /runner/project/)
     ansible_uuid: str | None = None   # task_uuid / play_uuid — M3 source-map link
     is_conditional: bool = False
+    is_handler: bool = False          # node came from playbook_on_handler_task_start (notified + fired)
     when_expr: str | None = None      # res.false_condition when known
     loop_var: str | None = None       # event_loop
     status: str = "ok"                # aggregate worst across results
@@ -64,7 +69,6 @@ _ITEM: dict[str, str] = {
     "runner_item_on_failed": "failed",
     "runner_item_on_skipped": "skipped",
 }
-_RANK: dict[str, int] = {"skipped": 0, "ok": 1, "changed": 2, "failed": 3, "unreachable": 4}
 _MAX_BLOB_CHARS = 64_000
 
 
@@ -222,6 +226,7 @@ def build_tree(events: list[dict]) -> ParsedTree:
                 task_path=raw_path,
                 ansible_uuid=task_uuid,
                 is_conditional=bool(ed.get("is_conditional")),
+                is_handler=(et == "playbook_on_handler_task_start"),
             )
             tree.nodes.append(node)
             by_uuid[task_uuid] = node
@@ -235,7 +240,7 @@ def build_tree(events: list[dict]) -> ParsedTree:
             st = _TERMINAL[et]
             if st == "ok" and res.get("changed"):
                 st = "changed"
-            host = ed.get("host") or ed.get("remote_addr") or "localhost"
+            host = resolve_host(ev) or "localhost"  # shared rule incl. integer-host fallback (PATH4)
             tree.results.append(TreeResult(
                 node_id=node.node_id, host=host, status=st,
                 changed=bool(res.get("changed")), result=_cap_result(res),
@@ -262,7 +267,7 @@ def build_tree(events: list[dict]) -> ParsedTree:
             st = _ITEM[et]
             if st == "ok" and res.get("changed"):
                 st = "changed"
-            host = ed.get("host") or ed.get("remote_addr") or "localhost"
+            host = resolve_host(ev) or "localhost"  # shared rule incl. integer-host fallback (PATH4)
             _key = (node.node_id, host)
             idx = _item_counter.get(_key, 0)
             _item_counter[_key] = idx + 1
@@ -273,6 +278,8 @@ def build_tree(events: list[dict]) -> ParsedTree:
             ))
             if node.loop_var is None:
                 node.loop_var = ed.get("event_loop")
+            if st == "skipped" and res.get("false_condition") and not node.when_expr:
+                node.when_expr = str(res.get("false_condition"))  # item-level when text (PT2)
             continue
 
     # Aggregate node-level status/counts and retype loop nodes.
@@ -289,9 +296,16 @@ def build_tree(events: list[dict]) -> ParsedTree:
             host_counts = Counter(r.host for r in items)
             n.item_count = max(host_counts.values()) if host_counts else 0
         n.host_count = len({r.host for r in rs if r.status != "skipped"})
-        worst = max(rs, key=lambda r: _RANK.get(r.status, 0)).status
+        worst = max(rs, key=lambda r: statuses.rank(r.status)).status
         n.status = worst
         n.changed = any(r.changed for r in rs)
+        # AWX never sets event_data.is_conditional (always False on real data), so derive it:
+        # a task that ran on some hosts and skipped on others is a real when-decision (PT2). A
+        # single-host pure-skip stays non-conditional (renders as an inline skipped node, not a fork).
+        taken = {r.host for r in rs if r.status != "skipped"}
+        skipped = {r.host for r in rs if r.status == "skipped"}
+        if taken and skipped:
+            n.is_conditional = True
 
     # Compute child_count for every node after the walk.
     child_counts: dict[str, int] = {}
@@ -300,6 +314,12 @@ def build_tree(events: list[dict]) -> ParsedTree:
             child_counts[n.parent_id] = child_counts.get(n.parent_id, 0) + 1
     for n in tree.nodes:
         n.child_count = child_counts.get(n.node_id, 0)
+
+    # Roll container status up from descendants — plays/roles/includes/blocks carry no direct
+    # result, so without this they stay "ok" even when a child failed (PT1).
+    roll = rolled_up_status((n.node_id, n.parent_id, n.node_type, n.status) for n in tree.nodes)
+    for n in tree.nodes:
+        n.status = roll.get(n.node_id, n.status)
 
     # stash for later tasks
     tree.__dict__["_by_uuid"] = by_uuid  # internal handoff to Task 4; not serialized

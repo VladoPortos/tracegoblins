@@ -12,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.api.collab_schemas import AnnotationCreate, AnnotationOut, CommentCreate, CommentOut, MentionableUser, ShareCreate, ShareOut
 from app.api.deps import CurrentUser, DbSession, GatedUser
+from app.core import statuses
 from app.api.path_schemas import (
     EnterToOut, NodeResultOut, NodeResultsPageOut, NodeSourceOut, PathEdgeOut, PathNodeOut,
     PathTreeOut, PathViewOut, RunInputsOut,
@@ -30,8 +31,12 @@ from app.services.ingestion import MAX_UPLOAD_BYTES, ingest_upload
 from app.services.run_diff import diff_tasks, find_baseline, recap_newly_unreachable
 from app.services.run_time import run_when_expr
 from app.services.runs_query import run_to_card, run_to_detail, task_to_full, task_to_lean
-from app.services.code_overlay import build_node_source, never_run_branches
+from app.services.code_overlay import (
+    build_ghost_source, build_node_source, never_run_branches, split_task_path, when_by_line,
+)
+from app.services.status_rollup import rolled_up_status
 from app.services.path_forks import synthesize_forks
+from app.services.run_summary import build_summary_md
 from app.kb.signature import extract_signature
 from app.kb.service import visible_occurrence_count
 
@@ -299,8 +304,9 @@ async def list_runs(
         return RunList(items=[run_to_card(r) for r in rows], total=total or 0)
 
     # scope == "team": delegate to the shared _team_scope_base helper (ONE source of truth).
+    # team_ids is reused for card attribution below, so fetch once and pass it in (RUNS4).
     team_ids = await my_team_ids(db, user)
-    base = await _team_scope_base(db, user)
+    base = await _team_scope_base(db, user, team_ids)
     if base is None:
         return RunList(items=[], total=0)
     cond = and_(base, *extra)
@@ -350,11 +356,13 @@ async def list_runs(
     return RunList(items=items, total=total or 0)
 
 
-async def _team_scope_base(db, user):
+async def _team_scope_base(db, user, team_ids=None):
     """The team-scope visibility condition (team-owned ∪ team-shared ∪ AWX-via-controller_teams,
     minus U's personal non-AWX uploads), or None when U is in no teams.
-    Shared by list_runs + run_filters."""
-    team_ids = await my_team_ids(db, user)
+    Shared by list_runs + run_filters. `team_ids` may be passed by a caller that already
+    fetched it (RUNS4) to avoid a duplicate my_team_ids round-trip."""
+    if team_ids is None:
+        team_ids = await my_team_ids(db, user)
     if not team_ids:
         return None
     team_owned = Run.team_id.in_(team_ids)
@@ -589,34 +597,89 @@ def _node_out(n: RunNode) -> PathNodeOut:
     return PathNodeOut(
         id=n.node_id, type=n.node_type, label=n.name, sub=_sub_for(n), status=n.status,
         action=n.action, host_count=n.host_count or None, item_count=n.item_count or None,
-        has_failures=(n.status in ("failed", "unreachable")),
-        is_conditional=n.is_conditional, condition=n.when_expr, branch=None,
+        has_failures=(n.status in statuses.FAIL_STATUSES),
+        is_conditional=n.is_conditional, is_handler=n.is_handler, condition=n.when_expr, branch=None,
         enter_to=_enter_to(n), child_count=(n.child_count or None),
         duration_s=n.duration_s, task_path=n.task_path,
     )
 
 
-def _linear_edges(nodes: list[RunNode]) -> list[PathEdgeOut]:
-    ordered = sorted(nodes, key=lambda n: n.counter)
-    return [PathEdgeOut(from_=ordered[i].node_id, to=ordered[i + 1].node_id, branch=None)
-            for i in range(len(ordered) - 1)]
+async def _result_counts(db, run_id, nodes: list[RunNode]) -> dict[str, tuple[int, int]]:
+    """node_id -> (ok_count, fail_count) for PathNodeOut (PATH1). A loop counts by ITEM (worst
+    status per item_index); any other node counts by HOST — so a loop card shows items-failed and a
+    task shows hosts-failed, matching what the frontend renders."""
+    ids = [n.node_id for n in nodes]
+    if not ids:
+        return {}
+    rows = (await db.execute(
+        select(RunNodeResult.node_id, RunNodeResult.host, RunNodeResult.item_index,
+               RunNodeResult.status).where(RunNodeResult.run_id == run_id,
+                                           RunNodeResult.node_id.in_(ids))
+    )).all()
+    ntype = {n.node_id: n.node_type for n in nodes}
+    grouped: dict[str, dict] = {}
+    for nid, host, idx, st in rows:
+        if ntype.get(nid) == "loop":
+            if idx is None:
+                continue  # the per-host terminal aggregate row is not a loop ITEM — don't count it
+            key = idx
+        else:
+            key = host
+        worst = grouped.setdefault(nid, {})
+        if key not in worst or statuses.rank(st) > statuses.rank(worst[key]):
+            worst[key] = st
+    out: dict[str, tuple[int, int]] = {}
+    for nid, worst in grouped.items():
+        vals = worst.values()
+        out[nid] = (sum(v in statuses.GREEN_STATUSES for v in vals),
+                    sum(v in statuses.FAIL_STATUSES for v in vals))
+    return out
 
 
-async def _taken_hosts(db, run_id, node_ids: list[str]) -> dict[str, set[str]]:
-    """node_id -> set of hosts that did NOT skip (status != 'skipped'); only the ids asked for."""
+def _apply_counts(mapped: list[PathNodeOut], counts: dict[str, tuple[int, int]]) -> None:
+    for m in mapped:
+        if m.id in counts:
+            m.ok_count, m.fail_count = counts[m.id]
+
+
+async def _host_split(db, run_id, node_ids: list[str]) -> dict[str, tuple[set[str], set[str]]]:
+    """node_id -> (taken_hosts, skipped_hosts) — taken = hosts where status != 'skipped'."""
     if not node_ids:
         return {}
     rows = (await db.execute(
-        select(RunNodeResult.node_id, RunNodeResult.host).where(
+        select(RunNodeResult.node_id, RunNodeResult.host, RunNodeResult.status).where(
             RunNodeResult.run_id == run_id,
             RunNodeResult.node_id.in_(node_ids),
-            RunNodeResult.status != "skipped",
         )
     )).all()
-    out: dict[str, set[str]] = {}
-    for nid, host in rows:
-        out.setdefault(nid, set()).add(host)
+    out: dict[str, tuple[set[str], set[str]]] = {}
+    for nid, host, st in rows:
+        taken, skipped = out.setdefault(nid, (set(), set()))
+        (skipped if st == "skipped" else taken).add(host)
     return out
+
+
+async def _prep_forks(db, run, mapped: list[PathNodeOut], view_nodes: list[RunNode]) -> dict[str, set[str]]:
+    """Derive when-conditionality from per-host result divergence (AWX never sets is_conditional),
+    enrich each conditional node's `condition` from the static `when:` text, and return the
+    {node_id: taken_hosts} map synthesize_forks consumes. Additive: never clears a persisted flag."""
+    split = await _host_split(db, run.id, [n.node_id for n in view_nodes])
+    taken_map: dict[str, set[str]] = {}
+    for m, n in zip(mapped, view_nodes):
+        taken, skipped = split.get(n.node_id, (set(), set()))
+        if taken and skipped:                     # ran on some hosts, skipped on others → a decision
+            m.is_conditional = True
+        if m.is_conditional:
+            taken_map[n.node_id] = taken
+    # condition text from the static parse (degrades to no-text when the project isn't cloned)
+    cond_nodes = [n for m, n in zip(mapped, view_nodes) if m.is_conditional and not m.condition]
+    files = {sp[0] for n in cond_nodes if (sp := split_task_path(n.task_path))}
+    if files:
+        whens = await when_by_line(db, run, files)
+        for m, n in zip(mapped, view_nodes):
+            if m.is_conditional and not m.condition and (sp := split_task_path(n.task_path)):
+                m.condition = whens.get((sp[0], sp[1]))
+    return taken_map
 
 
 @router.get("/{run_id}/tree", response_model=PathTreeOut,
@@ -627,29 +690,51 @@ async def get_run_tree(run: VisibleRun, db: DbSession,
     all_nodes = (await db.execute(
         select(RunNode).where(RunNode.run_id == run.id).order_by(RunNode.counter)
     )).scalars().all()
+    # Roll container status up from descendants in-memory so the path view is correct even for
+    # runs ingested before the build_tree rollup landed (PT1). Display-only; never flushed.
+    _roll = rolled_up_status(
+        (n.node_id, n.parent_node_id, n.node_type, n.status) for n in all_nodes
+    )
+    for n in all_nodes:
+        n.status = _roll.get(n.node_id, n.status)
     by_id = {n.node_id: n for n in all_nodes}
 
     # loop view: synthesize loopRoot -> item -> task -> result from the loop node + its iter-th result
     if root is not None and (loop := by_id.get(root)) is not None and loop.node_type == "loop":
-        results = (await db.execute(
+        # Collapse the per-(item,host) rows to ONE representative per item_index — the worst-status
+        # host — so iteration N maps to ITEM N, not a flat (item×host) offset (RUNS1/PT6). Without
+        # this a multi-host loop shows item N//hosts and later items are unreachable via the stepper.
+        all_rows = (await db.execute(
             select(RunNodeResult).where(RunNodeResult.run_id == run.id,
                                         RunNodeResult.node_id == root,
                                         RunNodeResult.item_index.isnot(None))
-            .order_by(RunNodeResult.item_index)
+            .order_by(RunNodeResult.item_index, RunNodeResult.host)
         )).scalars().all()
+        by_item: dict[int, RunNodeResult] = {}
+        for r in all_rows:
+            cur = by_item.get(r.item_index)
+            if cur is None or statuses.rank(r.status) > statuses.rank(cur.status):
+                by_item[r.item_index] = r
+        results = [by_item[k] for k in sorted(by_item)]
         sel = results[iter] if 0 <= iter < len(results) else None
         val = sel.item_value if sel is not None else None
         st = sel.status if sel is not None else loop.status
+        host = sel.host if sel is not None else None
+        item_sub = f"iteration {iter + 1}" + (f" · {host}" if host else "")
+        loop_ok = sum(r.status in statuses.GREEN_STATUSES for r in by_item.values())  # PATH1
+        loop_fail = sum(r.status in statuses.FAIL_STATUSES for r in by_item.values())
         nodes = [
             PathNodeOut(id="loopRoot", type="loop", label=loop.name, sub=_sub_for(loop),
-                        status=loop.status, item_count=loop.item_count or None),
+                        status=loop.status, item_count=loop.item_count or None,
+                        ok_count=loop_ok, fail_count=loop_fail),
             PathNodeOut(id="item", type="item", label=f'= "{val}"' if val is not None else "item",
-                        sub=f"iteration {iter + 1}", status="ok"),
+                        sub=item_sub, status="ok", result_node_id=root),
             PathNodeOut(id="task", type="task", label=loop.action or loop.name,
                         sub=(f'name="{val}"' if val is not None else None), status=st,
                         action=loop.action, host_count=loop.host_count or None,
                         task_path=loop.task_path),
-            PathNodeOut(id="result", type="result", label="result", sub=st, status=st),
+            PathNodeOut(id="result", type="result", label="result", sub=st, status=st,
+                        result_node_id=root),  # FE2: query the real loop node's per-iteration results
         ]
         edges = [PathEdgeOut(from_="loopRoot", to="item", branch=None),
                  PathEdgeOut(from_="item", to="task", branch=None),
@@ -661,13 +746,24 @@ async def get_run_tree(run: VisibleRun, db: DbSession,
     if root is not None and root in by_id:
         kids = [n for n in all_nodes if n.parent_node_id == root]
         mapped = [_node_out(n) for n in kids]
-        taken = await _taken_hosts(db, run.id, [n.node_id for n in kids if n.is_conditional])
+        _apply_counts(mapped, await _result_counts(db, run.id, kids))  # PATH1
+        taken = await _prep_forks(db, run, mapped, kids)
         fnodes, fedges = synthesize_forks(mapped, taken)
+        note = None
         if never_run:
             g_nodes, g_edges = await never_run_branches(db, run, kids)
             fnodes += g_nodes; fedges += g_edges
+            # RUNS3: mirror the main view — if no ghost attaches here but enterable containers exist,
+            # tell the user the never-run branches live one drill-in deeper rather than showing nothing.
+            if not g_nodes and any(n.node_type in ("play", "role", "include", "block") for n in kids):
+                note = "Enter a role or include to see its never-run branches."
         return PathTreeOut(run_id=str(run.id), view=PathViewOut(type="container", id=root),
-                           nodes=fnodes, edges=fedges)
+                           nodes=fnodes, edges=fedges, never_run_note=note)
+
+    # A `root` was supplied but isn't a node of this run → 404 (mirror get_node_source), rather than
+    # silently returning the main view with a mismatched breadcrumb (RUNS2).
+    if root is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Node not found")
 
     # main view: children of the run root; if exactly one play, descend into it (flat task band)
     roots = [n for n in all_nodes if n.parent_node_id is None]  # the synthetic playbook root(s)
@@ -676,13 +772,19 @@ async def get_run_tree(run: VisibleRun, db: DbSession,
     if len(plays) == 1:
         top = [n for n in all_nodes if n.parent_node_id == plays[0].node_id]
     mapped = [_node_out(n) for n in top]
-    taken = await _taken_hosts(db, run.id, [n.node_id for n in top if n.is_conditional])
+    _apply_counts(mapped, await _result_counts(db, run.id, top))  # PATH1
+    taken = await _prep_forks(db, run, mapped, top)
     fnodes, fedges = synthesize_forks(mapped, taken)
+    note = None
     if never_run:
         g_nodes, g_edges = await never_run_branches(db, run, top)
         fnodes += g_nodes; fedges += g_edges
+        # NR3: a multi-play main view has no per-task anchors, so ghosts can't attach here — tell the
+        # user where they live instead of silently showing nothing.
+        if not g_nodes and any(n.node_type in ("play", "role", "include", "block") for n in top):
+            note = "Enter a play or role to see its never-run branches."
     return PathTreeOut(run_id=str(run.id), view=PathViewOut(type="main"),
-                       nodes=fnodes, edges=fedges)
+                       nodes=fnodes, edges=fedges, never_run_note=note)
 
 
 @router.get("/{run_id}/nodes/{node_id}/results", response_model=NodeResultsPageOut)
@@ -719,17 +821,49 @@ async def get_run_inputs(run: VisibleRun):
     )
 
 
+@router.get("/{run_id}/summary", response_class=PlainTextResponse)
+async def get_run_summary(run: VisibleRun, db: DbSession):
+    """A copy-pasteable Markdown summary of the whole run (status, per-host recap, path-to-failure
+    with error excerpts) for filing a ticket or a KB entry. Walks the full run, not a drilled-in view."""
+    nodes = (await db.execute(
+        select(RunNode).where(RunNode.run_id == run.id).order_by(RunNode.counter)
+    )).scalars().all()
+    # Roll container status up at read time (mirror get_run_tree) so a play/role reads as failed
+    # even on runs ingested before the build_tree rollup landed (PT1).
+    _roll = rolled_up_status(
+        (n.node_id, n.parent_node_id, n.node_type, n.status) for n in nodes
+    )
+    for n in nodes:
+        n.status = _roll.get(n.node_id, n.status)
+    failed_results = (await db.execute(
+        select(RunNodeResult).where(
+            RunNodeResult.run_id == run.id,
+            RunNodeResult.status.in_(list(statuses.FAIL_STATUSES)),
+        )
+    )).scalars().all()
+    return build_summary_md(run, list(nodes), list(failed_results))
+
+
 @router.get("/{run_id}/nodes/{node_id}/source", response_model=NodeSourceOut)
 async def get_node_source(run: VisibleRun, node_id: str, db: DbSession):
     """The full-screen code overlay payload for one node's file at the run's revision.
     Degrades (200 + `unavailable`) when the project isn't linked/cloned or the file is
-    missing/binary/too large; 404 only when the node id isn't part of this run."""
+    missing/binary/too large; 404 only when the node id isn't part of this run.
+    Never-run ghosts (whose synthetic ids contain '/') use /ghost-source instead (OV5)."""
     node = await db.scalar(
         select(RunNode).where(RunNode.run_id == run.id, RunNode.node_id == node_id)
     )
     if node is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Node not found")
     return await build_node_source(db, run, node)
+
+
+@router.get("/{run_id}/ghost-source", response_model=NodeSourceOut)
+async def get_ghost_source(run: VisibleRun, db: DbSession,
+                           file: str = Query(...), line: int = Query(..., ge=1)):
+    """Overlay payload for a never-run ghost (OV5). `file`/`line` come as query params so the file's
+    '/'s don't break path routing. The ghost has no results, so resolved/hosts are empty."""
+    return await build_ghost_source(db, run, file, line)
 
 
 @router.delete("/{run_id}", status_code=204)

@@ -7,11 +7,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.clock import utcnow
+from app.core.statuses import FAIL_STATUSES
 from app.models import Run, User
 from app.services.run_time import run_when_expr
 from app.services.visibility import run_visible_cond
 
-FAIL_STATUSES = {"failed", "unreachable"}
 SPARK_N = 20  # sparkline length sent to the UI
 
 

@@ -24,6 +24,7 @@ class PathNodeOut(BaseModel):
     fail_count: int | None = None
     has_failures: bool = False
     is_conditional: bool = False
+    is_handler: bool = False
     condition: str | None = None
     branch: str | None = None
     enter_to: EnterToOut | None = None
@@ -31,6 +32,7 @@ class PathNodeOut(BaseModel):
     duration_s: float | None = None
     task_path: str | None = None
     never_run: bool = False
+    result_node_id: str | None = None  # loop-view synthetic nodes → the real loop node_id for /results
 
 
 class PathEdgeOut(BaseModel):
@@ -54,6 +56,7 @@ class PathTreeOut(BaseModel):
     view: PathViewOut
     nodes: list[PathNodeOut]
     edges: list[PathEdgeOut]
+    never_run_note: str | None = None  # set when never-run was asked for but ghosts live one drill-in down
 
 
 class NodeResultOut(BaseModel):
@@ -85,7 +88,7 @@ class ResolvedValueOut(BaseModel):
     key: str
     expr: str | None = None         # source template, if known (e.g. "{{ pkg }}")
     value: Any | None = None        # rendered value; None when not recorded
-    source: str                     # module_args | task_args | item | when | extra_vars
+    source: str                     # module_args | set_fact | debug | task_args | item | when
     recorded: bool = True           # False → render raw expr + "not recorded"
     host: str | None = None         # representative host when value is per-host
 
@@ -97,7 +100,9 @@ class NodeSourceOut(BaseModel):
     content: str | None = None
     focus_line: int | None = None
     executed_lines: list[int] = []
+    skipped_lines: list[int] = []
     never_run_lines: list[int] = []
     resolved: list[ResolvedValueOut] = []
     hosts: list[str] = []
+    revision_mismatch: bool = False  # a recorded line is past EOF → the clone may not match the run
     unavailable: str | None = None  # not_linked|not_cloned|revision_missing|no_path|binary|too_large

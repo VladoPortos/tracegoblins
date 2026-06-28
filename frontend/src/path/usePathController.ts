@@ -116,6 +116,9 @@ export function usePathController(
 
   const onMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (e.button !== 0) return
+    // Attached to the full-canvas BACKGROUND layer (see PathView) — the floating overlay panels are
+    // siblings of that layer, so this handler only fires for background/node presses, never panel
+    // clicks. That's what keeps the drawer open when switching to the Code tab.
     const { panX: startPanX, panY: startPanY } = stateRef.current
     const startX = e.clientX
     const startY = e.clientY

@@ -1,27 +1,11 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
 
 from app.awx.client import JobDetail
+from app.core.clock import parse_iso as _parse_iso
 from app.logparser import ParsedTree
 from app.models import Run, RunNode, RunNodeResult
-
-
-def _parse_iso(s: str | None) -> datetime | None:
-    """ISO-8601 ('Z' -> '+00:00') -> aware UTC datetime; None on absence/parse failure.
-    Mirrors app.awx.sync._parse_iso — kept local to avoid a circular import
-    (run_tree is imported BY sync, so it cannot import FROM sync).
-    """
-    if not s:
-        return None
-    try:
-        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
-    except (ValueError, AttributeError):
-        return None
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
 
 
 def build_run_nodes(tree: ParsedTree, run_id: uuid.UUID) -> tuple[list[RunNode], list[RunNodeResult]]:
@@ -35,6 +19,7 @@ def build_run_nodes(tree: ParsedTree, run_id: uuid.UUID) -> tuple[list[RunNode],
             run_id=run_id, node_id=n.node_id, parent_node_id=n.parent_id, counter=n.counter,
             depth=n.depth, node_type=n.node_type, name=n.name, action=n.action,
             task_path=n.task_path, ansible_uuid=n.ansible_uuid, is_conditional=n.is_conditional,
+            is_handler=n.is_handler,
             when_expr=n.when_expr, loop_var=n.loop_var, status=n.status, changed=n.changed,
             host_count=n.host_count, item_count=n.item_count, child_count=n.child_count,
             started_at=_parse_iso(n.started_at), duration_s=n.duration_s, args=n.args,

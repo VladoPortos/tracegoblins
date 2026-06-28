@@ -4,7 +4,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, select, tuple_
 
 from app.api.deps import AdminUser, CurrentUser, DbSession, require_password_current
 from app.api.http_utils import client_ip
@@ -15,7 +15,7 @@ from app.api.projects_schemas import (
 from app.awx.client import AwxClient, AwxError
 from app.awx.projects_sync import sync_projects
 from app.core.config import settings
-from app.core.crypto import decrypt_token, encrypt_token
+from app.core.crypto import TokenCryptoError, decrypt_token, encrypt_token
 from app.models import AwxController, ControllerTeam, Project, Run
 from app.projects import git as gitmod
 from app.projects import uploads as uploadsmod
@@ -23,9 +23,7 @@ from app.projects.git import is_clonable_git_url
 from app.projects.storage import project_repo_path, project_uploads_path
 from app.projects.worker import run_clone
 from app.services.audit import write_audit
-from app.services.projects_query import (
-    linked_run_count, linked_runs_cond, project_to_out,
-)
+from app.services.projects_query import linked_runs_cond, project_to_out
 from app.services.runs_query import run_to_card
 from app.services.visibility import is_project_visible, my_team_ids, project_visible_cond
 
@@ -77,12 +75,24 @@ async def list_projects_api(
             select(AwxController).where(AwxController.id.in_(ctrl_ids))
         )).all()}
 
+    # Linked-run counts for the whole page in ONE grouped query, not one COUNT(*) per row (PERF1).
+    pairs = {(p.controller_id, p.awx_project_id) for p in rows}
+    count_map: dict[tuple, int] = {}
+    if pairs:
+        count_map = {
+            (cid, pid): n for cid, pid, n in (await db.execute(
+                select(Run.controller_id, Run.project_id, func.count())
+                .where(tuple_(Run.controller_id, Run.project_id).in_(list(pairs)))
+                .group_by(Run.controller_id, Run.project_id)
+            )).all()
+        }
+
     items = [
         ProjectListItem(
             id=str(p.id), name=p.name, controller_id=str(p.controller_id),
             controller_name=names.get(p.controller_id), scm_type=p.scm_type,
             scm_branch=p.scm_branch, status=p.status,
-            linked_run_count=await linked_run_count(db, p),
+            linked_run_count=count_map.get((p.controller_id, p.awx_project_id), 0),
         )
         for p in rows
     ]
@@ -188,7 +198,8 @@ async def refresh_mirror(
         token = decrypt_token(controller.auth_token_encrypted)
         async with AwxClient(controller.base_url, token, controller.verify_ssl) as client:
             await sync_projects(db, controller, client)
-    except AwxError as e:
+    except (AwxError, TokenCryptoError) as e:
+        # an undecryptable stored token is a config error, not a 500 (ERR1) — mirror sync handling
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, detail=f"AWX refresh failed: {e}")
     await db.refresh(project)
     return await project_to_out(db, project)

@@ -50,3 +50,4 @@ docker-compose.e2e.yml
 
 # brainstorming visual companion (local only)
 .superpowers/
+docker-compose.e2e-port.yml

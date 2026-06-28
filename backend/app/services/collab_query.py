@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.collab_schemas import (
@@ -37,6 +37,16 @@ def share_to_out(
     )
 
 
+def links_out(raw) -> list[AnnotationLink]:
+    """JSONB list-of-{label,url} → list[AnnotationLink], defensive against malformed stored rows
+    (LINK1) — shared by the annotation and KB mappers so neither 500s on a bad link."""
+    out: list[AnnotationLink] = []
+    for lk in raw or []:
+        if isinstance(lk, dict) and "url" in lk:
+            out.append(AnnotationLink(label=lk.get("label", ""), url=lk["url"]))
+    return out
+
+
 def annotation_to_out(a: Annotation, *, author_name: str) -> AnnotationOut:
     return AnnotationOut(
         id=str(a.id),
@@ -46,7 +56,7 @@ def annotation_to_out(a: Annotation, *, author_name: str) -> AnnotationOut:
         author_name=author_name,
         note=a.note,
         tags=list(a.tags or []),
-        links=[AnnotationLink(**lk) for lk in (a.links or [])],
+        links=links_out(a.links),
         resolved=a.resolved,
         created_at=a.created_at,
         updated_at=a.updated_at,
@@ -80,8 +90,6 @@ async def resolve_visible_mentions(
     Drops invalid uuids / non-existent users / inactive users / non-visible users silently
     (no 403, no leak).
     """
-    from app.services.visibility import is_run_visible  # avoid circular import at module level
-
     seen: set[uuid.UUID] = set()
     parsed: list[uuid.UUID] = []
     for raw in candidate_ids:
@@ -101,14 +109,55 @@ async def resolve_visible_mentions(
         select(User).where(User.id.in_(parsed))
     )).scalars().all()
     user_map: dict[uuid.UUID, User] = {u.id: u for u in rows}
+    active = [uid for uid in parsed if (u := user_map.get(uid)) is not None and u.is_active]
+    if not active:
+        return []
+
+    # Visibility batched at the RUN level (MENT1) — the same 5 branches as is_run_visible, but each
+    # run-scoped fact is queried ONCE for all candidates instead of per user. KEEP IN SYNC WITH
+    # app.services.visibility.is_run_visible.
+    from collections import defaultdict
+
+    from app.models import ControllerTeam, RunShare, TeamMember
+    teams_by_user: dict[uuid.UUID, set[uuid.UUID]] = defaultdict(set)
+    all_teams: set[uuid.UUID] = set()
+    for uid, tid in (await db.execute(
+        select(TeamMember.user_id, TeamMember.team_id).where(TeamMember.user_id.in_(active))
+    )).all():
+        teams_by_user[uid].add(tid)
+        all_teams.add(tid)
+
+    direct_uids = set((await db.execute(
+        select(RunShare.shared_with_user_id).where(
+            RunShare.run_id == run.id, RunShare.shared_with_user_id.in_(active))
+    )).scalars().all())
+    share_tids = set((await db.execute(
+        select(RunShare.shared_with_team_id).where(
+            RunShare.run_id == run.id, RunShare.shared_with_team_id.in_(all_teams))
+    )).scalars().all()) if all_teams else set()
+    awx_tids: set[uuid.UUID] = set()
+    if run.source == "awx" and run.controller_id is not None and all_teams:
+        awx_tids = set((await db.execute(
+            select(ControllerTeam.team_id).where(
+                ControllerTeam.controller_id == run.controller_id,
+                ControllerTeam.team_id.in_(all_teams),
+                or_(ControllerTeam.awx_organization_id.is_(None),
+                    ControllerTeam.awx_organization_id == run.awx_organization_id),
+            )
+        )).scalars().all())
 
     survivors: list[tuple[uuid.UUID, str]] = []
-    for uid in parsed:
-        u = user_map.get(uid)
-        if u is None or not u.is_active:
-            continue
-        if await is_run_visible(db, run, u):
-            survivors.append((u.id, u.display_name))
+    for uid in active:
+        my_teams = teams_by_user[uid]
+        visible = (
+            run.owner_user_id == uid
+            or (run.team_id is not None and run.team_id in my_teams)
+            or uid in direct_uids
+            or bool(my_teams & share_tids)
+            or bool(my_teams & awx_tids)
+        )
+        if visible:
+            survivors.append((uid, user_map[uid].display_name))
     return survivors
 
 

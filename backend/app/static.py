@@ -22,6 +22,14 @@ def mount_spa(app: FastAPI, static_dir: str) -> None:
 
     # Real, canonical root of the SPA build. All served files must live under it.
     root = dist.resolve(strict=True)
+    index_resolved = index_file.resolve()
+
+    # index.html references content-hashed bundles, so the browser MUST revalidate it on every load
+    # — otherwise a cached index.html keeps pointing at an OLD bundle filename after a deploy (which
+    # no longer exists on the server → a broken/stale SPA). `no-cache` = store but always revalidate;
+    # the etag makes that a cheap 304 when unchanged. (The hashed /assets/* are immutable and are
+    # served by StaticFiles with their own etag revalidation.)
+    _INDEX_HEADERS = {"Cache-Control": "no-cache"}
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def spa_fallback(full_path: str):
@@ -37,5 +45,7 @@ def mount_spa(app: FastAPI, static_dir: str) -> None:
         except ValueError:
             contained = False  # different drive / mixed abs+rel -> not contained
         if contained and candidate.is_file():
+            if candidate == index_resolved:
+                return FileResponse(candidate, headers=_INDEX_HEADERS)
             return FileResponse(candidate)
-        return FileResponse(index_file)
+        return FileResponse(index_file, headers=_INDEX_HEADERS)

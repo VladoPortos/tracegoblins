@@ -92,6 +92,13 @@ def validate_runtime_secrets(s: "Settings") -> None:
     Catches the two footguns: the placeholder SECRET_KEY (forgeable sessions/CSRF) and an
     empty TOKEN_ENC_KEY (AWX-token encryption would otherwise only blow up later, on first use).
     """
+    # SameSite=None cookies REQUIRE Secure or browsers silently drop every Set-Cookie → a total,
+    # hard-to-diagnose auth outage. Enforce in ALL environments (CONFIG1), before the prod-only gate.
+    if s.cookie_samesite == "none" and not s.cookie_secure:
+        raise RuntimeError(
+            "Invalid cookie configuration: COOKIE_SAMESITE=none requires COOKIE_SECURE=true "
+            "(browsers drop SameSite=None cookies that are not Secure)."
+        )
     if s.environment != "production":
         return
     problems: list[str] = []

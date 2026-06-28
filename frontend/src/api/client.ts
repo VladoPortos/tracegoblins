@@ -123,3 +123,13 @@ export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
   if (!res.ok) throwApiError(res.status, data, text)
   return data as T
 }
+
+/** Shared offset-pagination cursor for `{ items, total }` infinite queries (FEAPI5) — returns the
+ *  next offset until everything is loaded. Generic so the page type (incl. `items`) is preserved. */
+export function offsetGetNextPageParam<T extends { total: number; items: unknown[] }>(
+  last: T,
+  all: T[],
+): number | undefined {
+  const loaded = all.reduce((n, p) => n + p.items.length, 0)
+  return loaded < last.total ? loaded : undefined
+}

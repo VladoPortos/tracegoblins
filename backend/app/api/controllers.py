@@ -21,7 +21,7 @@ from app.api.http_utils import client_ip
 from app.api.validation import resolve_team_or_422
 from app.awx.client import AwxClient, AwxError
 from app.awx.sync import sync_controller
-from app.core.crypto import decrypt_token, encrypt_token
+from app.core.crypto import TokenCryptoError, decrypt_token, encrypt_token
 from app.db.session import SessionLocal
 from app.models import AwxController, ControllerTeam
 from app.scheduler import reconcile_controller
@@ -276,10 +276,14 @@ async def test_connection(
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
                             detail="base_url must be an http(s) URL")
     verify_ssl = payload.verify_ssl if payload.verify_ssl is not None else controller.verify_ssl
-    token = (
-        payload.token if payload.token is not None
-        else decrypt_token(controller.auth_token_encrypted)
-    )
+    try:
+        token = (
+            payload.token if payload.token is not None
+            else decrypt_token(controller.auth_token_encrypted)
+        )
+    except TokenCryptoError as e:
+        # an undecryptable stored token must report a failed test, not a 500 (ERR1)
+        return TestConnectionOut(ok=False, error=str(e))
 
     await write_audit(db, action="controller_test", actor_id=user.id,
                       target_type="awx_controller", target_id=str(controller_id),

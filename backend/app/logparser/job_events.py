@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from datetime import datetime
 
+from app.core import statuses
+from app.core.clock import parse_iso
 from app.logparser.models import HostRecap, ParsedRun, ParsedTask, Play
 
 _TERMINAL = {
@@ -12,7 +14,6 @@ _TERMINAL = {
     "runner_on_skipped": "skipped",
 }
 _ITEM = {"runner_item_on_ok": "ok", "runner_item_on_failed": "failed", "runner_item_on_skipped": "skipped"}
-_ITEM_RANK = {"skipped": 0, "ok": 1, "changed": 2, "failed": 3}
 
 # Cap a single task's serialized result blob (output/error). A hostile or pathological AWX
 # result dict could otherwise store unbounded JSON per task; 64k is far above any real message.
@@ -38,13 +39,8 @@ def _host(ev: dict) -> str | None:
 
 
 def _ts(ev: dict) -> datetime | None:
-    raw = ev.get("created")
-    if not raw:
-        return None
-    try:
-        return datetime.fromisoformat(raw.replace("Z", "+00:00"))
-    except (ValueError, AttributeError):
-        return None
+    # the shared parser also normalizes tz (the old local copy didn't) — XMOD4
+    return parse_iso(ev.get("created"))
 
 
 def _res_blob(res: dict | None) -> str:
@@ -117,7 +113,7 @@ def parse_job_events(events: list[dict]) -> ParsedRun:
             if status == "ok" and res.get("changed"):
                 status = "changed"
             cur_task.statuses[host] = status
-            if status in ("failed", "unreachable"):
+            if status in statuses.FAIL_STATUSES:
                 cur_task.error = _res_blob(res)
             elif res:
                 cur_task.output = _res_blob(res)
@@ -133,7 +129,7 @@ def parse_job_events(events: list[dict]) -> ParsedRun:
             if st == "ok" and res.get("changed"):
                 st = "changed"
             cur_task.items += 1
-            if _ITEM_RANK[st] >= _ITEM_RANK.get(item_best.get(host, "skipped"), 0):
+            if statuses.rank(st) >= statuses.rank(item_best.get(host, "skipped")):
                 item_best[host] = st
             if st == "failed":
                 cur_task.error = cur_task.error or _res_blob(res)

@@ -9,9 +9,10 @@ export interface RunFacets {
 }
 export const runFiltersKey = (scope: string) => ['runs', 'filters', scope] as const
 
-export function useRunFilters(scope: 'mine' | 'shared' | 'team' = 'team') {
+export function useRunFilters(scope: 'mine' | 'shared' | 'team' = 'team', opts: { enabled?: boolean } = {}) {
   return useQuery<RunFacets>({
     queryKey: runFiltersKey(scope),
     queryFn: () => apiFetch<RunFacets>(`/runs/filters?scope=${scope}`),
+    enabled: opts.enabled ?? true,   // facets only render for team scope → caller can skip the fetch (RUNS2)
   })
 }

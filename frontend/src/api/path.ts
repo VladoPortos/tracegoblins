@@ -5,7 +5,7 @@
 export type PathNodeType =
   | 'play' | 'role' | 'block' | 'include' | 'task' | 'loop' | 'when' | 'item' | 'result'
 export type PathStatus =
-  | 'ok' | 'changed' | 'failed' | 'unreachable' | 'skipped' | 'included'
+  | 'ok' | 'changed' | 'failed' | 'unreachable' | 'skipped' | 'included' | 'never_run'
 
 /** A box in the flow. Coordinates are NOT included — layout.ts computes them. */
 export interface PathNode {
@@ -22,6 +22,7 @@ export interface PathNode {
   fail_count: number | null
   has_failures: boolean
   is_conditional: boolean
+  is_handler?: boolean             // fired handler (notified + flushed) — badge it on the card
   condition: string | null         // when expression / false_condition
   branch: string | null            // branch key on when-children, e.g. "redhat" | "windows"
   enter_to: { type: 'container' | 'loop'; id: string } | null  // null = not enterable
@@ -29,6 +30,7 @@ export interface PathNode {
   duration_s: number | null
   task_path: string | null         // "roles/app/tasks/main.yml:42" (Code tab)
   never_run?: boolean              // ghost node — present in source, never executed
+  result_node_id?: string | null  // loop-view synthetic nodes → real loop node_id for /results
 }
 
 export interface PathEdge { from: string; to: string; branch: string | null }
@@ -43,6 +45,7 @@ export interface PathTree {
   view: PathViewRef
   nodes: PathNode[]
   edges: PathEdge[]
+  never_run_note?: string | null   // set when never-run was toggled but ghosts live one drill-in down
 }
 
 /** One fan-out leaf (host × loop-item) — powers the loop stepper and per-host detail. */
@@ -71,7 +74,7 @@ export interface ResolvedValue {
   key: string
   expr: string | null
   value: unknown | null
-  source: 'module_args' | 'task_args' | 'item' | 'when' | 'extra_vars'
+  source: 'module_args' | 'set_fact' | 'debug' | 'task_args' | 'item' | 'when'
   recorded: boolean
   host: string | null
 }
@@ -84,13 +87,15 @@ export interface NodeSource {
   content: string | null
   focus_line: number | null
   executed_lines: number[]
+  skipped_lines: number[]
   never_run_lines: number[]
   resolved: ResolvedValue[]
   hosts: string[]
+  revision_mismatch: boolean
   unavailable: SourceUnavailable | null
 }
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import * as pathSource from './pathSource'
 
 export const pathTreeKey = (id: string, view: PathViewRef, iter: number) =>
@@ -112,6 +117,9 @@ export function useRunTree(id: string, view: PathViewRef, iter = 0, includeNever
     queryKey: [...pathTreeKey(id, view, view.type === 'loop' ? iter : 0), includeNeverRun],
     queryFn: () => pathSource.fetchTree(id, view, iter, includeNeverRun),
     enabled: !!id,
+    // keep the previous view's tree on screen while the next loads → no full-screen spinner flash
+    // on every view switch / loop step (PATH2)
+    placeholderData: keepPreviousData,
   })
 }
 export function useNodeResults(id: string, nodeId: string | null, opts: pathSource.NodeResultsOpts = {}, enabled = true) {

@@ -44,7 +44,10 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             response.set_cookie(
                 key=self.cookie_name,
                 value=_new_token(),
-                max_age=60 * 60 * 12,
+                # Outlive the LONGEST possible session (remember-me) so the double-submit cookie can
+                # never expire before a still-valid session, which would 403 every write until a GET
+                # re-bootstrapped it (CSRF1). The token isn't a secret, so a long TTL is fine.
+                max_age=settings.session_remember_days * 86400,
                 secure=self.secure,
                 httponly=False,  # MUST be JS-readable for double-submit
                 samesite=self.samesite,

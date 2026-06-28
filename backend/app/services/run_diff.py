@@ -12,11 +12,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.runs_schemas import DiffEntry, DurationDelta
+from app.core.statuses import FAIL_STATUSES as FAIL
 from app.models import Run, User
 from app.services.run_time import run_effective_when, run_when_expr
 from app.services.visibility import run_visible_cond
 
-FAIL = {"failed", "unreachable"}
+# NOTE: a "host actually passed" is ok/changed ONLY — a host that went failed→skipped/included did
+# NOT pass, so GREEN_HOST is intentionally NARROWER than statuses.GREEN_STATUSES (which has skipped).
 GREEN = ("ok", "changed")
 # Host-level "actually passed": a real fix is ok/changed only. A host that goes
 # failed -> skipped/included did NOT pass (it stopped running), so it must not be

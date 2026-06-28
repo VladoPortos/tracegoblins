@@ -17,7 +17,9 @@ class Run(Base):
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     source: Mapped[str] = mapped_column(String(16), default="upload")  # 'upload' | 'awx'
     owner_user_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
+        # No single-column index: the composite ix_runs_owner_created (owner_user_id, created_at)
+        # already serves owner_user_id lookups by leftmost prefix (RUNS1, redundant index dropped).
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=True
     )
     team_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("teams.id", ondelete="SET NULL"), default=None
@@ -135,6 +137,7 @@ class RunNode(Base):
     task_path: Mapped[str | None] = mapped_column(Text, default=None)
     ansible_uuid: Mapped[str | None] = mapped_column(Text, default=None)
     is_conditional: Mapped[bool] = mapped_column(default=False)
+    is_handler: Mapped[bool] = mapped_column(default=False)  # notified handler that actually fired
     when_expr: Mapped[str | None] = mapped_column(Text, default=None)
     loop_var: Mapped[str | None] = mapped_column(Text, default=None)
     status: Mapped[str] = mapped_column(String(16), default="ok")

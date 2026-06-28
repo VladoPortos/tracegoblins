@@ -77,7 +77,7 @@ export function JobCard({ run }: { run: RunCard }) {
           ))}
         </div>
         <div className="row gap1 wrap">
-          {(['changed', 'unreachable'] as const).map((k) => run.counts[k] > 0 ? <Badge key={k} status={k} count={run.counts[k]} /> : null)}
+          {(['failed', 'changed', 'unreachable'] as const).map((k) => run.counts[k] > 0 ? <Badge key={k} status={k} count={run.counts[k]} /> : null)}
           {run.counts.skipped > 0 && <span className="chip">{run.counts.skipped + ' skipped'}</span>}
           {run.task_count > 0 && <span className="chip mono" style={{ fontSize: 11 }}>{run.task_count + ' tasks'}</span>}
         </div>

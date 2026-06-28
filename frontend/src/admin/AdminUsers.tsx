@@ -70,7 +70,11 @@ export function AdminUsers() {
                 title="Reset this user's 2FA (lost-device recovery)"
                 onClick={() => {
                   if (window.confirm(`Reset 2FA for ${u.display_name}? They will need to re-enroll.`)) {
-                    resetUser2fa.mutate(u.id, { onSuccess: () => { void qc.invalidateQueries({ queryKey: usersKey }) } })
+                    setError(null)
+                    resetUser2fa.mutate(u.id, {
+                      onSuccess: () => { void qc.invalidateQueries({ queryKey: usersKey }) },
+                      onError: (err) => setError(errorMessage(err, 'Could not reset 2FA.')),  // ADMIN1
+                    })
                   }
                 }}
               >
@@ -81,7 +85,7 @@ export function AdminUsers() {
               <option value="user">user</option>
               <option value="admin">admin</option>
             </select>
-            <button className="btn sm" onClick={() => setActive.mutate({ id: u.id, active: !u.is_active })}>
+            <button className="btn sm" onClick={() => { setError(null); setActive.mutate({ id: u.id, active: !u.is_active }, { onError: (err) => setError(errorMessage(err, 'Could not update this user.')) }) }}>
               {u.is_active ? 'Deactivate' : 'Activate'}
             </button>
           </div>

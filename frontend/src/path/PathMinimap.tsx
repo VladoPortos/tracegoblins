@@ -8,9 +8,11 @@ const MINI_H = 124
 const PAD = 10
 
 function statusFill(type: string, status: PathStatus | undefined): string {
-  if (type === 'role' || type === 'when' || type === 'item') return 'var(--included)'
+  // mirror PathNodeCard exactly (PATH4): containers + decision = included, loop = changed, item = dim
+  if (type === 'role' || type === 'block' || type === 'include' || type === 'play' || type === 'when') return 'var(--included)'
   if (type === 'loop') return 'var(--changed)'
-  const s = status === 'unreachable' ? 'failed' : (status ?? 'skipped')
+  if (type === 'item') return 'var(--dim)'
+  const s = status === 'unreachable' ? 'failed' : status === 'never_run' ? 'skipped' : (status ?? 'skipped')
   return `var(--${s})`
 }
 

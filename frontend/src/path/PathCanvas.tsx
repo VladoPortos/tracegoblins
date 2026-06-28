@@ -5,7 +5,7 @@ import { PathNodeCard } from './PathNodeCard'
 
 export function PathCanvas({ layout, selectedId, onSelect, onEnter, isTaken, isBranchTaken, reduced }: {
   layout: LaidOut; selectedId: string | null; reduced: boolean
-  onSelect: (id: string) => void; onEnter: (t: { type: 'container' | 'loop'; id: string }) => void
+  onSelect: (id: string) => void; onEnter: (t: { type: 'container' | 'loop'; id: string }, label?: string) => void
   isTaken: (e: PathEdge) => boolean
   isBranchTaken: (branch: string | null | undefined) => boolean
 }) {

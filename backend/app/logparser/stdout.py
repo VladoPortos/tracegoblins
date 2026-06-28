@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 
+from app.core import statuses
 from app.logparser.models import HostRecap, ParsedMeta, ParsedRun, ParsedTask, Play
 
 RE_PLAY = re.compile(r"^PLAY \[(?P<name>.*)\] \*+\s*$")
@@ -51,13 +52,12 @@ def parse_stdout(text: str) -> ParsedRun:
     in_meta_task = False
     capturing = False
     out_lines: list[str] = []
-    item_host_seen: set[str] = set()
 
     def close_task() -> None:
-        nonlocal cur_task, capturing, out_lines, item_host_seen
+        nonlocal cur_task, capturing, out_lines
         if cur_task is not None:
             cur_task.output = "\n".join(out_lines)[:OUTPUT_CAP]
-        cur_task, capturing, out_lines, item_host_seen = None, False, [], set()
+        cur_task, capturing, out_lines = None, False, []
 
     for idx, line in enumerate(text.split("\n")):
         lineno = idx + 1
@@ -129,9 +129,11 @@ def parse_stdout(text: str) -> ParsedRun:
                 st = STATUS_NORM.get(verb, verb)
             if is_item:
                 cur_task.items += 1
-                if host not in item_host_seen:  # first item line wins
+                # worst item wins (XMOD1): a failed/unreachable item must override an earlier ok —
+                # mirrors job_events aggregation so a failed loop isn't recorded green.
+                cur = cur_task.statuses.get(host)
+                if cur is None or statuses.rank(st) > statuses.rank(cur):
                     cur_task.statuses[host] = st
-                    item_host_seen.add(host)
             else:
                 cur_task.statuses[host] = st  # bare summary always overrides
             if RE_JSONOPEN.search(line) and verb in ("ok", "changed"):

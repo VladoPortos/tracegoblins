@@ -8,23 +8,34 @@ import { Glyph } from '../components/atoms/Glyph'
 
 const STATUS_LABEL: Record<PathStatus, string> = {
   ok: 'OK', changed: 'Changed', failed: 'Failed',
-  unreachable: 'Unreachable', skipped: 'Skipped', included: 'Included',
+  unreachable: 'Unreachable', skipped: 'Skipped', included: 'Included', never_run: 'Never ran',
 }
 const STATUS_GLYPH: Record<string, string> = {
-  ok: '✓', changed: '~', failed: '✕', unreachable: '⚠', skipped: '–', included: '◌',
+  ok: '✓', changed: '~', failed: '✕', unreachable: '⚠', skipped: '–', included: '◌', never_run: '◌',
 }
 const statusVar = (s: PathStatus | string) =>
-  `var(--${s === 'unreachable' ? 'failed' : s})`
+  `var(--${s === 'unreachable' ? 'failed' : s === 'never_run' ? 'skipped' : s})`
+
+// Deep-link a fully-qualified module name to its official docs page. Derive from the RAW
+// node.action only (e.g. "ansible.builtin.apt"); a short name or composed subtitle yields null
+// so we never render a wrong link. Strictly namespace.collection.module (3 identifier parts).
+export function moduleDocUrl(action: string | null | undefined): string | null {
+  if (!action) return null
+  const parts = action.split('.')
+  if (parts.length !== 3 || !parts.every(p => /^[a-z0-9_]+$/i.test(p))) return null
+  const [ns, coll, mod] = parts
+  return `https://docs.ansible.com/ansible/latest/collections/${ns}/${coll}/${mod}_module.html`
+}
 
 function nodeGlyph(node: PathNode): string {
-  if (node.type === 'role' || node.type === 'block' || node.type === 'include') return '▣'
+  if (node.type === 'role' || node.type === 'block' || node.type === 'include' || node.type === 'play') return '▣'
   if (node.type === 'loop') return '⟳'
   if (node.type === 'when') return '⎇'
   if (node.type === 'item') return '»'
   return STATUS_GLYPH[node.status] || '•'
 }
 function nodeGlyphColor(node: PathNode): string {
-  if (node.type === 'role' || node.type === 'block' || node.type === 'include' || node.type === 'when') return 'var(--included)'
+  if (node.type === 'role' || node.type === 'block' || node.type === 'include' || node.type === 'play' || node.type === 'when') return 'var(--included)'
   if (node.type === 'loop') return 'var(--changed)'
   if (node.type === 'item') return 'var(--dim)'
   return statusVar(node.status)
@@ -141,6 +152,21 @@ function hostCountText(node: PathNode, hostScope: HostScopeId): string {
 }
 
 function detailFor(node: PathNode, iter: number, hostScope: HostScopeId, iterResult: NodeResult | null): Detail {
+  if (node.never_run) {
+    // FE3: a never-run ghost was never REACHED — don't present it as an evaluated when=false skip.
+    const isBlock = node.type === 'role' || node.type === 'block' || node.type === 'include' || node.type === 'play'
+    return {
+      title: node.label,
+      module: isBlock ? 'never-run block' : (node.sub ?? node.action ?? 'never-run task'),
+      status: 'never_run',
+      hostText: 'not on this run’s path',
+      args: node.condition ? [['when', node.condition]] : [],
+      outputLabel: 'Why',
+      output: node.condition
+        ? 'This task was never reached on this run; it is guarded by the `when:` above.'
+        : 'This task is in the playbook but was never reached on this run (e.g. an earlier failure, a skipped block/include, or tag filtering).',
+    }
+  }
   if (node.type === 'loop') {
     const hc = node.host_count != null ? node.host_count : null
     const ic = node.item_count != null ? node.item_count : null
@@ -180,7 +206,7 @@ function detailFor(node: PathNode, iter: number, hostScope: HostScopeId, iterRes
     }
   }
 
-  if (node.type === 'role' || node.type === 'block' || node.type === 'include') {
+  if (node.type === 'role' || node.type === 'block' || node.type === 'include' || node.type === 'play') {
     const cc = node.child_count ?? 0
     return {
       title: node.label,
@@ -328,13 +354,16 @@ function CodeTab({ node, args, onViewSource }: { node: PathNode; args: ArgRow[];
 
 export function PathDrawer({ runId, node, iter, hostScope, reduced, onClose, onViewSource }: PathDrawerProps) {
   // Loop leaves (item/result) carry per-iteration detail; fetch via the data seam.
+  // Their ids are synthetic ("item"/"result"), so query the REAL loop node_id carried in
+  // result_node_id (FE2) — otherwise no RunNodeResult matches and the output never renders.
   // Pass offset=iter&limit=1 so the API returns exactly the result for this iteration.
-  // results[0] is the single page item matching the current iteration.
   const isLoopLeaf = node.type === 'result' || node.type === 'item'
-  const nodeResults = useNodeResults(runId, node.id, { offset: iter, limit: 1 }, isLoopLeaf)
+  const resultsId = node.result_node_id ?? node.id
+  const nodeResults = useNodeResults(runId, resultsId, { offset: iter, limit: 1 }, isLoopLeaf)
   const iterResult = nodeResults.data?.results?.[0] ?? null
 
   const d = detailFor(node, iter, hostScope, iterResult)
+  const docUrl = moduleDocUrl(node.action)
   const glyph = nodeGlyph(node)
   const glyphColor = nodeGlyphColor(node)
   const isFail = d.status === 'failed' || d.status === 'unreachable'
@@ -370,7 +399,19 @@ export function PathDrawer({ runId, node, iter, hostScope, reduced, onClose, onV
           <div className="mono" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', fontFeatureSettings: "'zero'", wordBreak: 'break-word' }}>
             {d.title}
           </div>
-          <div className="mono" style={{ fontSize: 11.5, color: 'var(--dim)', marginTop: 2 }}>{d.module}</div>
+          <div className="mono" style={{ fontSize: 11.5, color: 'var(--dim)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+            <span>{d.module}</span>
+            {docUrl && (
+              <a
+                data-testid="module-doc-link"
+                href={docUrl}
+                target="_blank"
+                rel="noopener noreferrer nofollow"
+                title="Open module documentation"
+                style={{ color: 'var(--flow)', textDecoration: 'none', fontSize: 11, flex: '0 0 auto' }}
+              >docs ↗</a>
+            )}
+          </div>
         </div>
         <button
           className="btn icon sm btn-ghost"

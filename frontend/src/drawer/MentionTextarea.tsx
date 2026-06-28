@@ -38,7 +38,10 @@ export function MentionTextarea({
   const pick = (u: { id: string; display_name: string }) => {
     if (!active) return
     const before = value.slice(0, active.start)
-    const after = value.slice(active.start + 1 + active.query.length)
+    // consume the rest of the token AFTER the caret too, so picking with the caret mid-word
+    // ("@jo|hn") doesn't leave a trailing "hn" fragment (FECMP5)
+    const trailing = value.slice(caret).match(/^\S*/)?.[0].length ?? 0
+    const after = value.slice(caret + trailing)
     const inserted = `@${u.display_name} `
     onChange(before + inserted + after)
     onPickMention(u.id)

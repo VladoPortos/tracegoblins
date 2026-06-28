@@ -60,7 +60,11 @@ async def _register_all(scheduler: AsyncIOScheduler, db: AsyncSession) -> None:
 
     controllers = (
         await db.scalars(
-            select(AwxController).where(AwxController.sync_mode == "auto")
+            # Guard the interval the same way reconcile_controller does (SCHED1): an auto controller
+            # with a null/0 sync_interval_minutes would make IntervalTrigger(minutes=…) raise on
+            # startup and abort registering ALL remaining controllers.
+            select(AwxController).where(AwxController.sync_mode == "auto",
+                                        AwxController.sync_interval_minutes > 0)
         )
     ).all()
 

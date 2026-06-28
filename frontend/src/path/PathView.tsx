@@ -14,6 +14,8 @@ import { PathDrawer } from './PathDrawer'
 import { CodeOverlay } from './CodeOverlay'
 import { InputsPanel } from './InputsPanel'
 import { PathMinimap } from './PathMinimap'
+import { useCopied } from '../components/atoms/useCopied'
+import { fetchRunSummary } from '../api/pathSource'
 
 export function PathView() {
   const { id = '' } = useParams()
@@ -26,6 +28,16 @@ export function PathView() {
   const [hostScope, setHostScope] = useState<HostScopeId>('all')
   const [showInputs, setShowInputs] = useState(false)
   const [showNeverRun, setShowNeverRun] = useState(false)
+
+  // Copy a whole-run Markdown summary (status, recap, path-to-failure) for tickets/KB.
+  const { copied: summaryCopied, copy: copyText } = useCopied()
+  const [summaryBusy, setSummaryBusy] = useState(false)
+  const copySummary = useCallback(async () => {
+    setSummaryBusy(true)
+    try { copyText(await fetchRunSummary(id)) }
+    catch { /* clipboard / network errors are non-fatal */ }
+    finally { setSummaryBusy(false) }
+  }, [id, copyText])
 
   // View navigation state lives here so we can pass it to useRunTree before
   // the controller is initialized (avoids a circular deps problem between
@@ -88,8 +100,10 @@ export function PathView() {
     animTimerRef.current = setTimeout(() => setAnimate(false), 400)
   }, [])
 
-  const enter = useCallback((target: { type: 'container' | 'loop'; id: string }) => {
+  const [enteredLabel, setEnteredLabel] = useState<string | null>(null)
+  const enter = useCallback((target: { type: 'container' | 'loop'; id: string }, label?: string) => {
     setView(target as PathViewRef)
+    setEnteredLabel(label ?? null)   // human label for the breadcrumb crumb (PATH6)
     setIter(0)
     setAnimKind('in')
     setSelectedId(null)
@@ -114,10 +128,9 @@ export function PathView() {
 
   const containerTaskCount = useMemo(() => {
     if (!tree.data || view.type !== 'container') return null
-    // A container tree's nodes are direct children; child_count on the first 'role'/'block'/'include' node
-    // mirrors the original parent's count. Fall back to the total node count in the sub-tree.
-    const meta = tree.data.nodes.find(n => n.child_count != null)
-    return meta?.child_count ?? tree.data.nodes.length
+    // Count the REAL direct children of this sub-flow — not an arbitrary nested child's child_count
+    // (PATH5). Exclude never-run ghosts and synthetic decision nodes.
+    return tree.data.nodes.filter(n => !n.never_run && n.type !== 'when').length
   }, [tree.data, view.type])
 
   // Breadcrumb array: root always present; container/loop add a second crumb.
@@ -126,7 +139,7 @@ export function PathView() {
       { key: 'root', label: run.data?.template_name || 'Run', exitRef: { type: 'main' } },
     ]
     if (view.type === 'container') {
-      crumbs.push({ key: 'container', label: view.id, exitRef: null })
+      crumbs.push({ key: 'container', label: enteredLabel || view.id, exitRef: null })
     } else if (view.type === 'loop') {
       // Derive breadcrumb label from the loop root node in the tree; fall back to the view id.
       const loopNode = tree.data?.nodes.find(n => n.type === 'loop')
@@ -139,7 +152,7 @@ export function PathView() {
       const last = i === crumbs.length - 1
       return { key: c.key, label: c.label, sep: !last, last, exitRef: last ? null : c.exitRef }
     })
-  }, [view, run.data, tree.data, loopTotal])
+  }, [view, run.data, tree.data, loopTotal, enteredLabel])
 
   let viewHint = ''
   if (view.type === 'main') viewHint = 'execution order \xb7 left → right'
@@ -183,8 +196,8 @@ export function PathView() {
       : 'none',
   }
 
-  // Real host list from run recap; falls back to empty array when run data not yet loaded.
-  const hostList = run.data?.recap?.map(r => r.host) ?? []
+  // Real per-host recap from the run; drives the host-scope triage roster (status dots + filter).
+  const recap = run.data?.recap ?? []
 
   return (
     <div className="col" style={{ height: '100%', minWidth: 0, background: 'var(--bg)' }}>
@@ -226,8 +239,26 @@ export function PathView() {
         >
           Never-run
         </button>
-        <HostScopeChip hosts={hostList} value={hostScope} onPick={setHostScope} />
-        <span className="dim" style={{ fontSize: 11 }}>{tree.data?.nodes.length ?? 0} steps</span>
+        <HostScopeChip recap={recap} value={hostScope} onPick={setHostScope} />
+        <button
+          data-testid="copy-summary-btn"
+          className="btn sm btn-ghost"
+          onClick={copySummary}
+          disabled={summaryBusy}
+          style={{
+            fontSize: 11.5, fontWeight: 600,
+            color: summaryCopied ? 'var(--ok)' : 'var(--dim)',
+            border: '1px solid transparent', borderRadius: 6, padding: '3px 9px',
+          }}
+          title="Copy a Markdown run summary for a ticket or KB entry"
+          aria-label="Copy run summary"
+        >
+          {summaryCopied ? 'Copied ✓' : summaryBusy ? 'Copying…' : 'Copy summary'}
+        </button>
+        {/* FE8: count real flow steps only — exclude never-run ghosts and synthetic decision nodes */}
+        <span className="dim" style={{ fontSize: 11 }}>
+          {tree.data?.nodes.filter(n => !n.never_run && n.type !== 'when').length ?? 0} steps
+        </span>
       </div>
 
       {/* Breadcrumb row */}
@@ -268,10 +299,13 @@ export function PathView() {
         className="grow"
         data-testid="path-canvas"
         style={{ position: 'relative', overflow: 'hidden', minHeight: 0, cursor: 'grab' }}
-        onMouseDown={ctrl.onMouseDown}
       >
         {layout && (
-          <div style={{ position: 'absolute', inset: 0 }}>
+          // onMouseDown lives on THIS full-canvas background layer (which holds only the world/nodes),
+          // NOT the outer div — the floating panels (drawer/inputs/stepper/minimap) are siblings of
+          // this layer, so their mousedowns never reach the pan/deselect handler and can't close the
+          // drawer (e.g. clicking the Code tab). Background + node presses still pan/deselect normally.
+          <div style={{ position: 'absolute', inset: 0 }} onMouseDown={ctrl.onMouseDown}>
             <div style={{ position: 'absolute', left: 0, top: 0, transformOrigin: '0 0', transform: ctrl.transform }}>
               {/* Animation wrapper: keyed on view+animKey to remount on each nav */}
               <div key={`${view.type}-${'id' in view ? view.id : ''}-${animKey}`} style={worldAnimStyle}>
@@ -298,6 +332,16 @@ export function PathView() {
             ch={ctrl.ch}
             onJump={ctrl.panTo}
           />
+        )}
+        {showNeverRun && tree.data?.never_run_note && (
+          <div style={{
+            position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
+            padding: '6px 12px', background: 'var(--surface-2)', border: '1px solid var(--border)',
+            borderRadius: 8, fontSize: 11.5, color: 'var(--dim)', fontFamily: 'var(--font-mono)',
+            boxShadow: 'var(--shadow-2)', zIndex: 8, pointerEvents: 'none',
+          }}>
+            {tree.data.never_run_note}
+          </div>
         )}
         {view.type === 'loop' && loopTotal != null && loopTotal > 0 && (
           <PathStepper iter={iter} total={loopTotal} onStep={step} />

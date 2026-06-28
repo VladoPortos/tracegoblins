@@ -77,11 +77,16 @@ export function AdminTeams() {
   const createTeam = useCreateTeam()
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
+  const [createErr, setCreateErr] = useState<string | null>(null)
   const [detail, setDetail] = useState<TeamOut | null>(null)
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
-    createTeam.mutate(name, { onSuccess: () => { setOpen(false); setName('') } })
+    setCreateErr(null)
+    createTeam.mutate(name, {
+      onSuccess: () => { setOpen(false); setName('') },
+      onError: (err) => setCreateErr(errorMessage(err, 'Could not create this team.')),  // ADMIN1
+    })
   }
   const action = <button className="btn btn-primary" onClick={() => setOpen(true)}><Glyph name="plus" size={16} />New team</button>
 
@@ -106,6 +111,7 @@ export function AdminTeams() {
       <Modal open={open} onOpenChange={setOpen} title="Create a team">
         <form onSubmit={submit} className="col gap3">
           <Field label="Team name" value={name} onChange={(e) => setName(e.target.value)} required />
+          {createErr && <div className="tag tag-needs-fix" role="alert">{createErr}</div>}
           <div className="row gap2" style={{ justifyContent: 'flex-end' }}>
             <button type="button" className="btn btn-ghost" onClick={() => setOpen(false)}>Cancel</button>
             <button type="submit" className="btn btn-primary" disabled={createTeam.isPending}>Create</button>

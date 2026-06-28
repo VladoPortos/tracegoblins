@@ -145,16 +145,26 @@ async def clone_or_fetch(source_url: str, repo_path: Path, *, auth_type: str,
     env, askpass = _askpass_env(auth_type, username, secret)
     try:
         if (repo_path / "HEAD").exists():
+            # Re-point origin to the CURRENT url before fetching (GIT1): an edited git_url_override
+            # would otherwise be silently ignored and we'd keep fetching the stale clone's remote.
+            await _git("-C", str(repo_path), "remote", "set-url", "origin", source_url,
+                       env=env, timeout=timeout)
             await _git("-C", str(repo_path), "fetch", "--all", "--prune",
                        env=env, timeout=timeout)
+            size = _dir_size(repo_path)
+            if size > max_bytes:
+                # Do NOT destroy a previously-good clone over a remote-side overage (GIT2) — keep it
+                # browsable and surface the error so the update is refused, not the project broken.
+                raise GitError(f"fetched repo exceeds size cap ({size} > {max_bytes} bytes); "
+                               "existing clone kept")
         else:
             repo_path.parent.mkdir(parents=True, exist_ok=True)
             await _git("clone", "--bare", source_url, str(repo_path),
                        env=env, timeout=timeout)
-        size = _dir_size(repo_path)
-        if size > max_bytes:
-            shutil.rmtree(repo_path, ignore_errors=True)
-            raise GitError(f"clone exceeds size cap ({size} > {max_bytes} bytes)")
+            size = _dir_size(repo_path)
+            if size > max_bytes:
+                shutil.rmtree(repo_path, ignore_errors=True)  # a partial/oversized first clone is worthless
+                raise GitError(f"clone exceeds size cap ({size} > {max_bytes} bytes)")
         # default branch: bare clone sets HEAD → refs/heads/<default>
         try:
             head = (await _git("-C", str(repo_path), "symbolic-ref", "--short", "HEAD",

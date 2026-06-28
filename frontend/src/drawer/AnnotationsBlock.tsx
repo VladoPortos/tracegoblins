@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { errorMessage } from '../api/client'
 import { Glyph } from '../components/atoms/Glyph'
 import { Field } from '../components/atoms/Field'
+import { SafeLinkChip } from '../components/atoms/SafeLinkChip'
 import {
   TAG_VALUES, useRunAnnotations, useCreateAnnotation, useUpdateAnnotation, useDeleteAnnotation,
   type Annotation, type AnnotationLink,
@@ -9,29 +11,6 @@ import {
 const tagCls: Record<string, string> = {
   'needs-fix': 'tag tag-needs-fix', 'known-issue': 'tag tag-known-issue',
   resolved: 'tag tag-resolved', note: 'tag tag-note',
-}
-
-// Belt-and-suspenders over the server allowlist: re-check the scheme client-side
-// and render plain text (no anchor) if it isn't http/https/mailto.
-function isSafeUrl(url: string): boolean {
-  try {
-    const scheme = new URL(url, window.location.origin).protocol.replace(':', '').toLowerCase()
-    return scheme === 'http' || scheme === 'https' || scheme === 'mailto'
-  } catch {
-    return false
-  }
-}
-
-function LinkRow({ link }: { link: AnnotationLink }) {
-  const label = link.label || link.url
-  if (!isSafeUrl(link.url)) {
-    return <span className="chip" style={{ color: 'var(--text-3)' }}><Glyph name="link" size={11} />{label}</span>
-  }
-  return (
-    <a className="chip" href={link.url} target="_blank" rel="noopener noreferrer nofollow" style={{ color: 'var(--accent)', textDecoration: 'none' }}>
-      <Glyph name="link" size={11} />{label}
-    </a>
-  )
 }
 
 function AnnotationForm({
@@ -45,15 +24,19 @@ function AnnotationForm({
   const [links, setLinks] = useState<AnnotationLink[]>(existing?.links ?? [])
   const [label, setLabel] = useState('')
   const [url, setUrl] = useState('')
+  const [err, setErr] = useState<string | null>(null)
   const busy = create.isPending || update.isPending
+  const empty = !note.trim() && tags.length === 0 && links.length === 0   // nothing to save (FECMP3)
 
   const toggleTag = (t: string) => setTags((cur) => (cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]))
   const addLink = () => { if (!url.trim()) return; setLinks((l) => [...l, { label: label.trim(), url: url.trim() }]); setLabel(''); setUrl('') }
   const removeLink = (i: number) => setLinks((l) => l.filter((_, idx) => idx !== i))
 
   const save = () => {
-    if (existing) update.mutate({ aid: existing.id, patch: { note, tags, links, resolved } }, { onSuccess: onDone })
-    else create.mutate({ note, tags, links }, { onSuccess: onDone })
+    setErr(null)
+    const onError = (e: unknown) => setErr(errorMessage(e, 'Could not save this annotation.'))
+    if (existing) update.mutate({ aid: existing.id, patch: { note, tags, links, resolved } }, { onSuccess: onDone, onError })
+    else create.mutate({ note, tags, links }, { onSuccess: onDone, onError })
   }
 
   return (
@@ -84,9 +67,10 @@ function AnnotationForm({
       <label className="row gap2" style={{ fontSize: 12.5, cursor: 'pointer' }}>
         <input type="checkbox" checked={resolved} onChange={(e) => setResolved(e.target.checked)} />Mark resolved
       </label>
+      {err && <div className="mono" style={{ fontSize: 11.5, color: 'var(--failed)' }}>{err}</div>}
       <div className="row gap2" style={{ justifyContent: 'flex-end' }}>
         <button type="button" className="btn sm btn-ghost" onClick={onDone}>Cancel</button>
-        <button type="button" className="btn sm btn-primary" disabled={busy} onClick={save}>
+        <button type="button" className="btn sm btn-primary" disabled={busy || empty} onClick={save}>
           <Glyph name="check" size={13} />Save annotation
         </button>
       </div>
@@ -129,7 +113,7 @@ export function AnnotationsBlock({
               </div>
               {a.note && <div style={{ fontSize: 12.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'var(--text-2)' }}>{a.note}</div>}
               {a.tags.length > 0 && <div className="row gap1 wrap">{a.tags.map((t) => <span key={t} className={tagCls[t] ?? 'tag tag-note'}>{t}</span>)}</div>}
-              {a.links.length > 0 && <div className="row gap1 wrap">{a.links.map((l, i) => <LinkRow key={i} link={l} />)}</div>}
+              {a.links.length > 0 && <div className="row gap1 wrap">{a.links.map((l, i) => <SafeLinkChip key={i} link={l} />)}</div>}
             </div>
           )
       ))}
