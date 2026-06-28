@@ -17,6 +17,9 @@ import { AdminUsers } from './admin/AdminUsers'
 import { AdminTeams } from './admin/AdminTeams'
 import { AwxControllers } from './settings/AwxControllers'
 import { FullScreenSpinner } from './components/atoms/FullScreenSpinner'
+import { PathView } from './path/PathView'
+import { ProjectsList } from './projects/ProjectsList'
+import { ProjectDetail } from './projects/ProjectDetail'
 
 function AdminRoute() {
   const me = useMe()
@@ -62,7 +65,10 @@ export function App() {
           <Route index element={<Dashboard />} />
           <Route path="analytics" element={<AnalyticsView />} />
           <Route path="runs/:id" element={<AnalysisView />} />
+          <Route path="runs/:id/path" element={<PathView />} />
           <Route path="kb" element={<KbBrowse />} />
+          <Route path="projects" element={<ProjectsList />} />
+          <Route path="projects/:id" element={<ProjectDetail />} />
           <Route path="settings" element={<ProfileSettings />} />
           <Route path="settings/appearance" element={<AppearanceSettings />} />
           <Route path="settings/security" element={<SecuritySettings />} />

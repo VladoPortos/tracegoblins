@@ -50,9 +50,20 @@ def create_app() -> FastAPI:
         return {"status": "ok" if db_ok == "ok" else "error", "db": db_ok}
 
     app.include_router(meta)
+
+    # A password-policy violation is a client error, not a 500 (AUTH1) — map it to 422 with the
+    # human-readable reason at every call site (setup wizard / invite-accept / change-password).
+    from app.security.passwords import PasswordPolicyError
+
+    @app.exception_handler(PasswordPolicyError)
+    async def _password_policy(_request, exc: PasswordPolicyError) -> Response:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                            content={"detail": str(exc)})
+
     from app.api import (
         admin, analytics, annotations, auth, comments, controllers, invites, kb,
-        mfa, notifications, runs, setup, users,
+        mfa, notifications, projects, runs, setup, users,
     )
 
     app.include_router(setup.router)
@@ -63,6 +74,7 @@ def create_app() -> FastAPI:
     app.include_router(invites.public_router)
     app.include_router(admin.router)
     app.include_router(runs.router)  # M2
+    app.include_router(projects.router)  # M2 Projects subsystem
     app.include_router(users.router)  # M3
     app.include_router(annotations.router)  # M3 Phase B
     app.include_router(comments.router)  # M3 Phase B

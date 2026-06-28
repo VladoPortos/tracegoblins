@@ -30,7 +30,7 @@ LABEL org.opencontainers.image.source="https://github.com/VladoPortos/tracegobli
       org.opencontainers.image.title="Tracegoblins" \
       org.opencontainers.image.description="Self-hosted AWX/Ansible log analyzer + team collaboration platform"
 RUN apt-get update \
- && apt-get install -y --no-install-recommends curl \
+ && apt-get install -y --no-install-recommends curl git \
  && rm -rf /var/lib/apt/lists/* \
  && groupadd --system --gid 999 app \
  && useradd  --system --gid 999 --uid 999 --create-home app
@@ -38,7 +38,13 @@ WORKDIR /app
 COPY --from=pydeps  --chown=app:app /app /app
 COPY --from=frontend --chown=app:app /build/dist /app/frontend/dist
 COPY --chown=app:app docker-entrypoint.sh /app/docker-entrypoint.sh
-RUN chmod +x /app/docker-entrypoint.sh
+# Create the appdata mount point owned by the non-root app user BEFORE `USER app`, so the
+# named `appdata` volume (projects git clones + uploads) inherits app:app ownership on first
+# mount. Without this the volume is root-owned and the app (uid 999) gets PermissionError on
+# the first upload/clone under /app/data.
+RUN chmod +x /app/docker-entrypoint.sh \
+ && mkdir -p /app/data \
+ && chown app:app /app/data
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \

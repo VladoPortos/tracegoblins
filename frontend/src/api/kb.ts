@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { apiFetch } from './client'
+import { apiFetch, offsetGetNextPageParam } from './client'
 
 export interface KbLink { label: string; url: string }
 export type KbStatus = 'needs-fix' | 'known-issue' | 'resolved' | 'note'
@@ -47,10 +47,7 @@ export function useKbSignatures(scope: 'team' | 'global' | 'all', status?: strin
       return apiFetch<KbSignatureList>(`/kb/signatures?${qs.toString()}`)
     },
     initialPageParam: 0,
-    getNextPageParam: (last: KbSignatureList, all: KbSignatureList[]) => {
-      const got = all.reduce((n, p) => n + p.items.length, 0)
-      return got < last.total ? got : undefined
-    },
+    getNextPageParam: offsetGetNextPageParam,
   })
 }
 
@@ -88,6 +85,10 @@ export function useUpdateKbSignature() {
     onSuccess: (_data, vars) => {
       void qc.invalidateQueries({ queryKey: kbKey })
       void qc.invalidateQueries({ queryKey: kbSignatureKey(vars.id) })
+      // an edit reshuffles which tasks match (occurrences are repruned) → refresh every drawer
+      // KB-suggestion cache, since this mutation doesn't know which run/task is affected (FEAPI3)
+      void qc.invalidateQueries({ predicate: (q) =>
+        q.queryKey[0] === 'runs' && q.queryKey[2] === 'tasks' && q.queryKey[4] === 'kb' })
     },
   })
 }

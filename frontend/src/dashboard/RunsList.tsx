@@ -102,7 +102,8 @@ export function RunsList({ scope = 'mine', onUpload }: { scope?: 'mine' | 'share
     : richFilters
 
   const runs = useInfiniteRuns(scope, qTrim ? { ...effFilters, search: qTrim } : effFilters, sort, dir)
-  const facetsQuery = useRunFilters(scope === 'team' ? 'team' : scope === 'shared' ? 'shared' : 'mine')
+  const facetsQuery = useRunFilters(scope === 'team' ? 'team' : scope === 'shared' ? 'shared' : 'mine',
+                                    { enabled: scope === 'team' })  // facets only shown for team scope (RUNS2)
   const syncCtl = useSyncController()
   const controllersQuery = useControllers({ enabled: scope === 'team' })
 

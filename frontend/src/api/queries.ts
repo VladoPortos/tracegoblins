@@ -43,7 +43,7 @@ export function useLogout() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: () => apiFetch<void>('/auth/logout', { method: 'POST' }),
-    onSettled: () => { qc.setQueryData(meKey, null); qc.clear() },
+    onSettled: () => { qc.clear() },  // clear() already drops meKey — no redundant setQueryData (FEAPI2)
   })
 }
 
@@ -52,7 +52,7 @@ export function useLogoutEverywhere() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: () => apiFetch<void>('/auth/logout-everywhere', { method: 'POST' }),
-    onSettled: () => { qc.setQueryData(meKey, null); qc.clear() },
+    onSettled: () => { qc.clear() },  // clear() already drops meKey — no redundant setQueryData (FEAPI2)
   })
 }
 

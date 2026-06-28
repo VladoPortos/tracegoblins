@@ -11,11 +11,11 @@ from app.kb.matcher import match_error
 from app.models import (
     ControllerTeam, KbOccurrence, KbSignature, Run, RunShare, Task, TeamMember, User,
 )
+from app.core.statuses import FAIL_STATUSES as _FAILED_STATUSES
 from app.services.visibility import my_team_ids, run_visible_cond
 
 logger = logging.getLogger(__name__)
 
-_FAILED_STATUSES = frozenset({"failed", "unreachable"})
 _BACKFILL_RUN_CAP = 500  # bounded scan (medium scale, D8)
 
 

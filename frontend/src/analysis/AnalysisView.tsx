@@ -75,7 +75,9 @@ export function AnalysisView() {
   if (run.isError) return <EmptyState icon="alert" title="Run not found" sub="It may have been deleted or you don't have access." action={<button className="btn" onClick={() => nav('/')}>Back to logs</button>} />
   const d = run.data!
   const isOwner = !!me.data && d.owner_user_id === me.data.id
-  const errCount = (d.counts.unreachable || 0) + (d.counts.failed || 0)
+  // header time prefers AWX launch time, matching JobCard/RunsTable (ANALYSIS2)
+  const when = d.launched_at || d.log_time
+  const errCount = (d.counts.unreachable || 0) + (d.counts.failed || 0)  // for the "errors only" empty state
 
   return (
     <div className="col" style={{ height: '100%', minWidth: 0 }}>
@@ -85,11 +87,12 @@ export function AnalysisView() {
           <Badge status={d.status} />
           <div className="col" style={{ gap: 1, minWidth: 0 }}>
             <div className="row gap2"><span className="h2" style={{ fontSize: 16 }}>{d.template_name || 'Run'}</span>{d.job_id && <span className="mono dim" style={{ fontSize: 13 }}>{'#' + d.job_id}</span>}</div>
-            <div className="row gap2 mono" style={{ fontSize: 11, color: 'var(--text-3)' }}><Glyph name="clock" size={11} />{d.log_time ? shortTime(d.log_time) : 'uploaded ' + shortTime(d.created_at)}<span style={{ opacity: 0.4 }}>·</span>{d.task_count + ' tasks'}</div>
+            <div className="row gap2 mono" style={{ fontSize: 11, color: 'var(--text-3)' }}><Glyph name="clock" size={11} />{when ? shortTime(when) : 'uploaded ' + shortTime(d.created_at)}<span style={{ opacity: 0.4 }}>·</span>{d.task_count + ' tasks'}</div>
           </div>
           <div className="grow" />
           {firstErr && <button className="btn sm btn-danger" onClick={goFirstFail}><Glyph name="alert" size={14} />First failure</button>}
           {d.template_name && <button className="btn sm btn-ghost" onClick={() => setDiffOpen(true)}><Glyph name="layers" size={14} />Diff vs last green</button>}
+          <button className="btn sm btn-ghost" onClick={() => nav(`/runs/${id}/path`)}><Glyph name="map" size={14} />Path view</button>
           {isOwner && <button className="btn btn-ghost" onClick={() => setShareOpen(true)}><Glyph name="share" size={15} />Share</button>}
           {isOwner && <button className="btn btn-danger" onClick={() => { if (confirm('Delete this run?')) del.mutate(id, { onSuccess: () => nav('/') }) }}><Glyph name="close" size={15} />Delete</button>}
         </div>
@@ -103,7 +106,7 @@ export function AnalysisView() {
             ))}
           </div>
           <div className="grow" />
-          <div className="row gap1 wrap">{errCount > 0 && <Badge status="unreachable" count={errCount} />}{d.counts.changed > 0 && <Badge status="changed" count={d.counts.changed} />}{d.counts.ok > 0 && <Badge status="ok" count={d.counts.ok} />}{d.counts.skipped > 0 && <span className="chip">{d.counts.skipped + ' skipped'}</span>}</div>
+          <div className="row gap1 wrap">{d.counts.failed > 0 && <Badge status="failed" count={d.counts.failed} />}{d.counts.unreachable > 0 && <Badge status="unreachable" count={d.counts.unreachable} />}{d.counts.changed > 0 && <Badge status="changed" count={d.counts.changed} />}{d.counts.ok > 0 && <Badge status="ok" count={d.counts.ok} />}{d.counts.skipped > 0 && <span className="chip">{d.counts.skipped + ' skipped'}</span>}</div>
         </div>
         <div className="row gap2" style={{ padding: '9px 18px', borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
           <div className="row gap2" style={{ color: 'var(--text-2)' }}><Glyph name="map" size={15} style={{ color: 'var(--accent)' }} /><span className="h3" style={{ fontSize: 13 }}>Status map</span></div>

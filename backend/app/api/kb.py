@@ -8,7 +8,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.collab_schemas import AnnotationLink
+from app.services.collab_query import links_out as _links_out  # shared defensive link mapper (LINK1)
 from app.api.deps import AdminUser, CurrentUser, DbSession, GatedUser, require_password_current
 from app.api.http_utils import client_ip
 from app.api.validation import resolve_team_or_422
@@ -23,21 +23,12 @@ from app.api.kb_schemas import (
 )
 from app.kb.service import backfill_signature, visible_occurrence_count, visible_occurrence_counts
 from app.kb.signature import extract_signature
-from app.models import KbSignature, Run, Task, TeamMember, User
+from app.models import KbOccurrence, KbSignature, Run, Task, TeamMember, User
 from app.services.audit import write_audit
 from app.services.collab_validate import validate_links
 from app.services.visibility import is_run_visible, kb_visibility_cond, my_team_ids
 
 router = APIRouter(prefix="/api/kb", tags=["kb"])
-
-
-def _links_out(raw) -> list[AnnotationLink]:
-    """JSONB list-of-{label,url} -> list[AnnotationLink] (defensive against bad rows)."""
-    out: list[AnnotationLink] = []
-    for lk in raw or []:
-        if isinstance(lk, dict) and "url" in lk:
-            out.append(AnnotationLink(label=lk.get("label", ""), url=lk["url"]))
-    return out
 
 
 def signature_to_out(sig: KbSignature, *, occurrence_count: int) -> SignatureOut:
@@ -221,6 +212,9 @@ async def update_signature(
     await _authorize_edit(db, sig, user)
 
     fields = payload.model_dump(exclude_unset=True)
+    # Whether the MATCH criteria changed — if so we must drop stale occurrences before re-backfilling
+    # (KB1), else "seen in N runs" keeps counting runs that no longer match.
+    matching_changed = any(k in fields for k in ("representative_text", "match_patterns"))
     _NOT_NULL_FIELDS = {"title", "status", "representative_text"}
     for _f in _NOT_NULL_FIELDS:
         if _f in fields and fields[_f] is None:
@@ -241,6 +235,10 @@ async def update_signature(
             setattr(sig, attr, fields[attr])
 
     await db.flush()
+    if matching_changed:
+        # KB1: purge this signature's occurrences before re-backfilling so ones that no longer match
+        # the edited text/patterns don't linger and inflate the count.
+        await db.execute(sa.delete(KbOccurrence).where(KbOccurrence.signature_id == sig.id))
     # commit=False: occurrences + edits + audit row commit together in the final db.commit().
     await backfill_signature(db, sig, commit=False)
     await write_audit(

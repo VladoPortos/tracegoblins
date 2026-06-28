@@ -24,6 +24,11 @@ class TeamBrief(BaseModel):
     slug: str
     is_default: bool
 
+    @classmethod
+    def of(cls, t) -> "TeamBrief":
+        """Map a Team row → brief (one mapper shared by build_me + admin._teams_for — auth DUP1)."""
+        return cls(id=str(t.id), name=t.name, slug=t.slug, is_default=t.is_default)
+
 
 class MeOut(BaseModel):
     id: str
@@ -57,7 +62,7 @@ async def build_me(db: AsyncSession, user: User) -> MeOut:
         must_change_password=user.must_change_password,
         totp_enabled=user.totp_enabled,
         mfa_setup_required=(settings.mfa_admin_required and user.role == "admin" and not user.totp_enabled),
-        teams=[TeamBrief(id=str(t.id), name=t.name, slug=t.slug, is_default=t.is_default) for t in teams],
+        teams=[TeamBrief.of(t) for t in teams],
     )
 
 

@@ -54,7 +54,7 @@ async def _teams_for(db: AsyncSession, user_id: uuid.UUID) -> list[TeamBrief]:
             .where(TeamMember.user_id == user_id).order_by(Team.name)
         )
     ).scalars().all()
-    return [TeamBrief(id=str(t.id), name=t.name, slug=t.slug, is_default=t.is_default) for t in rows]
+    return [TeamBrief.of(t) for t in rows]
 
 
 async def _user_out(db: AsyncSession, user: User) -> UserOut:
@@ -263,7 +263,13 @@ async def add_team_member(team_id: uuid.UUID, body: MemberIn, request: Request, 
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Team not found")
     if user is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="User not found")
-    if await add_member(db, team_id, user.id):
+    try:
+        added = await add_member(db, team_id, user.id)
+    except IntegrityError:
+        # a concurrent add won the membership race (ADD1) — idempotent end state, no error/audit
+        await db.rollback()
+        return
+    if added:
         await write_audit(db, action="membership_add", actor_id=admin.id, target_type="team",
                           target_id=str(team_id), ip=client_ip(request), metadata={"user_id": str(body.user_id)})
     await db.commit()

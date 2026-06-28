@@ -1,5 +1,5 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { apiFetch, apiUpload, type RunCard, type RunDetail, type RunListResponse, type TaskFull, type TaskLean } from './client'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
+import { apiFetch, apiUpload, offsetGetNextPageParam, type RunCard, type RunDetail, type RunListResponse, type TaskFull, type TaskLean } from './client'
 
 export const runsKey = ['runs'] as const
 export const runKey = (id: string) => ['runs', id] as const
@@ -66,10 +66,10 @@ export function useInfiniteRuns(
       qs.set('dir', dir)
       return apiFetch<RunListResponse>(`/runs?${qs.toString()}`)
     },
-    getNextPageParam: (lastPage, allPages) => {
-      const loaded = allPages.reduce((n, p) => n + p.items.length, 0)
-      return loaded < lastPage.total ? loaded : undefined
-    },
+    getNextPageParam: offsetGetNextPageParam,
+    // keep the current list mounted while a new search/filter loads, so the search input doesn't
+    // unmount mid-keystroke (the full-screen spinner only shows on the very first load) — fe RUNS1
+    placeholderData: keepPreviousData,
   })
 }
 

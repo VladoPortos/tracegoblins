@@ -33,8 +33,19 @@ async def current_user(
         raise unauthorized
     await touch_session(db, sess)
     request.state.session_id = sess.id
+    # Server-side MFA enrollment gate (MFA1): when MFA_ADMIN_REQUIRED is on, an admin who has not
+    # enrolled 2FA may reach ONLY the auth/enrollment surface (/api/auth/* — me/logout/change-
+    # password/sessions — and /api/mfa/* — 2FA setup/enable). Every data/admin route 403s, so a
+    # leaked admin password alone can't drive the API past the SPA's enrollment redirect.
+    if (settings.mfa_admin_required and user.role == "admin" and not user.totp_enabled
+            and not request.url.path.startswith(_MFA_EXEMPT_PREFIXES)):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail={"code": "mfa_enrollment_required"})
     return user
 
+
+# Paths an unenrolled admin must still reach to complete enrollment / manage their own session.
+# /api/auth/* covers me, logout, change-password, sessions, AND 2FA setup/enable (/api/auth/2fa/*).
+_MFA_EXEMPT_PREFIXES = ("/api/auth/",)
 
 CurrentUser = Annotated[User, Depends(current_user)]
 

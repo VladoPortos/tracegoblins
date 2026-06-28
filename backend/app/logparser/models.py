@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-STATUS_ORDER = ["unreachable", "failed", "changed", "ok", "included", "skipped"]
+from app.core.statuses import STATUS_ORDER  # re-exported for dominant() — single source of truth
 
 
 @dataclass

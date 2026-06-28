@@ -43,6 +43,10 @@ async def run_setup(data: SetupIn, request: Request, response: Response, db: DbS
     decision = await setup_limiter.check(f"setup:{ip or 'unknown'}")
     if not decision.allowed:
         raise too_many_attempts(decision)
+    # Validate the password BEFORE recording a tentative failure (AUTH1): a too-short/long password
+    # is a client mistake, not a brute-force attempt — it must 422 without consuming a setup slot,
+    # otherwise ~5 typos lock the admin out of first-run setup for the lockout window.
+    validate_password(data.password)
     await setup_limiter.record_failure(f"setup:{ip or 'unknown'}")
     # Serialize concurrent setup attempts; advisory xact lock auto-releases at txn end.
     # (Under the savepoint test harness the lock is held until the outer rollback, so true
@@ -51,7 +55,6 @@ async def run_setup(data: SetupIn, request: Request, response: Response, db: DbS
     if (await _user_count(db)) != 0:
         raise HTTPException(status.HTTP_409_CONFLICT, detail="Setup already completed")
 
-    validate_password(data.password)
     admin = User(
         email=data.email,
         display_name=data.display_name,

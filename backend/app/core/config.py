@@ -59,6 +59,15 @@ class Settings(BaseSettings):
     # Exact signature_key always wins; fuzzy hits below this similarity are ignored.
     kb_match_threshold: float = Field(0.35)
 
+    # Projects subsystem (M2) — local git-clone + upload storage on the appdata volume.
+    projects_data_dir: str = "/app/data/projects"
+    git_clone_max_bytes: int = 500 * 1024 * 1024       # abort clone + set status=error above this
+    git_clone_timeout_seconds: int = 300               # clone/fetch subprocess timeout
+    project_blob_max_bytes: int = 2 * 1024 * 1024      # file-viewer cap; larger → "too large" marker
+    project_upload_max_bytes: int = 50 * 1024 * 1024   # total bytes per upload request
+    project_upload_max_files: int = 2000               # max parts per upload request
+    project_refetch_interval_minutes: int = 1440       # periodic git re-fetch for cloned projects (daily)
+
     # App
     app_name: str = "Tracegoblins"
     environment: str = "production"
@@ -83,6 +92,13 @@ def validate_runtime_secrets(s: "Settings") -> None:
     Catches the two footguns: the placeholder SECRET_KEY (forgeable sessions/CSRF) and an
     empty TOKEN_ENC_KEY (AWX-token encryption would otherwise only blow up later, on first use).
     """
+    # SameSite=None cookies REQUIRE Secure or browsers silently drop every Set-Cookie → a total,
+    # hard-to-diagnose auth outage. Enforce in ALL environments (CONFIG1), before the prod-only gate.
+    if s.cookie_samesite == "none" and not s.cookie_secure:
+        raise RuntimeError(
+            "Invalid cookie configuration: COOKIE_SAMESITE=none requires COOKIE_SECURE=true "
+            "(browsers drop SameSite=None cookies that are not Secure)."
+        )
     if s.environment != "production":
         return
     problems: list[str] = []

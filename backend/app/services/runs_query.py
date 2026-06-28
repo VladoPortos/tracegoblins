@@ -30,6 +30,7 @@ def run_to_card(run: Run, team_name: str | None = None, controller_name: str | N
         awx_organization_name=run.awx_organization_name,
         awx_launch_type=run.awx_launch_type,
         elapsed=run.elapsed,
+        scm_revision=run.scm_revision,
     )
 
 
