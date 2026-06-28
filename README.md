@@ -44,6 +44,24 @@ Every play and task laid out with per-host status dots (ok · changed · skipped
 unreachable). Jump straight to the **first failure**, filter to **errors only**, search tasks,
 or scope to one host. Real per-task durations when synced via the AWX `job_events` API.
 
+### 🧭 Run Path Explorer — walk the actual execution path
+Open any run as an interactive left-to-right flow of what *really* happened — reconstructed
+from the AWX `job_events` tree. Drill into roles, includes and loops, follow per-host **fork
+branches**, and toggle **never-run** greying to see the branches a run skipped. The host-scope
+picker doubles as a **triage roster** — every host carries its real worst-status dot, so you
+jump straight to the one that failed.
+
+- **Code overlay** — the playbook source at the run's exact revision, with the **resolved
+  values** the run actually rendered (`set_fact` / `debug` / module args) and executed vs.
+  skipped vs. never-run lines colour-graded inline. Git-link a project once and the overlay
+  shows your real code.
+- **Module docs at a click** — each task deep-links to its official Ansible module reference,
+  and the card face shows the module family (`apt` · `service` · `set_fact`) at a glance.
+- **Fired-handler badge** — handlers that were notified *and* flushed are marked, so a
+  "ran because something changed" task never reads as plain inline ordering.
+- **Copy run summary** — one click yields a Markdown summary (status, per-host recap, and the
+  path-to-failure with error excerpts) ready to paste into a ticket or a knowledge-base entry.
+
 ### 🔎 Failure analysis + collaboration
 Click any task for the full failure detail, affected hosts, and the raw output in a pop-out
 viewer. **Annotate** (note · tags · external links) and **discuss** in threaded comments with
