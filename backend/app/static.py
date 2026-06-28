@@ -35,17 +35,16 @@ def mount_spa(app: FastAPI, static_dir: str) -> None:
     async def spa_fallback(full_path: str):
         if full_path.startswith("api/") or full_path == "openapi.json":
             return JSONResponse({"detail": "Not Found"}, status_code=404)
-        # Resolve the user-supplied path and confirm it is contained within the
-        # SPA root before serving it. os.path.commonpath() rejects any "../"
-        # traversal (and prefix tricks like "<root>-evil") that escape the dir;
-        # anything outside falls through to the SPA's index.html.
-        candidate = (root / full_path).resolve()
-        try:
-            contained = os.path.commonpath([root, candidate]) == str(root)
-        except ValueError:
-            contained = False  # different drive / mixed abs+rel -> not contained
-        if contained and candidate.is_file():
-            if candidate == index_resolved:
-                return FileResponse(candidate, headers=_INDEX_HEADERS)
-            return FileResponse(candidate)
+        # Resolve the user-supplied path and confirm it is contained within the SPA root
+        # before serving it. realpath + startswith(root + os.sep) rejects any "../" traversal
+        # (and prefix tricks like "<root>-evil") that escape the dir — the canonical,
+        # statically-verifiable barrier; anything outside falls through to the SPA's index.html.
+        root_str = str(root)
+        candidate = os.path.realpath(os.path.join(root_str, full_path))
+        contained = candidate == root_str or candidate.startswith(root_str + os.sep)
+        if contained and os.path.isfile(candidate):
+            cand = Path(candidate)
+            if cand == index_resolved:
+                return FileResponse(cand, headers=_INDEX_HEADERS)
+            return FileResponse(cand)
         return FileResponse(index_file, headers=_INDEX_HEADERS)
