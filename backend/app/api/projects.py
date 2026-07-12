@@ -47,6 +47,19 @@ async def get_visible_project(project_id: uuid.UUID, user: CurrentUser, db: DbSe
 VisibleProject = Annotated[Project, Depends(get_visible_project)]
 
 
+async def _read_project_upload(upload: UploadFile, remaining: int) -> bytes:
+    """Read one multipart part without ever buffering beyond the request's remaining budget."""
+    chunks: list[bytes] = []
+    while True:
+        chunk = await upload.read(min(1024 * 1024, remaining + 1))
+        if not chunk:
+            return b"".join(chunks)
+        if len(chunk) > remaining:
+            raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, detail="Upload too large")
+        chunks.append(chunk)
+        remaining -= len(chunk)
+
+
 @router.get("", response_model=ProjectListOut)
 async def list_projects_api(
     user: CurrentUser, db: DbSession,
@@ -275,10 +288,8 @@ async def upload_files(
     payload: list[tuple[str, bytes]] = []
     total = 0
     for f, rel in zip(files, paths):
-        data = await f.read()
+        data = await _read_project_upload(f, settings.project_upload_max_bytes - total)
         total += len(data)
-        if total > settings.project_upload_max_bytes:
-            raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, detail="Upload too large")
         payload.append((rel, data))
     try:
         n = uploadsmod.save_uploads(

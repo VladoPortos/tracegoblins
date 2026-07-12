@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import tempfile
 from pathlib import Path
 
 from app.projects.git import BlobContent, TreeEntry
@@ -28,10 +30,66 @@ def save_uploads(uploads_dir: Path, files: list[tuple[str, bytes]], *,
             raise UploadError(f"rejected path {relpath!r}: {e}") from e
         if dest == uploads_dir.resolve():
             raise UploadError(f"rejected path {relpath!r}: empty")
+        if dest.exists() and not dest.is_file():
+            raise UploadError(f"rejected path {relpath!r}: destination is not a regular file")
         targets.append((dest, data))
-    for dest, data in targets:
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_bytes(data)
+    staged: list[tuple[Path, Path]] = []
+    backups: dict[Path, Path | None] = {}
+    installed: set[Path] = set()
+    try:
+        # Stage the complete batch before changing any destination file.
+        for dest, data in targets:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            fd, raw_temp = tempfile.mkstemp(prefix=".tg-upload-", dir=dest.parent)
+            temp = Path(raw_temp)
+            try:
+                with os.fdopen(fd, "wb") as stream:
+                    stream.write(data)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+            except Exception:
+                temp.unlink(missing_ok=True)
+                raise
+            staged.append((dest, temp))
+
+        # Promote staged files. Keep one backup per destination so duplicate paths retain
+        # the historical last-write-wins behavior while rollback still restores the original.
+        for dest, temp in staged:
+            if dest not in backups:
+                backup: Path | None = None
+                if dest.exists():
+                    fd, raw_backup = tempfile.mkstemp(prefix=".tg-backup-", dir=dest.parent)
+                    os.close(fd)
+                    backup = Path(raw_backup)
+                    backup.unlink()
+                    os.replace(dest, backup)
+                backups[dest] = backup
+            os.replace(temp, dest)
+            installed.add(dest)
+    except OSError as exc:
+        rollback_error: OSError | None = None
+        for _dest, temp in staged:
+            temp.unlink(missing_ok=True)
+        for dest in installed:
+            try:
+                dest.unlink(missing_ok=True)
+            except OSError as rollback_exc:
+                rollback_error = rollback_error or rollback_exc
+        for dest, backup in backups.items():
+            if backup is not None and backup.exists():
+                try:
+                    os.replace(backup, dest)
+                except OSError as rollback_exc:
+                    rollback_error = rollback_error or rollback_exc
+        if rollback_error is not None:
+            raise UploadError(
+                f"upload storage failed: {exc}; rollback failed: {rollback_error}"
+            ) from exc
+        raise UploadError(f"upload storage failed: {exc}") from exc
+    else:
+        for backup in backups.values():
+            if backup is not None:
+                backup.unlink(missing_ok=True)
     return len(targets)
 
 

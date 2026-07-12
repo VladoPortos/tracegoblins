@@ -66,7 +66,7 @@ class Settings(BaseSettings):
     project_blob_max_bytes: int = 2 * 1024 * 1024      # file-viewer cap; larger → "too large" marker
     project_upload_max_bytes: int = 50 * 1024 * 1024   # total bytes per upload request
     project_upload_max_files: int = 2000               # max parts per upload request
-    project_refetch_interval_minutes: int = 1440       # periodic git re-fetch for cloned projects (daily)
+    project_refetch_interval_minutes: int = Field(1440, gt=0)  # periodic git re-fetch (daily)
 
     # App
     app_name: str = "Tracegoblins"

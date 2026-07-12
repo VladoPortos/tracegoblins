@@ -207,13 +207,16 @@ class AwxClient:
             raise
         except httpx.HTTPStatusError as exc:
             raise AwxError(str(exc), status=exc.response.status_code) from exc
-        except (httpx.ConnectError, httpx.TimeoutException) as exc:
+        except httpx.RequestError as exc:
             raise AwxError(f"Cannot reach AWX: {exc}") from exc
 
         try:
-            return resp.json()
-        except json.JSONDecodeError as exc:
+            data = resp.json()
+        except (json.JSONDecodeError, ValueError) as exc:
             raise AwxError("AWX returned non-JSON response") from exc
+        if not isinstance(data, dict):
+            raise AwxError("AWX returned an unexpected JSON shape (expected an object)")
+        return data
 
     async def ping(self) -> dict:
         """GET /api/v2/ping/ (version) + GET /api/v2/me/ (identity).

@@ -75,6 +75,8 @@ async def run_clone(project_id: str) -> None:
             await lock_conn.close()
             return  # another clone/fetch for this project is already in flight
 
+        repo_path = project_repo_path(project.id)
+        had_valid_clone = (repo_path / "HEAD").is_file()
         try:
             project.status = "cloning"
             project.last_clone_error = None
@@ -85,7 +87,7 @@ async def run_clone(project_id: str) -> None:
                 if project.git_secret_encrypted else None
             )
             size, _branch = await clone_or_fetch(
-                effective_url, project_repo_path(project.id),
+                effective_url, repo_path,
                 auth_type=project.git_auth_type or "none",
                 username=project.git_username,
                 secret=secret,
@@ -101,7 +103,7 @@ async def run_clone(project_id: str) -> None:
             logger.exception("clone failed for project %s", project_id)
             await db.rollback()
             await db.refresh(project)
-            project.status = "error"
+            project.status = "cloned" if had_valid_clone else "error"
             project.last_clone_error = str(e)[:1000]
             project.last_clone_at = utcnow()
             await db.commit()

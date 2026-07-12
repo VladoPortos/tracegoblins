@@ -57,12 +57,14 @@ async def _teams_for(db: AsyncSession, user_id: uuid.UUID) -> list[TeamBrief]:
     return [TeamBrief.of(t) for t in rows]
 
 
-async def _user_out(db: AsyncSession, user: User) -> UserOut:
+async def _user_out(
+    db: AsyncSession, user: User, *, teams: list[TeamBrief] | None = None,
+) -> UserOut:
     return UserOut(
         id=str(user.id), email=user.email, display_name=user.display_name, role=user.role,
         is_active=user.is_active, created_at=user.created_at,
         last_login_at=user.last_login_at,
-        teams=await _teams_for(db, user.id),
+        teams=teams if teams is not None else await _teams_for(db, user.id),
         totp_enabled=user.totp_enabled,
         initials=user.initials,
         avatar_color=user.avatar_color,
@@ -72,7 +74,18 @@ async def _user_out(db: AsyncSession, user: User) -> UserOut:
 @router.get("/users", response_model=list[UserOut])
 async def list_users(admin: AdminUser, db: DbSession):
     users = (await db.execute(select(User).order_by(User.created_at))).scalars().all()
-    return [await _user_out(db, u) for u in users]
+    user_ids = [u.id for u in users]
+    teams_by_user: dict[uuid.UUID, list[TeamBrief]] = {uid: [] for uid in user_ids}
+    if user_ids:
+        memberships = (await db.execute(
+            select(TeamMember.user_id, Team)
+            .join(Team, Team.id == TeamMember.team_id)
+            .where(TeamMember.user_id.in_(user_ids))
+            .order_by(Team.name)
+        )).all()
+        for user_id, team in memberships:
+            teams_by_user[user_id].append(TeamBrief.of(team))
+    return [await _user_out(db, u, teams=teams_by_user[u.id]) for u in users]
 
 
 # Transaction-scoped advisory lock that serializes every "must keep ≥1 active admin" check.
@@ -205,10 +218,14 @@ async def _validated_name_and_slug(
     return name, await _unique_slug(db, _slugify(name), exclude_id=exclude_id)
 
 
-async def _team_out(db: AsyncSession, team: Team) -> TeamOut:
-    count = await db.scalar(
-        select(func.count()).select_from(TeamMember).where(TeamMember.team_id == team.id)
-    )
+async def _team_out(
+    db: AsyncSession, team: Team, *, member_count: int | None = None,
+) -> TeamOut:
+    count = member_count
+    if count is None:
+        count = await db.scalar(
+            select(func.count()).select_from(TeamMember).where(TeamMember.team_id == team.id)
+        )
     return TeamOut(id=str(team.id), name=team.name, slug=team.slug,
                    is_default=team.is_default, member_count=count)
 
@@ -216,7 +233,13 @@ async def _team_out(db: AsyncSession, team: Team) -> TeamOut:
 @router.get("/teams", response_model=list[TeamOut])
 async def list_teams(admin: AdminUser, db: DbSession):
     teams = (await db.execute(select(Team).order_by(Team.name))).scalars().all()
-    return [await _team_out(db, t) for t in teams]
+    counts = {
+        team_id: count for team_id, count in (await db.execute(
+            select(TeamMember.team_id, func.count())
+            .group_by(TeamMember.team_id)
+        )).all()
+    }
+    return [await _team_out(db, t, member_count=counts.get(t.id, 0)) for t in teams]
 
 
 @router.post("/teams", status_code=201, response_model=TeamOut)

@@ -67,7 +67,8 @@ def _validate_path(path: str) -> str:
 
 
 async def _git(*args: str, cwd: Path | None = None, env: dict | None = None,
-               timeout: int = 60) -> bytes:
+               timeout: int = 60, watch_path: Path | None = None,
+               max_bytes: int | None = None) -> bytes:
     """Run `git <args>` with list-args (no shell), returning stdout bytes. Raises GitError on
     nonzero exit or timeout. A minimal env (PATH + GIT_TERMINAL_PROMPT=0 + caller extras) keeps
     git from ever blocking on an interactive credential prompt."""
@@ -82,12 +83,22 @@ async def _git(*args: str, cwd: Path | None = None, env: dict | None = None,
         )
     except FileNotFoundError as e:
         raise GitError("git binary not found") from e
-    try:
-        out, err = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-    except asyncio.TimeoutError as e:
-        proc.kill()
-        await proc.wait()
-        raise GitError(f"git timed out after {timeout}s") from e
+    communicate = asyncio.create_task(proc.communicate())
+    deadline = asyncio.get_running_loop().time() + timeout
+    while not communicate.done():
+        if watch_path is not None and max_bytes is not None and _dir_size(watch_path) > max_bytes:
+            proc.kill()
+            await communicate
+            raise GitError(f"git repository exceeded size cap ({max_bytes} bytes)")
+        remaining = deadline - asyncio.get_running_loop().time()
+        if remaining <= 0:
+            proc.kill()
+            await communicate
+            raise GitError(f"git timed out after {timeout}s")
+        await asyncio.wait({communicate}, timeout=min(0.05, remaining))
+    out, err = communicate.result()
+    if watch_path is not None and max_bytes is not None and _dir_size(watch_path) > max_bytes:
+        raise GitError(f"git repository exceeded size cap ({max_bytes} bytes)")
     if proc.returncode != 0:
         raise GitError(err.decode("utf-8", "replace").strip() or f"git exit {proc.returncode}")
     return out
@@ -134,6 +145,36 @@ def _dir_size(path: Path) -> int:
     return total
 
 
+async def _snapshot_refs(repo_path: Path, timeout: int) -> dict[str, str]:
+    out = await _git(
+        "-C", str(repo_path), "for-each-ref", "--format=%(refname)%09%(objectname)",
+        timeout=timeout,
+    )
+    refs: dict[str, str] = {}
+    for line in out.decode("utf-8", "replace").splitlines():
+        ref, sep, oid = line.partition("\t")
+        if sep and ref and oid:
+            refs[ref] = oid
+    return refs
+
+
+async def _restore_refs(repo_path: Path, refs: dict[str, str], timeout: int) -> None:
+    current = await _snapshot_refs(repo_path, timeout)
+    for ref in current.keys() - refs.keys():
+        await _git("-C", str(repo_path), "update-ref", "-d", ref, timeout=timeout)
+    for ref, oid in refs.items():
+        if current.get(ref) != oid:
+            await _git("-C", str(repo_path), "update-ref", ref, oid, timeout=timeout)
+
+
+async def _discard_rejected_fetch(repo_path: Path, timeout: int) -> None:
+    await _git(
+        "-C", str(repo_path), "reflog", "expire", "--expire=now", "--all",
+        timeout=timeout,
+    )
+    await _git("-C", str(repo_path), "gc", "--prune=now", timeout=timeout)
+
+
 async def clone_or_fetch(source_url: str, repo_path: Path, *, auth_type: str,
                          username: str | None, secret: str | None,
                          max_bytes: int, timeout: int) -> tuple[int, str]:
@@ -145,22 +186,52 @@ async def clone_or_fetch(source_url: str, repo_path: Path, *, auth_type: str,
     env, askpass = _askpass_env(auth_type, username, secret)
     try:
         if (repo_path / "HEAD").exists():
+            old_url = (await _git(
+                "-C", str(repo_path), "remote", "get-url", "origin", timeout=timeout,
+            )).decode().strip()
+            old_refs = await _snapshot_refs(repo_path, timeout)
             # Re-point origin to the CURRENT url before fetching (GIT1): an edited git_url_override
             # would otherwise be silently ignored and we'd keep fetching the stale clone's remote.
-            await _git("-C", str(repo_path), "remote", "set-url", "origin", source_url,
-                       env=env, timeout=timeout)
-            await _git("-C", str(repo_path), "fetch", "--all", "--prune",
-                       env=env, timeout=timeout)
-            size = _dir_size(repo_path)
+            try:
+                await _git("-C", str(repo_path), "remote", "set-url", "origin", source_url,
+                           env=env, timeout=timeout)
+                await _git(
+                    "-C", str(repo_path), "fetch", "--all", "--prune", "--no-write-fetch-head",
+                    env=env, timeout=timeout, watch_path=repo_path, max_bytes=max_bytes,
+                )
+                size = _dir_size(repo_path)
+            except GitError as exc:
+                try:
+                    await _restore_refs(repo_path, old_refs, timeout)
+                    await _git(
+                        "-C", str(repo_path), "remote", "set-url", "origin", old_url,
+                        timeout=timeout,
+                    )
+                    await _discard_rejected_fetch(repo_path, timeout)
+                except GitError as rollback_exc:
+                    raise GitError(f"{exc}; fetch rollback failed: {rollback_exc}") from exc
+                raise
             if size > max_bytes:
+                await _restore_refs(repo_path, old_refs, timeout)
+                await _git(
+                    "-C", str(repo_path), "remote", "set-url", "origin", old_url,
+                    timeout=timeout,
+                )
+                await _discard_rejected_fetch(repo_path, timeout)
                 # Do NOT destroy a previously-good clone over a remote-side overage (GIT2) — keep it
                 # browsable and surface the error so the update is refused, not the project broken.
                 raise GitError(f"fetched repo exceeds size cap ({size} > {max_bytes} bytes); "
                                "existing clone kept")
         else:
             repo_path.parent.mkdir(parents=True, exist_ok=True)
-            await _git("clone", "--bare", source_url, str(repo_path),
-                       env=env, timeout=timeout)
+            try:
+                await _git(
+                    "clone", "--bare", source_url, str(repo_path), env=env, timeout=timeout,
+                    watch_path=repo_path, max_bytes=max_bytes,
+                )
+            except GitError:
+                shutil.rmtree(repo_path, ignore_errors=True)
+                raise
             size = _dir_size(repo_path)
             if size > max_bytes:
                 shutil.rmtree(repo_path, ignore_errors=True)  # a partial/oversized first clone is worthless
