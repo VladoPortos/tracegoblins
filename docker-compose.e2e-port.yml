@@ -1,0 +1,9 @@
+# Local-only helper: layer AFTER docker-compose.e2e.yml so the isolated e2e stack
+# (run under `-p tg-e2e`) publishes the app on :8010 instead of :8000, avoiding a
+# collision with the developer's live :8000 stack. `!override` REPLACES the inherited
+# ports list rather than appending to it.
+#   docker compose -p tg-e2e -f docker-compose.yml -f docker-compose.e2e.yml -f docker-compose.e2e-port.yml up -d --build
+services:
+  app:
+    ports: !override
+      - "127.0.0.1:8010:8000"

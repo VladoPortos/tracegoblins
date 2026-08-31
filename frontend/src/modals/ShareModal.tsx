@@ -54,8 +54,8 @@ export function ShareModal({ open, onOpenChange, runId, teams }: { open: boolean
   const add = (c: Candidate) => {
     setError(null)
     const body: ShareCreate = c.kind === 'user' ? { user_id: c.id } : { team_id: c.id }
+    setQ('')
     create.mutate(body, {
-      onSuccess: () => setQ(''),
       onError: (e) => setError(
         e instanceof ApiError && e.status === 409
           ? `Already shared with that ${c.kind === 'user' ? 'person' : 'team'}.`

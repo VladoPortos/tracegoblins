@@ -1,0 +1,970 @@
+[DEPRECATION WARNING]: ANSIBLE_COLLECTIONS_PATHS option, does not fit var
+naming standard, use the singular form ANSIBLE_COLLECTIONS_PATH instead. This
+feature will be removed from ansible-core in version 2.19. Deprecation warnings
+ can be disabled by setting deprecation_warnings=False in ansible.cfg.
+
+PLAY [Day2Actions entrypoint] **************************************************
+
+TASK [Display AWX job info] ****************************************************
+ok: [localhost] => {
+    "msg": [
+        "AWX Job Start",
+        "  Job Template Name: Day2Actions - vstrycek",
+        "  Job Id:            11140",
+        "  AWX User:          cloudauto",
+        "  Current Log Time:  2026-06-02 17:43:42 UTC"
+    ]
+}
+
+TASK [Resolve deploy-workflow handoff (targetVM/organization from artifacts)] ***
+included: /runner/project/tasks/resolve_deploy_handoff.yml for localhost
+
+TASK [Derive targetVM from vm_name artifact when not supplied] *****************
+skipping: [localhost]
+
+TASK [Derive organization from deploy artifact cloud_org_details (only if not supplied)] ***
+skipping: [localhost]
+
+TASK [Debug - day2actions deploy-handoff resolution] ***************************
+ok: [localhost] => {
+    "msg": [
+        "deploy-handoff: targetVM=pk-test-01 (vm_name artifact=<none>)",
+        "deploy-handoff: organization=acmeco"
+    ]
+}
+
+TASK [Resolve organization scope (early, for chain-template lookup)] ***********
+included: /runner/project/tasks/resolve_organization.yml for localhost
+
+TASK [Resolve organization friendly name] **************************************
+ok: [localhost]
+
+TASK [Fetch organization by friendly name] *************************************
+ok: [localhost]
+
+TASK [Ensure organization exists] **********************************************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Select organization] *****************************************************
+ok: [localhost]
+
+TASK [Resolve chain template (if d2a_chain_template_name is set)] **************
+included: /runner/project/tasks/resolve_chain_template.yml for localhost
+
+TASK [Chain-template guard (no-op when d2a_chain_template_name is unset)] ******
+ok: [localhost]
+
+TASK [Fetch chain template from CDB] *******************************************
+skipping: [localhost]
+
+TASK [Assert chain template exists] ********************************************
+skipping: [localhost]
+
+TASK [Assert chain template has the correct kind discriminator] ****************
+skipping: [localhost]
+
+TASK [Capture chain template properties] ***************************************
+skipping: [localhost]
+
+TASK [Assert chain template carries a non-empty managed_options chain] *********
+skipping: [localhost]
+
+TASK [Supersede managed_options (template's chain ALWAYS wins via _d2a_options_parsed)] ***
+skipping: [localhost]
+
+TASK [Supersede wrapper-level keys via set_fact into original variable names] ***
+skipping: [localhost] => (item=managed_options)
+skipping: [localhost] => (item=skip_fqdn_dns_verification)
+skipping: [localhost] => (item=use_vm_maintenance_lock)
+skipping: [localhost] => (item=execute_managed_options_locally)
+skipping: [localhost] => (item=debug_mode)
+skipping: [localhost] => (item=d2a_connection_use_fqdn)
+skipping: [localhost] => (item=d2a_summary_email_mode)
+skipping: [localhost] => (item=d2a_summary_email_to)
+skipping: [localhost] => (item=d2a_summary_email_from)
+skipping: [localhost] => (item=smtp_host)
+skipping: [localhost] => (item=smtp_port)
+skipping: [localhost] => (item=secure)
+skipping: [localhost]
+
+TASK [Compute audit-log source attribution for each wrapper-level key] *********
+skipping: [localhost]
+
+TASK [Audit log — every wrapper-level key with its effective source] ***********
+skipping: [localhost]
+
+TASK [Audit log — emit one key:source line per allowlist key (grep-friendly)] ***
+skipping: [localhost]
+
+TASK [Audit log — unknown keys in template.properties (not in allowlist; skipped)] ***
+skipping: [localhost]
+
+TASK [Collect VM and org CDB data] *********************************************
+included: /runner/project/tasks/collect_vm_context.yml for localhost
+
+TASK [Resolve organization scope] **********************************************
+included: /runner/project/tasks/resolve_organization.yml for localhost
+
+TASK [Resolve organization friendly name] **************************************
+skipping: [localhost]
+
+TASK [Fetch organization by friendly name] *************************************
+skipping: [localhost]
+
+TASK [Ensure organization exists] **********************************************
+skipping: [localhost]
+
+TASK [Select organization] *****************************************************
+skipping: [localhost]
+
+TASK [Fetch target VM by name and organization] ********************************
+ok: [localhost]
+
+TASK [Ensure target VM exists] *************************************************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Select target resource] **************************************************
+ok: [localhost]
+
+TASK [Fetch cloud target details for resource] *********************************
+ok: [localhost]
+
+TASK [Ensure cloud target exists] **********************************************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Get cloud account properties] ********************************************
+ok: [localhost]
+
+TASK [Normalize target resource facts] *****************************************
+ok: [localhost]
+
+TASK [Select wrapper connection target] ****************************************
+ok: [localhost]
+
+TASK [Assert wrapper has a usable connection target] ***************************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "Connection target resolved: 100.66.0.108 (source: management_ip_address)"
+}
+
+TASK [Debug collected context] *************************************************
+ok: [localhost] => {
+    "msg": [
+        "organization: acmeco (id: 69c15357-fa95-4f56-b004-b5a680a44b54)",
+        "targetVM: pk-test-01 (id: 3e8dce7b-7b9e-4fac-a533-80108812c0e8)",
+        "ansible_host: 100.66.0.108 (source: management_ip_address, d2a_connection_use_fqdn=False)",
+        "vm_os_type: linux",
+        "vm_os_full_name: Red Hat® Enterprise Linux® Server 9.6 (64-bit)",
+        "vm_fqdn: pk-test-01.acmeco.us-central-010.mcloud.entsvcs.com",
+        "management_ip_address: 100.66.0.108"
+    ]
+}
+
+TASK [Assert managed_options payload is provided (or supplied by chain template)] ***
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Parse managed_options into dict form (_d2a_options_parsed)] **************
+ok: [localhost]
+
+TASK [Validate step-key contract on managed_options] ***************************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "managed_options step-key contract validated: 1 step(s)."
+}
+
+TASK [Build canonical _d2a_options_list (step-ordered)] ************************
+ok: [localhost]
+
+TASK [Debug canonical option list (step-ordered)] ******************************
+ok: [localhost] => {
+    "_d2a_options_list": [
+        {
+            "role": "get_info",
+            "step": "step1",
+            "value": {
+                "action": "test_connection"
+            }
+        }
+    ]
+}
+
+TASK [Cross-option payload validation (on_failure, requires, ordering, duplicates)] ***
+included: /runner/project/tasks/validate_managed_options.yml for localhost
+
+TASK [Build ordered list of planned step keys] *********************************
+ok: [localhost]
+
+TASK [Validate on_failure value per step] **************************************
+skipping: [localhost] => (item=step1:get_info)
+skipping: [localhost]
+
+TASK [Validate requires structure per step (must be a list of step-key strings)] ***
+skipping: [localhost] => (item=step1:get_info)
+skipping: [localhost]
+
+TASK [Validate requires has no duplicate entries] ******************************
+skipping: [localhost] => (item=step1:get_info)
+skipping: [localhost]
+
+TASK [Validate requires entries reference earlier step keys present in this run] ***
+skipping: [localhost] => (item=step1:get_info)
+skipping: [localhost]
+
+TASK [Report managed_options validation passed] ********************************
+ok: [localhost] => {
+    "msg": "managed_options validation passed for 1 step(s): step1:get_info"
+}
+
+TASK [Process managed options list (per-option CDB resolution + input validation)] ***
+included: /runner/project/tasks/process_managed_option.yml for localhost => (item={'step': 'step1', 'role': 'get_info', 'value': {'action': 'test_connection'}})
+
+TASK [Process managed option step] *********************************************
+ok: [localhost]
+
+TASK [Collect managed option inputs and CDB data] ******************************
+included: /runner/project/tasks/collect_managed_option_context.yml for localhost
+
+TASK [Reset per-iteration scratch facts] ***************************************
+ok: [localhost]
+
+TASK [Fetch managed option definition] *****************************************
+ok: [localhost]
+
+TASK [Mark step as not configured when CDB has no managed_option record] *******
+ok: [localhost]
+
+TASK [Announce not-configured short-circuit] ***********************************
+skipping: [localhost]
+
+TASK [Build not-configured marker] *********************************************
+skipping: [localhost]
+
+TASK [Merge per-step inputs into not-configured marker] ************************
+skipping: [localhost]
+
+TASK [Force not-configured marker after merge] *********************************
+skipping: [localhost]
+
+TASK [Stage not-configured marker into managed_options_data] *******************
+skipping: [localhost]
+
+TASK [Select managed option] ***************************************************
+ok: [localhost]
+
+TASK [Fetch software addons for managed option] ********************************
+ok: [localhost]
+
+TASK [Ensure software addons exist] ********************************************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Select software addon matching OS] ***************************************
+ok: [localhost]
+
+TASK [Ensure software addon matches OS] ****************************************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Normalize software addon fields] *****************************************
+ok: [localhost]
+
+TASK [Debug collected context] *************************************************
+ok: [localhost] => {
+    "msg": [
+        "managed_option: get_info (id: e9b6f4ba-f8db-4a7b-ac1d-ff01727c1ec2)",
+        "software_addon: get_info_lin",
+        "software_addon_supporting_os: linux",
+        "software_addon_playbook_file: get_info",
+        "managed_option_extra_params: ",
+        "software_addon_obj: {'id': 'd0a51ab0-e985-4695-a0de-a7448896eb86', 'name': 'get_info_lin', 'managed_option_name': 'get_info', 'properties': {'status': 'active', 'version': '1.0', 'playbook_file': 'get_info', 'supporting_os': 'linux', 'entry_playbook': True, 'custom_parameters': {}}, 'links': {'_self': '/api/cdb/software_addons/d0a51ab0-e985-4695-a0de-a7448896eb86', 'managed_option': '/api/cdb/managed_options/e9b6f4ba-f8db-4a7b-ac1d-ff01727c1ec2'}, 'updated_at': '2026-05-25T08:29:44.591833Z', 'updated_by': 'vstrycek', 'created_at': '2026-02-03T09:35:50.358331Z', 'created_by': 'vstrycek'}"
+    ]
+}
+
+TASK [Prepare managed option data] *********************************************
+ok: [localhost]
+
+TASK [Add input parameters] ****************************************************
+ok: [localhost]
+
+TASK [Debug merged managed option data] ****************************************
+ok: [localhost] => {
+    "managed_option_data": {
+        "action": "test_connection",
+        "dependencies": [],
+        "managed_option_id": "e9b6f4ba-f8db-4a7b-ac1d-ff01727c1ec2",
+        "role": "get_info",
+        "software_addon": {
+            "created_at": "2026-02-03T09:35:50.358331Z",
+            "created_by": "vstrycek",
+            "id": "d0a51ab0-e985-4695-a0de-a7448896eb86",
+            "links": {
+                "_self": "/api/cdb/software_addons/d0a51ab0-e985-4695-a0de-a7448896eb86",
+                "managed_option": "/api/cdb/managed_options/e9b6f4ba-f8db-4a7b-ac1d-ff01727c1ec2"
+            },
+            "managed_option_name": "get_info",
+            "name": "get_info_lin",
+            "properties": {
+                "custom_parameters": {},
+                "entry_playbook": true,
+                "playbook_file": "get_info",
+                "status": "active",
+                "supporting_os": "linux",
+                "version": "1.0"
+            },
+            "updated_at": "2026-05-25T08:29:44.591833Z",
+            "updated_by": "vstrycek"
+        },
+        "step": "step1",
+        "type": "built_in"
+    }
+}
+
+TASK [Add collected context for further processing] ****************************
+ok: [localhost]
+
+TASK [Validate inputs and compatibility] ***************************************
+included: /runner/project/tasks/validate_inputs.yml for localhost
+
+TASK [Ensure required inputs are set] ******************************************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Ensure a usable connection target is present] ****************************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Ensure supporting OS list is not empty] **********************************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Validate VM OS is in the supported list] *********************************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Validate input definition against managed option values] *****************
+ok: [localhost] => (item={'key': 'action', 'value': 'test_connection'}) => {
+    "ansible_loop_var": "managed_option_input",
+    "changed": false,
+    "managed_option_input": {
+        "key": "action",
+        "value": "test_connection"
+    },
+    "msg": "All assertions passed"
+}
+
+TASK [Debug dispatch resolution] ***********************************************
+ok: [localhost] => {
+    "msg": [
+        "step:                 step1",
+        "managed_option:       get_info",
+        "software_addon_playbook_file: get_info",
+        "managed_option_inputs: {'action': 'test_connection'}"
+    ]
+}
+
+TASK [Display collected managed_options_data] **********************************
+ok: [localhost] => {
+    "managed_options_data": {
+        "step1": {
+            "action": "test_connection",
+            "dependencies": [],
+            "managed_option_id": "e9b6f4ba-f8db-4a7b-ac1d-ff01727c1ec2",
+            "role": "get_info",
+            "software_addon": {
+                "created_at": "2026-02-03T09:35:50.358331Z",
+                "created_by": "vstrycek",
+                "id": "d0a51ab0-e985-4695-a0de-a7448896eb86",
+                "links": {
+                    "_self": "/api/cdb/software_addons/d0a51ab0-e985-4695-a0de-a7448896eb86",
+                    "managed_option": "/api/cdb/managed_options/e9b6f4ba-f8db-4a7b-ac1d-ff01727c1ec2"
+                },
+                "managed_option_name": "get_info",
+                "name": "get_info_lin",
+                "properties": {
+                    "custom_parameters": {},
+                    "entry_playbook": true,
+                    "playbook_file": "get_info",
+                    "status": "active",
+                    "supporting_os": "linux",
+                    "version": "1.0"
+                },
+                "updated_at": "2026-05-25T08:29:44.591833Z",
+                "updated_by": "vstrycek"
+            },
+            "step": "step1",
+            "type": "built_in"
+        }
+    }
+}
+
+TASK [Resolve automation credentials for target VM] ****************************
+included: dxc.xaas.automation_service_account for localhost
+
+TASK [dxc.xaas.automation_service_account : Validate input parameters] *********
+included: /runner/project/ansible_collections/dxc/xaas/roles/automation_service_account/tasks/validate_inputs.yml for localhost
+
+TASK [dxc.xaas.automation_service_account : Validate required input - input_vm_fqdn] ***
+ok: [localhost] => {
+    "changed": false,
+    "msg": "Input validation passed: input_vm_fqdn=pk-test-01.acmeco.us-central-010.mcloud.entsvcs.com"
+}
+
+TASK [dxc.xaas.automation_service_account : Collect VM and organization data from CDB] ***
+included: /runner/project/ansible_collections/dxc/xaas/roles/automation_service_account/tasks/common_setup.yml for localhost
+
+TASK [dxc.xaas.automation_service_account : Query CDB for VM resource by FQDN] ***
+ok: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Validate exactly one VM resource found] ***
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [dxc.xaas.automation_service_account : Extract VM resource from CDB] ******
+ok: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Extract VM OS type and organization friendly name] ***
+ok: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Use organization object resolved by the caller (wrapper), if present] ***
+ok: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Fetch organization by friendly name] ***
+skipping: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Validate organization found] *******
+skipping: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Extract organization data] *********
+skipping: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Resolve automation username from organization service account] ***
+ok: [localhost] => {
+    "changed": false,
+    "msg": "Automation account name resolved from organization service account"
+}
+
+TASK [dxc.xaas.automation_service_account : Set automation username] ***********
+ok: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Validate organization friendly name is present (Vault mount segment)] ***
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [dxc.xaas.automation_service_account : Log common setup context] **********
+ok: [localhost] => {
+    "msg": [
+        "VM Resource ID: 3e8dce7b-7b9e-4fac-a533-80108812c0e8",
+        "Input FQDN: pk-test-01.acmeco.us-central-010.mcloud.entsvcs.com",
+        "Organization: acmeco",
+        "OS Type: linux",
+        "Automation Username: cloudauto"
+    ]
+}
+
+TASK [dxc.xaas.automation_service_account : Initialize credential output variables] ***
+ok: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Resolve Linux credentials (signed SSH certificate)] ***
+included: /runner/project/ansible_collections/dxc/xaas/roles/automation_service_account/tasks/linux_ssh_credentials.yml for localhost
+
+TASK [dxc.xaas.automation_service_account : Fetch SSH key pair for customer] ***
+included: /runner/project/ansible_collections/dxc/xaas/roles/automation_service_account/tasks/vault/get_ssh_keys_for_customer.yml for localhost
+
+TASK [dxc.xaas.automation_service_account : Authenticate to Vault if no token available] ***
+included: /runner/project/ansible_collections/dxc/xaas/roles/automation_service_account/tasks/vault/authenticate.yml for localhost
+
+TASK [dxc.xaas.automation_service_account : Authenticate to Vault using AppRole method] ***
+changed: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Extract Vault client token from auth response] ***
+ok: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Validate Vault token was obtained] ***
+ok: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Query Vault for SSH keys at customer path] ***
+ok: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Extract SSH keys from Vault response] ***
+ok: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Validate SSH keys were retrieved] ***
+ok: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Log SSH key retrieval success] *****
+ok: [localhost] => {
+    "msg": "SSH keys retrieved for customer acmeco"
+}
+
+TASK [dxc.xaas.automation_service_account : Sign SSH public key with customer CA] ***
+included: /runner/project/ansible_collections/dxc/xaas/roles/automation_service_account/tasks/vault/sign_ssh_key.yml for localhost
+
+TASK [dxc.xaas.automation_service_account : Validate required input parameters] ***
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All required input parameters are present"
+}
+
+TASK [dxc.xaas.automation_service_account : Authenticate to Vault if no token available] ***
+skipping: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Request Vault to sign SSH public key] ***
+changed: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Extract signed certificate from Vault response] ***
+ok: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Validate signed certificate was retrieved] ***
+ok: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Log SSH key signing success] *******
+ok: [localhost] => {
+    "msg": "SSH key signed by Vault for customer acmeco, user cloudauto"
+}
+
+TASK [dxc.xaas.automation_service_account : Store Linux SSH credentials] *******
+ok: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Resolve Windows credentials (WinRM password)] ***
+skipping: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Fail on unsupported OS type] *******
+skipping: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Validate credentials were resolved] ***
+ok: [localhost] => {
+    "changed": false,
+    "msg": "Credentials resolved for user 'cloudauto' (linux)"
+}
+
+TASK [dxc.xaas.automation_service_account : Log resolved automation account (secrets obscured)] ***
+ok: [localhost] => {
+    "msg": [
+        "==============================================",
+        "Automation Account Resolved",
+        "==============================================",
+        "Username:    cloudauto",
+        "OS:          linux",
+        "Customer:    acmeco",
+        "Password:    (no password — cert auth)",
+        "Signed Cert: ssh-rsa-cert-v01@ope...",
+        "=============================================="
+    ]
+}
+
+TASK [Log skipped automation credential resolution] ****************************
+skipping: [localhost]
+
+TASK [Perform DNS lookup for target FQDN] **************************************
+skipping: [localhost]
+
+TASK [Check if DNS resolution succeeded] ***************************************
+skipping: [localhost]
+
+TASK [Display DNS resolution result] *******************************************
+skipping: [localhost]
+
+TASK [Fail if FQDN is not resolvable in DNS] ***********************************
+skipping: [localhost]
+
+TASK [Log skipped FQDN DNS verification] ***************************************
+ok: [localhost] => {
+    "msg": "Skipping FQDN DNS verification because skip_fqdn_dns_verification=true"
+}
+
+TASK [Log skipped FQDN DNS verification for local execution] *******************
+skipping: [localhost]
+
+TASK [Create temp file for SSH private key] ************************************
+changed: [localhost]
+
+TASK [Write SSH private key to temp file] **************************************
+changed: [localhost]
+
+TASK [Set SSH key path fact] ***************************************************
+ok: [localhost]
+
+TASK [Create temp file for SSH certificate] ************************************
+changed: [localhost]
+
+TASK [Write SSH certificate to temp file] **************************************
+changed: [localhost]
+
+TASK [Set SSH cert path fact] **************************************************
+ok: [localhost]
+
+TASK [TEMP DEBUG - signed_key fact shape (trim applied?)] **********************
+ok: [localhost] => {
+    "msg": [
+        "signed_key length: 2461",
+        "ends with newline: False",
+        "last 25 chars (repr): V9tE5GYWzGOYrwVZa0+tW+gck",
+        "private_key length: 3272"
+    ]
+}
+
+TASK [TEMP DEBUG - inspect cert/key files on disk with the EE's ssh tooling] ***
+ok: [localhost]
+
+TASK [TEMP DEBUG - show on-disk inspection] ************************************
+ok: [localhost] => {
+    "_temp_dbg.stdout_lines": [
+        "=== ssh version ===",
+        "OpenSSH_9.9p1, OpenSSL 3.5.5 27 Jan 2026",
+        "=== crypto/fips ===",
+        "0",
+        "DEFAULT",
+        "=== CERT file: /tmp/ansible.kgrju_2v_ssh_cert ===",
+        "bytes=2461 lines=0",
+        "--- trailing bytes (od -c) ---",
+        "0000000   S   t   c   P   +   V   9   t   E   5   G   Y   W   z   G   O",
+        "0000020   Y   r   w   V   Z   a   0   +   t   W   +   g   c   k",
+        "0000036",
+        "--- ssh-keygen -L ---",
+        "/tmp/ansible.kgrju_2v_ssh_cert:",
+        "        Type: fixture.user@example.com user certificate",
+        "        Public key: RSA-CERT SHA256:TEST-FIXTURE-FINGERPRINT",
+        "        Signing CA: RSA SHA256:TEST-FIXTURE-FINGERPRINT (using rsa-sha2-256)",
+        "        Key ID: \\"vault-approle-aac8597359845179212576460cb141ca2fdb1769a0a19a1c6e9e711336b7c0b5\\"",
+        "=== KEY file: /tmp/ansible.8ve3x9ft_ssh_key ===",
+        "bytes=3272 lines=52",
+        "--- first line ---",
+        "-----BEGIN REDACTED TEST KEY-----",
+        "--- ssh-keygen -y (derive pubkey) ---",
+        "ssh-rsa TEST-FIXTURE-PUBLIC-KEY"
+    ]
+}
+
+TASK [Set VM maintenance flag before executing day2actions] ********************
+included: /runner/project/tasks/set_maintenance.yml for localhost
+
+TASK [Read current in_maintenance flag from CDB resource] **********************
+ok: [localhost]
+
+TASK [Fail gracefully if VM is already in maintenance] *************************
+skipping: [localhost]
+
+TASK [Set in_maintenance flag to true in CDB] **********************************
+changed: [localhost]
+
+TASK [Update local target_resource with in_maintenance flag] *******************
+ok: [localhost]
+
+TASK [Log maintenance flag set] ************************************************
+ok: [localhost] => {
+    "msg": "Maintenance flag set to true for VM 'pk-test-01' (pk-test-01.acmeco.us-central-010.mcloud.entsvcs.com). Proceeding with day2actions."
+}
+
+TASK [Log skipped VM maintenance lock] *****************************************
+skipping: [localhost]
+
+TASK [Register target host for managed option playbook] ************************
+changed: [localhost]
+
+TASK [Log local controller-backed target registration] *************************
+skipping: [localhost]
+
+PLAY [Day2Actions process managed options] *************************************
+
+TASK [Get list of available ansible collections] *******************************
+ok: [pk-test-01 -> localhost(100.66.0.108)]
+
+TASK [Display list of available ansible collections] ***************************
+ok: [pk-test-01] => {
+    "col.stdout_lines": [
+        "",
+        "# /opt/custom_ee_share/ansible_collections",
+        "Collection                               Version",
+        "---------------------------------------- -------",
+        "xaas.custom                              *      ",
+        "",
+        "# /runner/project/ansible_collections",
+        "Collection                               Version",
+        "---------------------------------------- -------",
+        "dxc.xaas                                 1.0.0  ",
+        "",
+        "# /usr/share/ansible/collections/ansible_collections",
+        "Collection                               Version",
+        "---------------------------------------- -------",
+        "amazon.aws                               9.4.0  ",
+        "ansible.netcommon                        8.4.0  ",
+        "ansible.posix                            2.0.0  ",
+        "ansible.utils                            6.0.1  ",
+        "ansible.windows                          3.4.0  ",
+        "awx.awx                                  24.6.1 ",
+        "community.crypto                         3.1.1  ",
+        "community.docker                         5.0.6  ",
+        "community.general                        12.4.0 ",
+        "community.hashi_vault                    7.1.0  ",
+        "community.kubernetes                     2.0.1  ",
+        "community.library_inventory_filtering_v1 1.1.5  ",
+        "community.mysql                          4.1.0  ",
+        "community.postgresql                     4.2.0  ",
+        "community.vmware                         5.5.0  ",
+        "community.windows                        3.1.0  ",
+        "community.zabbix                         4.1.1  ",
+        "containers.podman                        1.19.0 ",
+        "dxc.cdb                                  1.0.0  ",
+        "infoblox.nios_modules                    1.9.0  ",
+        "kubernetes.core                          5.2.0  ",
+        "kubevirt.core                            2.1.0  ",
+        "microsoft.ad                             1.10.0 ",
+        "netapp.ontap                             23.4.0 ",
+        "nutanix.ncp                              2.5.0  ",
+        "ovirt.ovirt                              3.2.0  ",
+        "redhatinsights.insights                  1.3.0  ",
+        "theforeman.foreman                       5.3.0  ",
+        "vmware.ansible_for_nsxt                  1.0.0  ",
+        "vmware.vmware                            1.11.0 ",
+        "vmware.vmware_rest                       4.10.0 "
+    ]
+}
+
+TASK [Display managed options data] ********************************************
+ok: [pk-test-01] => {
+    "managed_options_data": {
+        "step1": {
+            "action": "test_connection",
+            "dependencies": [],
+            "managed_option_id": "e9b6f4ba-f8db-4a7b-ac1d-ff01727c1ec2",
+            "role": "get_info",
+            "software_addon": {
+                "created_at": "2026-02-03T09:35:50.358331Z",
+                "created_by": "vstrycek",
+                "id": "d0a51ab0-e985-4695-a0de-a7448896eb86",
+                "links": {
+                    "_self": "/api/cdb/software_addons/d0a51ab0-e985-4695-a0de-a7448896eb86",
+                    "managed_option": "/api/cdb/managed_options/e9b6f4ba-f8db-4a7b-ac1d-ff01727c1ec2"
+                },
+                "managed_option_name": "get_info",
+                "name": "get_info_lin",
+                "properties": {
+                    "custom_parameters": {},
+                    "entry_playbook": true,
+                    "playbook_file": "get_info",
+                    "status": "active",
+                    "supporting_os": "linux",
+                    "version": "1.0"
+                },
+                "updated_at": "2026-05-25T08:29:44.591833Z",
+                "updated_by": "vstrycek"
+            },
+            "step": "step1",
+            "type": "built_in"
+        }
+    }
+}
+
+TASK [Seed d2a_run_results with planned options (status=not_run)] **************
+included: /runner/project/tasks/plan_managed_options.yml for pk-test-01
+
+TASK [Record run start timestamp] **********************************************
+ok: [pk-test-01]
+
+TASK [Reset run accumulator to empty dict] *************************************
+ok: [pk-test-01]
+
+TASK [Seed run accumulator with planned steps (status=not_run)] ****************
+ok: [pk-test-01] => (item=step1:get_info)
+
+TASK [Debug seeded run accumulator] ********************************************
+ok: [pk-test-01] => {
+    "d2a_run_results": {
+        "step1": {
+            "action": "test_connection",
+            "duration_seconds": null,
+            "ended_at": null,
+            "error": null,
+            "note": null,
+            "on_failure": "hard",
+            "option": "get_info",
+            "requires": [],
+            "started_at": null,
+            "status": "not_run",
+            "step": "step1"
+        }
+    }
+}
+
+TASK [Execute managed option actions (step-ordered)] ***************************
+included: /runner/project/tasks/execute_managed_option_actions.yml for pk-test-01 => (item=step1:get_info)
+
+TASK [Reset per-step result facts for this iteration] **************************
+ok: [pk-test-01]
+
+TASK [Compute cascade gate (requires + chain-abort + not-configured)] **********
+ok: [pk-test-01]
+
+TASK [Announce cascade skip] ***************************************************
+skipping: [pk-test-01]
+
+TASK [dxc.xaas.process_common_variables : Build reserved-prefix regex] *********
+ok: [pk-test-01]
+
+TASK [dxc.xaas.process_common_variables : Compute candidate key set] ***********
+ok: [pk-test-01]
+
+TASK [dxc.xaas.process_common_variables : Detect collisions with reserved framework variables] ***
+ok: [pk-test-01]
+
+TASK [dxc.xaas.process_common_variables : Refuse to promote CDB keys that collide with framework internals] ***
+skipping: [pk-test-01]
+
+TASK [dxc.xaas.process_common_variables : Define collected managed option variables] ***
+ok: [pk-test-01] => (item={'key': 'step', 'value': 'step1'})
+ok: [pk-test-01] => (item={'key': 'role', 'value': 'get_info'})
+ok: [pk-test-01] => (item={'key': 'managed_option_id', 'value': 'e9b6f4ba-f8db-4a7b-ac1d-ff01727c1ec2'})
+ok: [pk-test-01] => (item={'key': 'type', 'value': 'built_in'})
+ok: [pk-test-01] => (item={'key': 'dependencies', 'value': []})
+ok: [pk-test-01] => (item={'key': 'software_addon', 'value': {'id': 'd0a51ab0-e985-4695-a0de-a7448896eb86', 'name': 'get_info_lin', 'managed_option_name': 'get_info', 'properties': {'status': 'active', 'version': '1.0', 'playbook_file': 'get_info', 'supporting_os': 'linux', 'entry_playbook': True, 'custom_parameters': {}}, 'links': {'_self': '/api/cdb/software_addons/d0a51ab0-e985-4695-a0de-a7448896eb86', 'managed_option': '/api/cdb/managed_options/e9b6f4ba-f8db-4a7b-ac1d-ff01727c1ec2'}, 'updated_at': '2026-05-25T08:29:44.591833Z', 'updated_by': 'vstrycek', 'created_at': '2026-02-03T09:35:50.358331Z', 'created_by': 'vstrycek'}})
+ok: [pk-test-01] => (item={'key': 'action', 'value': 'test_connection'})
+[WARNING]: Found variable using reserved name: action
+
+TASK [dxc.xaas.process_common_variables : Parse common variables] **************
+ok: [pk-test-01]
+
+TASK [dxc.xaas.process_common_variables : Parse custom parameters] *************
+skipping: [pk-test-01]
+
+TASK [dxc.xaas.process_common_variables : Expose namespaced managed option payload] ***
+ok: [pk-test-01]
+
+TASK [dxc.xaas.process_common_variables : Display native parameters] ***********
+ok: [pk-test-01] => {
+    "msg": [
+        "Managed option 'get_info' on pk-test-01",
+        "ansible_host: 100.66.0.108",
+        "vm_os_type: linux",
+        "vm_os_full_name: Red Hat® Enterprise Linux® Server 9.6 (64-bit)",
+        "vm_fqdn: pk-test-01.acmeco.us-central-010.mcloud.entsvcs.com"
+    ]
+}
+
+TASK [dxc.xaas.process_common_variables : Display collected managed option parameters] ***
+ok: [pk-test-01] => (item={'key': 'step', 'value': 'step1'}) => {
+    "msg": [
+        "step",
+        "step1"
+    ]
+}
+ok: [pk-test-01] => (item={'key': 'role', 'value': 'get_info'}) => {
+    "msg": [
+        "role",
+        "get_info"
+    ]
+}
+ok: [pk-test-01] => (item={'key': 'managed_option_id', 'value': 'e9b6f4ba-f8db-4a7b-ac1d-ff01727c1ec2'}) => {
+    "msg": [
+        "managed_option_id",
+        "e9b6f4ba-f8db-4a7b-ac1d-ff01727c1ec2"
+    ]
+}
+ok: [pk-test-01] => (item={'key': 'type', 'value': 'built_in'}) => {
+    "msg": [
+        "type",
+        "built_in"
+    ]
+}
+ok: [pk-test-01] => (item={'key': 'dependencies', 'value': []}) => {
+    "msg": [
+        "dependencies",
+        []
+    ]
+}
+ok: [pk-test-01] => (item={'key': 'software_addon', 'value': {'id': 'd0a51ab0-e985-4695-a0de-a7448896eb86', 'name': 'get_info_lin', 'managed_option_name': 'get_info', 'properties': {'status': 'active', 'version': '1.0', 'playbook_file': 'get_info', 'supporting_os': 'linux', 'entry_playbook': True, 'custom_parameters': {}}, 'links': {'_self': '/api/cdb/software_addons/d0a51ab0-e985-4695-a0de-a7448896eb86', 'managed_option': '/api/cdb/managed_options/e9b6f4ba-f8db-4a7b-ac1d-ff01727c1ec2'}, 'updated_at': '2026-05-25T08:29:44.591833Z', 'updated_by': 'vstrycek', 'created_at': '2026-02-03T09:35:50.358331Z', 'created_by': 'vstrycek'}}) => {
+    "msg": [
+        "software_addon",
+        {
+            "created_at": "2026-02-03T09:35:50.358331Z",
+            "created_by": "vstrycek",
+            "id": "d0a51ab0-e985-4695-a0de-a7448896eb86",
+            "links": {
+                "_self": "/api/cdb/software_addons/d0a51ab0-e985-4695-a0de-a7448896eb86",
+                "managed_option": "/api/cdb/managed_options/e9b6f4ba-f8db-4a7b-ac1d-ff01727c1ec2"
+            },
+            "managed_option_name": "get_info",
+            "name": "get_info_lin",
+            "properties": {
+                "custom_parameters": {},
+                "entry_playbook": true,
+                "playbook_file": "get_info",
+                "status": "active",
+                "supporting_os": "linux",
+                "version": "1.0"
+            },
+            "updated_at": "2026-05-25T08:29:44.591833Z",
+            "updated_by": "vstrycek"
+        }
+    ]
+}
+ok: [pk-test-01] => (item={'key': 'action', 'value': 'test_connection'}) => {
+    "msg": [
+        "action",
+        "test_connection"
+    ]
+}
+
+TASK [dxc.xaas.process_common_variables : Display custom parameters] ***********
+skipping: [pk-test-01]
+
+TASK [Load dependencies when defined] ******************************************
+skipping: [pk-test-01]
+
+TASK [Include managed option role] *********************************************
+included: dxc.xaas.get_info for pk-test-01
+
+TASK [dxc.xaas.get_info : Parse managed option variables] **********************
+ok: [pk-test-01]
+
+TASK [dxc.xaas.get_info : Initialize connection test results] ******************
+ok: [pk-test-01]
+
+TASK [dxc.xaas.get_info : Gather Windows facts] ********************************
+skipping: [pk-test-01]
+
+TASK [dxc.xaas.get_info : Get Windows hostname] ********************************
+skipping: [pk-test-01]
+
+TASK [dxc.xaas.get_info : Get Windows uptime] **********************************
+skipping: [pk-test-01]
+
+TASK [dxc.xaas.get_info : Get Windows version] *********************************
+skipping: [pk-test-01]
+
+TASK [dxc.xaas.get_info : Update Windows connection results] *******************
+skipping: [pk-test-01]
+
+TASK [dxc.xaas.get_info : Gather Linux facts] **********************************
+fatal: [pk-test-01]: UNREACHABLE! => {"changed": false, "msg": "Failed to connect to the host via ssh: Warning: Permanently added '100.66.0.108' (ED25519) to the list of known hosts.\\r\\nAuthorized users only. All activity may be monitored and reported.\\nLoad key \\"/tmp/ansible.kgrju_2v_ssh_cert\\": invalid format\\r\\ncloudauto@100.66.0.108: Permission denied (publickey,gssapi-keyex,gssapi-with-mic,password).", "unreachable": true}
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=104  changed=8    unreachable=0    failed=0    skipped=41   rescued=0    ignored=0
+pk-test-01                 : ok=22   changed=0    unreachable=1    failed=0    skipped=10   rescued=0    ignored=0

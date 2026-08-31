@@ -1,0 +1,580 @@
+Identity added: /runner/artifacts/11181/ssh_key_data (cloudauto@ntnx-awx-01b)
+[DEPRECATION WARNING]: ANSIBLE_COLLECTIONS_PATHS option, does not fit var
+naming standard, use the singular form ANSIBLE_COLLECTIONS_PATH instead. This
+feature will be removed from ansible-core in version 2.19. Deprecation warnings
+ can be disabled by setting deprecation_warnings=False in ansible.cfg.
+SSH password:
+
+PLAY [Backup AWX, CDB, and Vault Components] ***********************************
+
+TASK [Gathering Facts] *********************************************************
+[WARNING]: Platform linux on host ntnx-awx-01b.us-
+central-010.mcloud.entsvcs.com is using the discovered Python interpreter at
+/usr/bin/python3.9, but future installation of another Python interpreter could
+change the meaning of that path. See https://docs.ansible.com/ansible-
+core/2.17/reference_appendices/interpreter_discovery.html for more information.
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Validate required variables] *********************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => {
+    "changed": false,
+    "msg": "Required variables validated successfully"
+}
+
+TASK [Validate component structure] ********************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => (item=awx-awx) => {
+    "ansible_loop_var": "item",
+    "changed": false,
+    "item": {
+        "component": "awx"
+    },
+    "msg": "Component awx validated successfully"
+}
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => (item=cdb-cdb) => {
+    "ansible_loop_var": "item",
+    "changed": false,
+    "item": {
+        "component": "cdb",
+        "namespace": "cdb"
+    },
+    "msg": "Component cdb validated successfully"
+}
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => (item=vault-vault) => {
+    "ansible_loop_var": "item",
+    "changed": false,
+    "item": {
+        "component": "vault",
+        "namespace": "vault"
+    },
+    "msg": "Component vault validated successfully"
+}
+
+TASK [Validate GPG passphrase when encryption is enabled] **********************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Detect kubectl command on target host] ***********************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Validate kubectl availability] *******************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => {
+    "changed": false,
+    "msg": "Using Kubernetes CLI: kubectl"
+}
+
+TASK [Set kubectl command] *****************************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Ensure base backup directory exists] *************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Display backup configuration] ********************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => {
+    "msg": [
+        "===== Backup Configuration =====",
+        "Components to backup: 3",
+        "Base Directory: /backup",
+        "Timestamp: 20260603T050025",
+        "Encryption: Disabled",
+        "Retention Count: 14",
+        "Lockfile: /var/run/backup_awx.lock",
+        "Stale lock threshold: 900s",
+        "================================"
+    ]
+}
+
+TASK [Check if lockfile exists] ************************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Remove stale lockfile if older than timeout threshold] *******************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Log stale lockfile removal] **********************************************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Re-check lockfile after stale removal attempt] ***************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Read existing lockfile content (for diagnostic logging)] *****************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Abort — another backup job is already running] ***************************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Acquire lock — write PID and timestamp] **********************************
+changed: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Process component backups] ***********************************************
+included: /runner/project/tasks/process_component.yml for ntnx-awx-01b.us-central-010.mcloud.entsvcs.com => (item=awx-awx)
+included: /runner/project/tasks/process_component.yml for ntnx-awx-01b.us-central-010.mcloud.entsvcs.com => (item=cdb-cdb)
+included: /runner/project/tasks/process_component.yml for ntnx-awx-01b.us-central-010.mcloud.entsvcs.com => (item=vault-vault)
+
+TASK [Set component variables] *************************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Set namespace-based backup directory] ************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Ensure namespace backup directory exists] ********************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Display component backup information] ************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => {
+    "msg": [
+        "===== Processing AWX =====",
+        "Namespace: awx",
+        "Backup Directory: /backup/awx",
+        "========================================"
+    ]
+}
+
+TASK [Backup AWX] **************************************************************
+included: /runner/project/tasks/backup_awx.yml for ntnx-awx-01b.us-central-010.mcloud.entsvcs.com
+
+TASK [Get AWX PostgreSQL pod name (only Running pods)] *************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Display AWX PostgreSQL pod] **********************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => {
+    "msg": "Found AWX PostgreSQL pod: awx-postgres-15-0"
+}
+
+TASK [Set AWX operator backup variables] ***************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Ensure AWX operator backup directory exists] *****************************
+changed: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Detect AWX custom resource name] *****************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Export AWX custom resource] **********************************************
+changed: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Export all Secrets in namespace] *****************************************
+changed: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Export operator-managed ConfigMaps] **************************************
+changed: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Set backup filename] *****************************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Terminate idle-in-transaction sessions older than 5 minutes] *************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Log terminated idle-in-transaction sessions] *****************************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Check for remaining blocking locks] **************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Fail if blocking locks still present after cleanup] **********************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Create PostgreSQL backup in pod] *****************************************
+ASYNC POLL on ntnx-awx-01b.us-central-010.mcloud.entsvcs.com: jid=j864587307025.891777 started=1 finished=0
+ASYNC POLL on ntnx-awx-01b.us-central-010.mcloud.entsvcs.com: jid=j864587307025.891777 started=1 finished=0
+ASYNC POLL on ntnx-awx-01b.us-central-010.mcloud.entsvcs.com: jid=j864587307025.891777 started=1 finished=0
+ASYNC POLL on ntnx-awx-01b.us-central-010.mcloud.entsvcs.com: jid=j864587307025.891777 started=1 finished=0
+ASYNC POLL on ntnx-awx-01b.us-central-010.mcloud.entsvcs.com: jid=j864587307025.891777 started=1 finished=0
+ASYNC OK on ntnx-awx-01b.us-central-010.mcloud.entsvcs.com: jid=j864587307025.891777
+changed: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Verify backup file exists and is not empty] ******************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Fail if backup file is missing or suspiciously small] ********************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Encrypt backup with GPG] *************************************************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Remove unencrypted backup] ***********************************************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Set final backup file path] **********************************************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Set final backup file path (unencrypted)] ********************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Bundle AWX backup artifacts] *********************************************
+changed: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Get final bundle size] ***************************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [AWX backup completed] ****************************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => {
+    "msg": [
+        "AWX backup completed successfully",
+        "Backup file: /backup/awx/20260603T050025_awx_bundle.tgz",
+        "Size: 420M"
+    ]
+}
+
+TASK [Backup CDB] **************************************************************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Backup Vault] ************************************************************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Apply retention policy for awx] ******************************************
+included: /runner/project/tasks/retention.yml for ntnx-awx-01b.us-central-010.mcloud.entsvcs.com
+
+TASK [Set backup file pattern] *************************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Find all backups matching pattern in namespace directory] ****************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Display found backups] ***************************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => {
+    "msg": "Found 15 backup(s) for awx in awx"
+}
+
+TASK [Sort backups by modification time (newest first)] ************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Identify backups to delete] **********************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Display retention information] *******************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => {
+    "msg": [
+        "Retention policy: Keep 14 most recent backups",
+        "Total backups found: 15",
+        "Backups to delete: 1"
+    ]
+}
+
+TASK [Delete old backups] ******************************************************
+changed: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => (item=20260601T050026_awx_bundle.tgz)
+
+TASK [Log deleted backups] *****************************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => (item=20260601T050026_awx_bundle.tgz) => {
+    "msg": "Deleted old backup: 20260601T050026_awx_bundle.tgz"
+}
+
+TASK [Retention policy completed] **********************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => {
+    "msg": "Retention policy applied successfully. Keeping 14 backup(s)."
+}
+
+TASK [Set component variables] *************************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Set namespace-based backup directory] ************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Ensure namespace backup directory exists] ********************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Display component backup information] ************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => {
+    "msg": [
+        "===== Processing CDB =====",
+        "Namespace: cdb",
+        "Backup Directory: /backup/cdb",
+        "========================================"
+    ]
+}
+
+TASK [Backup AWX] **************************************************************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Backup CDB] **************************************************************
+included: /runner/project/tasks/backup_cdb.yml for ntnx-awx-01b.us-central-010.mcloud.entsvcs.com
+
+TASK [Get CDB PostgreSQL pod name (only Running pods)] *************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Display CDB PostgreSQL pod] **********************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => {
+    "msg": "Found CDB PostgreSQL pod: postgres-76bd4db87f-ggkxp in namespace cdb"
+}
+
+TASK [Set backup filename] *****************************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Terminate idle-in-transaction sessions older than 5 minutes] *************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Log terminated idle-in-transaction sessions] *****************************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Check for remaining blocking locks] **************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Fail if blocking locks still present after cleanup] **********************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Create PostgreSQL backup in pod] *****************************************
+ASYNC OK on ntnx-awx-01b.us-central-010.mcloud.entsvcs.com: jid=j693209780802.895025
+changed: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Validate CDB dump file is not empty] *************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Fail if backup file is missing or suspiciously small] ********************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Encrypt backup with GPG] *************************************************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Remove unencrypted backup] ***********************************************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Set final backup file path] **********************************************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Set final backup file path (unencrypted)] ********************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [CDB backup completed] ****************************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [CDB backup completed] ****************************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => {
+    "msg": [
+        "CDB backup completed successfully",
+        "Namespace: cdb",
+        "Backup file: /backup/cdb/20260603T050025_cdb.dump",
+        "Size: 404K"
+    ]
+}
+
+TASK [Backup Vault] ************************************************************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Apply retention policy for cdb] ******************************************
+included: /runner/project/tasks/retention.yml for ntnx-awx-01b.us-central-010.mcloud.entsvcs.com
+
+TASK [Set backup file pattern] *************************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Find all backups matching pattern in namespace directory] ****************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Display found backups] ***************************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => {
+    "msg": "Found 15 backup(s) for cdb in cdb"
+}
+
+TASK [Sort backups by modification time (newest first)] ************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Identify backups to delete] **********************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Display retention information] *******************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => {
+    "msg": [
+        "Retention policy: Keep 14 most recent backups",
+        "Total backups found: 15",
+        "Backups to delete: 1"
+    ]
+}
+
+TASK [Delete old backups] ******************************************************
+changed: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => (item=20260601T050026_cdb.dump)
+
+TASK [Log deleted backups] *****************************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => (item=20260601T050026_cdb.dump) => {
+    "msg": "Deleted old backup: 20260601T050026_cdb.dump"
+}
+
+TASK [Retention policy completed] **********************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => {
+    "msg": "Retention policy applied successfully. Keeping 14 backup(s)."
+}
+
+TASK [Set component variables] *************************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Set namespace-based backup directory] ************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Ensure namespace backup directory exists] ********************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Display component backup information] ************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => {
+    "msg": [
+        "===== Processing VAULT =====",
+        "Namespace: vault",
+        "Backup Directory: /backup/vault",
+        "========================================"
+    ]
+}
+
+TASK [Backup AWX] **************************************************************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Backup CDB] **************************************************************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Backup Vault] ************************************************************
+included: /runner/project/tasks/backup_vault.yml for ntnx-awx-01b.us-central-010.mcloud.entsvcs.com
+
+TASK [Get Vault pod name (only Running pods)] **********************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Display Vault pod] *******************************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => {
+    "msg": "Found Vault pod: vault-7b6f5dfdb5-pv2fx in namespace vault"
+}
+
+TASK [Set backup filename] *****************************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Check if Consul is available in pod] *************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Create backup directory in Vault pod] ************************************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Create Consul snapshot] **************************************************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Copy backup from pod to local filesystem] ********************************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Clean up backup in pod] **************************************************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Create backup directory in Vault pod] ************************************
+changed: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Get Vault root token from secret] ****************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Validate Vault token is present] *****************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Set temporary Vault token file path] *************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Write Vault token to temporary file] *************************************
+changed: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Run Vault raft snapshot command] *****************************************
+changed: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Remove temporary Vault token file] ***************************************
+changed: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Copy backup from pod to local filesystem] ********************************
+changed: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Clean up backup in pod] **************************************************
+changed: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Get system token, unseal keys, ids.conf] *********************************
+changed: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Encrypt backup with GPG] *************************************************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Remove unencrypted backup] ***********************************************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Set final backup file path] **********************************************
+skipping: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Set final backup file path (unencrypted)] ********************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Vault backup completed] **************************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Vault backup completed] **************************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => {
+    "msg": [
+        "Vault backup completed successfully",
+        "Namespace: vault",
+        "Backup method: Raft snapshot",
+        "Backup file: /backup/vault/20260603T050025_vault.snap",
+        "Size: 660K"
+    ]
+}
+
+TASK [Apply retention policy for vault] ****************************************
+included: /runner/project/tasks/retention.yml for ntnx-awx-01b.us-central-010.mcloud.entsvcs.com
+
+TASK [Set backup file pattern] *************************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Find all backups matching pattern in namespace directory] ****************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Display found backups] ***************************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => {
+    "msg": "Found 19 backup(s) for vault in vault"
+}
+
+TASK [Sort backups by modification time (newest first)] ************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Identify backups to delete] **********************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Display retention information] *******************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => {
+    "msg": [
+        "Retention policy: Keep 14 most recent backups",
+        "Total backups found: 19",
+        "Backups to delete: 5"
+    ]
+}
+
+TASK [Delete old backups] ******************************************************
+changed: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => (item=20260602T170025_vault.snap)
+changed: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => (item=20260602T140026_vault.creds)
+changed: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => (item=20260602T140026_vault.ids)
+changed: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => (item=20260602T140026_vault.keys)
+changed: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => (item=20260602T140026_vault.token)
+
+TASK [Log deleted backups] *****************************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => (item=20260602T170025_vault.snap) => {
+    "msg": "Deleted old backup: 20260602T170025_vault.snap"
+}
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => (item=20260602T140026_vault.creds) => {
+    "msg": "Deleted old backup: 20260602T140026_vault.creds"
+}
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => (item=20260602T140026_vault.ids) => {
+    "msg": "Deleted old backup: 20260602T140026_vault.ids"
+}
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => (item=20260602T140026_vault.keys) => {
+    "msg": "Deleted old backup: 20260602T140026_vault.keys"
+}
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => (item=20260602T140026_vault.token) => {
+    "msg": "Deleted old backup: 20260602T140026_vault.token"
+}
+
+TASK [Retention policy completed] **********************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => {
+    "msg": "Retention policy applied successfully. Keeping 14 backup(s)."
+}
+
+TASK [Backup completed successfully] *******************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => {
+    "msg": [
+        "===== Backup Summary =====",
+        "Total components backed up: 3",
+        "Base Location: /backup",
+        "Status: SUCCESS",
+        "=========================="
+    ]
+}
+
+TASK [Release lock (runs on success, failure, and cancellation)] ***************
+changed: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com]
+
+TASK [Confirm lock released] ***************************************************
+ok: [ntnx-awx-01b.us-central-010.mcloud.entsvcs.com] => {
+    "msg": "Lockfile /var/run/backup_awx.lock released."
+}
+
+PLAY RECAP *********************************************************************
+ntnx-awx-01b.us-central-010.mcloud.entsvcs.com : ok=106  changed=19   unreachable=0    failed=0    skipped=30   rescued=0    ignored=0

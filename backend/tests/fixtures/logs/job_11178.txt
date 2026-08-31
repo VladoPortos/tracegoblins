@@ -1,0 +1,1713 @@
+[DEPRECATION WARNING]: ANSIBLE_COLLECTIONS_PATHS option, does not fit var
+naming standard, use the singular form ANSIBLE_COLLECTIONS_PATH instead. This
+feature will be removed from ansible-core in version 2.19. Deprecation warnings
+ can be disabled by setting deprecation_warnings=False in ansible.cfg.
+
+PLAY [Day2Actions entrypoint] **************************************************
+
+TASK [Display AWX job info] ****************************************************
+ok: [localhost] => {
+    "msg": [
+        "AWX Job Start",
+        "  Job Template Name: Day2Actions_no_survey",
+        "  Job Id:            11178",
+        "  AWX User:          fixture.user@example.com",
+        "  Current Log Time:  2026-06-03 02:20:14 UTC"
+    ]
+}
+
+TASK [Resolve deploy-workflow handoff (targetVM/organization from artifacts)] ***
+included: /runner/project/tasks/resolve_deploy_handoff.yml for localhost
+
+TASK [Derive targetVM from vm_name artifact when not supplied] *****************
+ok: [localhost]
+
+TASK [Derive organization from deploy artifact cloud_org_details (only if not supplied)] ***
+ok: [localhost]
+
+TASK [Debug - day2actions deploy-handoff resolution] ***************************
+ok: [localhost] => {
+    "msg": [
+        "deploy-handoff: targetVM=n66hnr93c (vm_name artifact=n66hnr93c)",
+        "deploy-handoff: organization=acmeco"
+    ]
+}
+
+TASK [Resolve organization scope (early, for chain-template lookup)] ***********
+included: /runner/project/tasks/resolve_organization.yml for localhost
+
+TASK [Resolve organization friendly name] **************************************
+ok: [localhost]
+
+TASK [Fetch organization by friendly name] *************************************
+ok: [localhost]
+
+TASK [Ensure organization exists] **********************************************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Select organization] *****************************************************
+ok: [localhost]
+
+TASK [Resolve chain template (if d2a_chain_template_name is set)] **************
+included: /runner/project/tasks/resolve_chain_template.yml for localhost
+
+TASK [Chain-template guard (no-op when d2a_chain_template_name is unset)] ******
+ok: [localhost]
+
+TASK [Fetch chain template from CDB] *******************************************
+ok: [localhost]
+
+TASK [Assert chain template exists] ********************************************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Assert chain template has the correct kind discriminator] ****************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Capture chain template properties] ***************************************
+ok: [localhost]
+
+TASK [Assert chain template carries a non-empty managed_options chain] *********
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Supersede managed_options (template's chain ALWAYS wins via _d2a_options_parsed)] ***
+ok: [localhost]
+
+TASK [Supersede wrapper-level keys via set_fact into original variable names] ***
+skipping: [localhost] => (item=managed_options)
+ok: [localhost] => (item=skip_fqdn_dns_verification)
+skipping: [localhost] => (item=use_vm_maintenance_lock)
+skipping: [localhost] => (item=execute_managed_options_locally)
+skipping: [localhost] => (item=debug_mode)
+skipping: [localhost] => (item=d2a_connection_use_fqdn)
+ok: [localhost] => (item=d2a_summary_email_mode)
+skipping: [localhost] => (item=d2a_summary_email_to)
+skipping: [localhost] => (item=d2a_summary_email_from)
+skipping: [localhost] => (item=smtp_host)
+skipping: [localhost] => (item=smtp_port)
+skipping: [localhost] => (item=secure)
+
+TASK [Compute audit-log source attribution for each wrapper-level key] *********
+ok: [localhost]
+
+TASK [Audit log — every wrapper-level key with its effective source] ***********
+ok: [localhost] => {
+    "msg": "Chain template 'no_paas_chain' resolved. Wrapper-level inputs: ['{\\"key\\": \\"managed_options\\", \\"source\\": \\"template\\", \\"value\\": \\"<chain dict>\\"}', '{\\"key\\": \\"skip_fqdn_dns_verification\\", \\"source\\": \\"template\\", \\"value\\": true}', '{\\"key\\": \\"use_vm_maintenance_lock\\", \\"source\\": \\"default\\", \\"value\\": true}', '{\\"key\\": \\"execute_managed_options_locally\\", \\"source\\": \\"default\\", \\"value\\": false}', '{\\"key\\": \\"debug_mode\\", \\"source\\": \\"default\\", \\"value\\": \\"true\\"}', '{\\"key\\": \\"d2a_connection_use_fqdn\\", \\"source\\": \\"default\\", \\"value\\": false}', '{\\"key\\": \\"d2a_summary_email_mode\\", \\"source\\": \\"template\\", \\"value\\": \\"always\\"}', '{\\"key\\": \\"d2a_summary_email_to\\", \\"source\\": \\"default\\", \\"value\\": [\\"fixture.user@example.com\\"]}', '{\\"key\\": \\"d2a_summary_email_from\\", \\"source\\": \\"default\\", \\"value\\": \\"fixture.user@example.com\\"}', '{\\"key\\": \\"smtp_host\\", \\"source\\": \\"default\\", \\"value\\": null}', '{\\"key\\": \\"smtp_port\\", \\"source\\": \\"default\\", \\"value\\": null}', '{\\"key\\": \\"secure\\", \\"source\\": \\"default\\", \\"value\\": null}']"
+}
+
+TASK [Audit log — emit one key:source line per allowlist key (grep-friendly)] ***
+ok: [localhost] => (item=managed_options) => {
+    "msg": "managed_options: template"
+}
+ok: [localhost] => (item=skip_fqdn_dns_verification) => {
+    "msg": "skip_fqdn_dns_verification: template"
+}
+ok: [localhost] => (item=use_vm_maintenance_lock) => {
+    "msg": "use_vm_maintenance_lock: default"
+}
+ok: [localhost] => (item=execute_managed_options_locally) => {
+    "msg": "execute_managed_options_locally: default"
+}
+ok: [localhost] => (item=debug_mode) => {
+    "msg": "debug_mode: default"
+}
+ok: [localhost] => (item=d2a_connection_use_fqdn) => {
+    "msg": "d2a_connection_use_fqdn: default"
+}
+ok: [localhost] => (item=d2a_summary_email_mode) => {
+    "msg": "d2a_summary_email_mode: template"
+}
+ok: [localhost] => (item=d2a_summary_email_to) => {
+    "msg": "d2a_summary_email_to: default"
+}
+ok: [localhost] => (item=d2a_summary_email_from) => {
+    "msg": "d2a_summary_email_from: default"
+}
+ok: [localhost] => (item=smtp_host) => {
+    "msg": "smtp_host: default"
+}
+ok: [localhost] => (item=smtp_port) => {
+    "msg": "smtp_port: default"
+}
+ok: [localhost] => (item=secure) => {
+    "msg": "secure: default"
+}
+
+TASK [Audit log — unknown keys in template.properties (not in allowlist; skipped)] ***
+skipping: [localhost]
+
+TASK [Collect VM and org CDB data] *********************************************
+included: /runner/project/tasks/collect_vm_context.yml for localhost
+
+TASK [Resolve organization scope] **********************************************
+included: /runner/project/tasks/resolve_organization.yml for localhost
+
+TASK [Resolve organization friendly name] **************************************
+skipping: [localhost]
+
+TASK [Fetch organization by friendly name] *************************************
+skipping: [localhost]
+
+TASK [Ensure organization exists] **********************************************
+skipping: [localhost]
+
+TASK [Select organization] *****************************************************
+skipping: [localhost]
+
+TASK [Fetch target VM by name and organization] ********************************
+ok: [localhost]
+
+TASK [Ensure target VM exists] *************************************************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Select target resource] **************************************************
+ok: [localhost]
+
+TASK [Fetch cloud target details for resource] *********************************
+ok: [localhost]
+
+TASK [Ensure cloud target exists] **********************************************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Get cloud account properties] ********************************************
+ok: [localhost]
+
+TASK [Normalize target resource facts] *****************************************
+ok: [localhost]
+
+TASK [Select wrapper connection target] ****************************************
+ok: [localhost]
+
+TASK [Assert wrapper has a usable connection target] ***************************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "Connection target resolved: 100.70.7.23 (source: management_ip_address)"
+}
+
+TASK [Debug collected context] *************************************************
+ok: [localhost] => {
+    "msg": [
+        "organization: acmeco (id: 69c15357-fa95-4f56-b004-b5a680a44b54)",
+        "targetVM: n66hnr93c (id: a8b1b15d-0a2b-4703-a3b9-9b6d0f11079c)",
+        "ansible_host: 100.70.7.23 (source: management_ip_address, d2a_connection_use_fqdn=False)",
+        "vm_os_type: linux",
+        "vm_os_full_name: Red Hat® Enterprise Linux® Server 9.6 (64-bit)",
+        "vm_fqdn: n66hnr93c.acmeco.us-central-010.mcloud.entsvcs.com",
+        "management_ip_address: 100.70.7.23"
+    ]
+}
+
+TASK [Assert managed_options payload is provided (or supplied by chain template)] ***
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Parse managed_options into dict form (_d2a_options_parsed)] **************
+skipping: [localhost]
+
+TASK [Validate step-key contract on managed_options] ***************************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "managed_options step-key contract validated: 1 step(s)."
+}
+
+TASK [Build canonical _d2a_options_list (step-ordered)] ************************
+ok: [localhost]
+
+TASK [Debug canonical option list (step-ordered)] ******************************
+ok: [localhost] => {
+    "_d2a_options_list": [
+        {
+            "role": "shared_values",
+            "step": "step1",
+            "value": {
+                "action": "sync_shared_values",
+                "on_failure": "hard"
+            }
+        }
+    ]
+}
+
+TASK [Cross-option payload validation (on_failure, requires, ordering, duplicates)] ***
+included: /runner/project/tasks/validate_managed_options.yml for localhost
+
+TASK [Build ordered list of planned step keys] *********************************
+ok: [localhost]
+
+TASK [Validate on_failure value per step] **************************************
+ok: [localhost] => (item=step1:shared_values) => {
+    "_item": {
+        "role": "shared_values",
+        "step": "step1",
+        "value": {
+            "action": "sync_shared_values",
+            "on_failure": "hard"
+        }
+    },
+    "ansible_loop_var": "_item",
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Validate requires structure per step (must be a list of step-key strings)] ***
+skipping: [localhost] => (item=step1:shared_values)
+skipping: [localhost]
+
+TASK [Validate requires has no duplicate entries] ******************************
+skipping: [localhost] => (item=step1:shared_values)
+skipping: [localhost]
+
+TASK [Validate requires entries reference earlier step keys present in this run] ***
+skipping: [localhost] => (item=step1:shared_values)
+skipping: [localhost]
+
+TASK [Report managed_options validation passed] ********************************
+ok: [localhost] => {
+    "msg": "managed_options validation passed for 1 step(s): step1:shared_values"
+}
+
+TASK [Process managed options list (per-option CDB resolution + input validation)] ***
+included: /runner/project/tasks/process_managed_option.yml for localhost => (item={'step': 'step1', 'role': 'shared_values', 'value': {'action': 'sync_shared_values', 'on_failure': 'hard'}})
+
+TASK [Process managed option step] *********************************************
+ok: [localhost]
+
+TASK [Collect managed option inputs and CDB data] ******************************
+included: /runner/project/tasks/collect_managed_option_context.yml for localhost
+
+TASK [Reset per-iteration scratch facts] ***************************************
+ok: [localhost]
+
+TASK [Fetch managed option definition] *****************************************
+ok: [localhost]
+
+TASK [Mark step as not configured when CDB has no managed_option record] *******
+ok: [localhost]
+
+TASK [Announce not-configured short-circuit] ***********************************
+skipping: [localhost]
+
+TASK [Build not-configured marker] *********************************************
+skipping: [localhost]
+
+TASK [Merge per-step inputs into not-configured marker] ************************
+skipping: [localhost]
+
+TASK [Force not-configured marker after merge] *********************************
+skipping: [localhost]
+
+TASK [Stage not-configured marker into managed_options_data] *******************
+skipping: [localhost]
+
+TASK [Select managed option] ***************************************************
+ok: [localhost]
+
+TASK [Fetch software addons for managed option] ********************************
+ok: [localhost]
+
+TASK [Ensure software addons exist] ********************************************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Select software addon matching OS] ***************************************
+ok: [localhost]
+
+TASK [Ensure software addon matches OS] ****************************************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Normalize software addon fields] *****************************************
+ok: [localhost]
+
+TASK [Debug collected context] *************************************************
+ok: [localhost] => {
+    "msg": [
+        "managed_option: shared_values (id: 44e1d36a-f635-4c70-8cde-53d9f93d81d5)",
+        "software_addon: shared_values_lin",
+        "software_addon_supporting_os: linux",
+        "software_addon_playbook_file: ",
+        "managed_option_extra_params: ",
+        "software_addon_obj: {'id': 'ba78376b-4e8a-422c-8216-6324c64fd71b', 'name': 'shared_values_lin', 'managed_option_name': 'shared_values', 'properties': {'status': 'active', 'version': '1.0', 'supporting_os': 'linux'}, 'links': {'_self': '/api/cdb/software_addons/ba78376b-4e8a-422c-8216-6324c64fd71b', 'managed_option': '/api/cdb/managed_options/44e1d36a-f635-4c70-8cde-53d9f93d81d5'}, 'updated_at': '2026-05-25T08:55:26.657306Z', 'updated_by': 'vstrycek', 'created_at': '2026-03-06T10:13:52.560195Z', 'created_by': 'vstrycek'}"
+    ]
+}
+
+TASK [Prepare managed option data] *********************************************
+ok: [localhost]
+
+TASK [Add input parameters] ****************************************************
+ok: [localhost]
+
+TASK [Debug merged managed option data] ****************************************
+ok: [localhost] => {
+    "managed_option_data": {
+        "action": "sync_shared_values",
+        "dependencies": [],
+        "managed_option_id": "44e1d36a-f635-4c70-8cde-53d9f93d81d5",
+        "on_failure": "hard",
+        "role": "shared_values",
+        "software_addon": {
+            "created_at": "2026-03-06T10:13:52.560195Z",
+            "created_by": "vstrycek",
+            "id": "ba78376b-4e8a-422c-8216-6324c64fd71b",
+            "links": {
+                "_self": "/api/cdb/software_addons/ba78376b-4e8a-422c-8216-6324c64fd71b",
+                "managed_option": "/api/cdb/managed_options/44e1d36a-f635-4c70-8cde-53d9f93d81d5"
+            },
+            "managed_option_name": "shared_values",
+            "name": "shared_values_lin",
+            "properties": {
+                "status": "active",
+                "supporting_os": "linux",
+                "version": "1.0"
+            },
+            "updated_at": "2026-05-25T08:55:26.657306Z",
+            "updated_by": "vstrycek"
+        },
+        "step": "step1",
+        "type": "built_in"
+    }
+}
+
+TASK [Add collected context for further processing] ****************************
+ok: [localhost]
+
+TASK [Validate inputs and compatibility] ***************************************
+included: /runner/project/tasks/validate_inputs.yml for localhost
+
+TASK [Ensure required inputs are set] ******************************************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Ensure a usable connection target is present] ****************************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Ensure supporting OS list is not empty] **********************************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Validate VM OS is in the supported list] *********************************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Validate input definition against managed option values] *****************
+ok: [localhost] => (item={'key': 'action', 'value': 'sync_shared_values'}) => {
+    "ansible_loop_var": "managed_option_input",
+    "changed": false,
+    "managed_option_input": {
+        "key": "action",
+        "value": "sync_shared_values"
+    },
+    "msg": "All assertions passed"
+}
+
+TASK [Debug dispatch resolution] ***********************************************
+ok: [localhost] => {
+    "msg": [
+        "step:                 step1",
+        "managed_option:       shared_values",
+        "software_addon_playbook_file: ",
+        "managed_option_inputs: {'action': 'sync_shared_values', 'on_failure': 'hard'}"
+    ]
+}
+
+TASK [Display collected managed_options_data] **********************************
+ok: [localhost] => {
+    "managed_options_data": {
+        "step1": {
+            "action": "sync_shared_values",
+            "dependencies": [],
+            "managed_option_id": "44e1d36a-f635-4c70-8cde-53d9f93d81d5",
+            "on_failure": "hard",
+            "role": "shared_values",
+            "software_addon": {
+                "created_at": "2026-03-06T10:13:52.560195Z",
+                "created_by": "vstrycek",
+                "id": "ba78376b-4e8a-422c-8216-6324c64fd71b",
+                "links": {
+                    "_self": "/api/cdb/software_addons/ba78376b-4e8a-422c-8216-6324c64fd71b",
+                    "managed_option": "/api/cdb/managed_options/44e1d36a-f635-4c70-8cde-53d9f93d81d5"
+                },
+                "managed_option_name": "shared_values",
+                "name": "shared_values_lin",
+                "properties": {
+                    "status": "active",
+                    "supporting_os": "linux",
+                    "version": "1.0"
+                },
+                "updated_at": "2026-05-25T08:55:26.657306Z",
+                "updated_by": "vstrycek"
+            },
+            "step": "step1",
+            "type": "built_in"
+        }
+    }
+}
+
+TASK [Resolve automation credentials for target VM] ****************************
+included: dxc.xaas.automation_service_account for localhost
+
+TASK [dxc.xaas.automation_service_account : Validate input parameters] *********
+included: /runner/project/ansible_collections/dxc/xaas/roles/automation_service_account/tasks/validate_inputs.yml for localhost
+
+TASK [dxc.xaas.automation_service_account : Validate required input - input_vm_fqdn] ***
+ok: [localhost] => {
+    "changed": false,
+    "msg": "Input validation passed: input_vm_fqdn=n66hnr93c.acmeco.us-central-010.mcloud.entsvcs.com"
+}
+
+TASK [dxc.xaas.automation_service_account : Collect VM and organization data from CDB] ***
+included: /runner/project/ansible_collections/dxc/xaas/roles/automation_service_account/tasks/common_setup.yml for localhost
+
+TASK [dxc.xaas.automation_service_account : Query CDB for VM resource by FQDN] ***
+ok: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Validate exactly one VM resource found] ***
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [dxc.xaas.automation_service_account : Extract VM resource from CDB] ******
+ok: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Extract VM OS type and organization friendly name] ***
+ok: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Use organization object resolved by the caller (wrapper), if present] ***
+ok: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Fetch organization by friendly name] ***
+skipping: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Validate organization found] *******
+skipping: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Extract organization data] *********
+skipping: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Resolve automation username from organization service account] ***
+ok: [localhost] => {
+    "changed": false,
+    "msg": "Automation account name resolved from organization service account"
+}
+
+TASK [dxc.xaas.automation_service_account : Set automation username] ***********
+ok: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Validate organization friendly name is present (Vault mount segment)] ***
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [dxc.xaas.automation_service_account : Log common setup context] **********
+ok: [localhost] => {
+    "msg": [
+        "VM Resource ID: a8b1b15d-0a2b-4703-a3b9-9b6d0f11079c",
+        "Input FQDN: n66hnr93c.acmeco.us-central-010.mcloud.entsvcs.com",
+        "Organization: acmeco",
+        "OS Type: linux",
+        "Automation Username: cloudauto"
+    ]
+}
+
+TASK [dxc.xaas.automation_service_account : Initialize credential output variables] ***
+ok: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Resolve Linux credentials (signed SSH certificate)] ***
+included: /runner/project/ansible_collections/dxc/xaas/roles/automation_service_account/tasks/linux_ssh_credentials.yml for localhost
+
+TASK [dxc.xaas.automation_service_account : Fetch SSH key pair for customer] ***
+included: /runner/project/ansible_collections/dxc/xaas/roles/automation_service_account/tasks/vault/get_ssh_keys_for_customer.yml for localhost
+
+TASK [dxc.xaas.automation_service_account : Authenticate to Vault if no token available] ***
+included: /runner/project/ansible_collections/dxc/xaas/roles/automation_service_account/tasks/vault/authenticate.yml for localhost
+
+TASK [dxc.xaas.automation_service_account : Authenticate to Vault using AppRole method] ***
+changed: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Extract Vault client token from auth response] ***
+ok: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Validate Vault token was obtained] ***
+ok: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Query Vault for SSH keys at customer path] ***
+ok: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Extract SSH keys from Vault response] ***
+ok: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Validate SSH keys were retrieved] ***
+ok: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Log SSH key retrieval success] *****
+ok: [localhost] => {
+    "msg": "SSH keys retrieved for customer acmeco"
+}
+
+TASK [dxc.xaas.automation_service_account : Sign SSH public key with customer CA] ***
+included: /runner/project/ansible_collections/dxc/xaas/roles/automation_service_account/tasks/vault/sign_ssh_key.yml for localhost
+
+TASK [dxc.xaas.automation_service_account : Validate required input parameters] ***
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All required input parameters are present"
+}
+
+TASK [dxc.xaas.automation_service_account : Authenticate to Vault if no token available] ***
+skipping: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Request Vault to sign SSH public key] ***
+changed: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Extract signed certificate from Vault response] ***
+ok: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Validate signed certificate was retrieved] ***
+ok: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Log SSH key signing success] *******
+ok: [localhost] => {
+    "msg": "SSH key signed by Vault for customer acmeco, user cloudauto"
+}
+
+TASK [dxc.xaas.automation_service_account : Store Linux SSH credentials] *******
+ok: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Resolve Windows credentials (WinRM password)] ***
+skipping: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Fail on unsupported OS type] *******
+skipping: [localhost]
+
+TASK [dxc.xaas.automation_service_account : Validate credentials were resolved] ***
+ok: [localhost] => {
+    "changed": false,
+    "msg": "Credentials resolved for user 'cloudauto' (linux)"
+}
+
+TASK [dxc.xaas.automation_service_account : Log resolved automation account (secrets obscured)] ***
+ok: [localhost] => {
+    "msg": [
+        "==============================================",
+        "Automation Account Resolved",
+        "==============================================",
+        "Username:    cloudauto",
+        "OS:          linux",
+        "Customer:    acmeco",
+        "Password:    (no password — cert auth)",
+        "Signed Cert: ssh-rsa-cert-v01@ope...",
+        "=============================================="
+    ]
+}
+
+TASK [Log skipped automation credential resolution] ****************************
+skipping: [localhost]
+
+TASK [Perform DNS lookup for target FQDN] **************************************
+skipping: [localhost]
+
+TASK [Check if DNS resolution succeeded] ***************************************
+skipping: [localhost]
+
+TASK [Display DNS resolution result] *******************************************
+skipping: [localhost]
+
+TASK [Fail if FQDN is not resolvable in DNS] ***********************************
+skipping: [localhost]
+
+TASK [Log skipped FQDN DNS verification] ***************************************
+ok: [localhost] => {
+    "msg": "Skipping FQDN DNS verification because skip_fqdn_dns_verification=true"
+}
+
+TASK [Log skipped FQDN DNS verification for local execution] *******************
+skipping: [localhost]
+
+TASK [Create temp file for SSH private key] ************************************
+changed: [localhost]
+
+TASK [Write SSH private key to temp file] **************************************
+changed: [localhost]
+
+TASK [Write SSH public key alongside the private key (for cert pairing)] *******
+changed: [localhost]
+
+TASK [Set SSH key path fact] ***************************************************
+ok: [localhost]
+
+TASK [Create temp file for SSH certificate] ************************************
+changed: [localhost]
+
+TASK [Write SSH certificate to temp file] **************************************
+changed: [localhost]
+
+TASK [Set SSH cert path fact] **************************************************
+ok: [localhost]
+
+TASK [TEMP DEBUG - signed_key fact shape (trim applied?)] **********************
+ok: [localhost] => {
+    "msg": [
+        "signed_key length: 2461",
+        "ends with newline: False",
+        "last 25 chars (repr): HBQAHpDgR0waUoV9YnEPvsMxr",
+        "private_key length: 3272"
+    ]
+}
+
+TASK [TEMP DEBUG - inspect cert/key files on disk with the EE's ssh tooling] ***
+ok: [localhost]
+
+TASK [TEMP DEBUG - show on-disk inspection] ************************************
+ok: [localhost] => {
+    "_temp_dbg.stdout_lines": [
+        "=== ssh version ===",
+        "OpenSSH_9.9p1, OpenSSL 3.5.5 27 Jan 2026",
+        "=== crypto/fips ===",
+        "0",
+        "DEFAULT",
+        "=== CERT file: /tmp/ansible.g8ro639o_ssh_cert ===",
+        "bytes=2461 lines=0",
+        "--- trailing bytes (od -c) ---",
+        "0000000   r   o   a   l   g   H   B   Q   A   H   p   D   g   R   0   w",
+        "0000020   a   U   o   V   9   Y   n   E   P   v   s   M   x   r",
+        "0000036",
+        "--- ssh-keygen -L ---",
+        "/tmp/ansible.g8ro639o_ssh_cert:",
+        "        Type: fixture.user@example.com user certificate",
+        "        Public key: RSA-CERT SHA256:TEST-FIXTURE-FINGERPRINT",
+        "        Signing CA: RSA SHA256:TEST-FIXTURE-FINGERPRINT (using rsa-sha2-256)",
+        "        Key ID: \\"vault-approle-aac8597359845179212576460cb141ca2fdb1769a0a19a1c6e9e711336b7c0b5\\"",
+        "=== KEY file: /tmp/ansible.n3qngsh2_ssh_key ===",
+        "bytes=3272 lines=52",
+        "--- first line ---",
+        "-----BEGIN REDACTED TEST KEY-----",
+        "--- ssh-keygen -y (derive pubkey) ---",
+        "ssh-rsa TEST-FIXTURE-PUBLIC-KEY",
+        "=== ssh -vvv probe to target (does ssh OFFER the cert? does server accept?) ===",
+        "debug1: certificate file /tmp/ansible.g8ro639o_ssh_cert type 4",
+        "debug1: Will attempt key: /tmp/ansible.g8ro639o_ssh_cert RSA-CERT SHA256:TEST-FIXTURE-FINGERPRINT explicit",
+        "debug1: Will attempt key: /tmp/ansible.n3qngsh2_ssh_key RSA SHA256:TEST-FIXTURE-FINGERPRINT explicit",
+        "debug1: Offering public key: /tmp/ansible.g8ro639o_ssh_cert RSA-CERT SHA256:TEST-FIXTURE-FINGERPRINT explicit",
+        "debug1: Server accepts key: /tmp/ansible.g8ro639o_ssh_cert RSA-CERT SHA256:TEST-FIXTURE-FINGERPRINT explicit",
+        "debug3: sign_and_send_pubkey: using publickey with RSA-CERT SHA256:TEST-FIXTURE-FINGERPRINT",
+        "debug2: sign_and_send_pubkey: using private key \\"/tmp/ansible.n3qngsh2_ssh_key\\" for certificate",
+        "debug3: sign_and_send_pubkey: signing using fixture.user@example.com SHA256:TEST-FIXTURE-FINGERPRINT",
+        "Authenticated to 100.70.7.23 ([100.70.7.23]:22) using \\"publickey\\".",
+        "debug1: Sending command: echo PROBE_OK",
+        "PROBE_OK"
+    ]
+}
+
+TASK [Set VM maintenance flag before executing day2actions] ********************
+included: /runner/project/tasks/set_maintenance.yml for localhost
+
+TASK [Read current in_maintenance flag from CDB resource] **********************
+ok: [localhost]
+
+TASK [Fail gracefully if VM is already in maintenance] *************************
+skipping: [localhost]
+
+TASK [Set in_maintenance flag to true in CDB] **********************************
+changed: [localhost]
+
+TASK [Update local target_resource with in_maintenance flag] *******************
+ok: [localhost]
+
+TASK [Log maintenance flag set] ************************************************
+ok: [localhost] => {
+    "msg": "Maintenance flag set to true for VM 'n66hnr93c' (n66hnr93c.acmeco.us-central-010.mcloud.entsvcs.com). Proceeding with day2actions."
+}
+
+TASK [Log skipped VM maintenance lock] *****************************************
+skipping: [localhost]
+
+TASK [Register target host for managed option playbook] ************************
+changed: [localhost]
+
+TASK [Log local controller-backed target registration] *************************
+skipping: [localhost]
+
+PLAY [Day2Actions process managed options] *************************************
+
+TASK [Get list of available ansible collections] *******************************
+ok: [n66hnr93c -> localhost(100.70.7.23)]
+
+TASK [Display list of available ansible collections] ***************************
+ok: [n66hnr93c] => {
+    "col.stdout_lines": [
+        "",
+        "# /opt/custom_ee_share/ansible_collections",
+        "Collection                               Version",
+        "---------------------------------------- -------",
+        "xaas.custom                              *      ",
+        "",
+        "# /runner/project/ansible_collections",
+        "Collection                               Version",
+        "---------------------------------------- -------",
+        "dxc.xaas                                 1.0.0  ",
+        "",
+        "# /usr/share/ansible/collections/ansible_collections",
+        "Collection                               Version",
+        "---------------------------------------- -------",
+        "amazon.aws                               9.4.0  ",
+        "ansible.netcommon                        8.4.0  ",
+        "ansible.posix                            2.0.0  ",
+        "ansible.utils                            6.0.1  ",
+        "ansible.windows                          3.4.0  ",
+        "awx.awx                                  24.6.1 ",
+        "community.crypto                         3.1.1  ",
+        "community.docker                         5.0.6  ",
+        "community.general                        12.4.0 ",
+        "community.hashi_vault                    7.1.0  ",
+        "community.kubernetes                     2.0.1  ",
+        "community.library_inventory_filtering_v1 1.1.5  ",
+        "community.mysql                          4.1.0  ",
+        "community.postgresql                     4.2.0  ",
+        "community.vmware                         5.5.0  ",
+        "community.windows                        3.1.0  ",
+        "community.zabbix                         4.1.1  ",
+        "containers.podman                        1.19.0 ",
+        "dxc.cdb                                  1.0.0  ",
+        "infoblox.nios_modules                    1.9.0  ",
+        "kubernetes.core                          5.2.0  ",
+        "kubevirt.core                            2.1.0  ",
+        "microsoft.ad                             1.10.0 ",
+        "netapp.ontap                             23.4.0 ",
+        "nutanix.ncp                              2.5.0  ",
+        "ovirt.ovirt                              3.2.0  ",
+        "redhatinsights.insights                  1.3.0  ",
+        "theforeman.foreman                       5.3.0  ",
+        "vmware.ansible_for_nsxt                  1.0.0  ",
+        "vmware.vmware                            1.11.0 ",
+        "vmware.vmware_rest                       4.10.0 "
+    ]
+}
+
+TASK [Display managed options data] ********************************************
+ok: [n66hnr93c] => {
+    "managed_options_data": {
+        "step1": {
+            "action": "sync_shared_values",
+            "dependencies": [],
+            "managed_option_id": "44e1d36a-f635-4c70-8cde-53d9f93d81d5",
+            "on_failure": "hard",
+            "role": "shared_values",
+            "software_addon": {
+                "created_at": "2026-03-06T10:13:52.560195Z",
+                "created_by": "vstrycek",
+                "id": "ba78376b-4e8a-422c-8216-6324c64fd71b",
+                "links": {
+                    "_self": "/api/cdb/software_addons/ba78376b-4e8a-422c-8216-6324c64fd71b",
+                    "managed_option": "/api/cdb/managed_options/44e1d36a-f635-4c70-8cde-53d9f93d81d5"
+                },
+                "managed_option_name": "shared_values",
+                "name": "shared_values_lin",
+                "properties": {
+                    "status": "active",
+                    "supporting_os": "linux",
+                    "version": "1.0"
+                },
+                "updated_at": "2026-05-25T08:55:26.657306Z",
+                "updated_by": "vstrycek"
+            },
+            "step": "step1",
+            "type": "built_in"
+        }
+    }
+}
+
+TASK [Seed d2a_run_results with planned options (status=not_run)] **************
+included: /runner/project/tasks/plan_managed_options.yml for n66hnr93c
+
+TASK [Record run start timestamp] **********************************************
+ok: [n66hnr93c]
+
+TASK [Reset run accumulator to empty dict] *************************************
+ok: [n66hnr93c]
+
+TASK [Seed run accumulator with planned steps (status=not_run)] ****************
+ok: [n66hnr93c] => (item=step1:shared_values)
+
+TASK [Debug seeded run accumulator] ********************************************
+ok: [n66hnr93c] => {
+    "d2a_run_results": {
+        "step1": {
+            "action": "sync_shared_values",
+            "duration_seconds": null,
+            "ended_at": null,
+            "error": null,
+            "note": null,
+            "on_failure": "hard",
+            "option": "shared_values",
+            "requires": [],
+            "started_at": null,
+            "status": "not_run",
+            "step": "step1"
+        }
+    }
+}
+
+TASK [Execute managed option actions (step-ordered)] ***************************
+included: /runner/project/tasks/execute_managed_option_actions.yml for n66hnr93c => (item=step1:shared_values)
+
+TASK [Reset per-step result facts for this iteration] **************************
+ok: [n66hnr93c]
+
+TASK [Compute cascade gate (requires + chain-abort + not-configured)] **********
+ok: [n66hnr93c]
+
+TASK [Announce cascade skip] ***************************************************
+skipping: [n66hnr93c]
+
+TASK [dxc.xaas.process_common_variables : Build reserved-prefix regex] *********
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.process_common_variables : Compute candidate key set] ***********
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.process_common_variables : Detect collisions with reserved framework variables] ***
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.process_common_variables : Refuse to promote CDB keys that collide with framework internals] ***
+skipping: [n66hnr93c]
+
+TASK [dxc.xaas.process_common_variables : Define collected managed option variables] ***
+ok: [n66hnr93c] => (item={'key': 'step', 'value': 'step1'})
+ok: [n66hnr93c] => (item={'key': 'role', 'value': 'shared_values'})
+ok: [n66hnr93c] => (item={'key': 'managed_option_id', 'value': '44e1d36a-f635-4c70-8cde-53d9f93d81d5'})
+ok: [n66hnr93c] => (item={'key': 'type', 'value': 'built_in'})
+ok: [n66hnr93c] => (item={'key': 'dependencies', 'value': []})
+ok: [n66hnr93c] => (item={'key': 'software_addon', 'value': {'id': 'ba78376b-4e8a-422c-8216-6324c64fd71b', 'name': 'shared_values_lin', 'managed_option_name': 'shared_values', 'properties': {'status': 'active', 'version': '1.0', 'supporting_os': 'linux'}, 'links': {'_self': '/api/cdb/software_addons/ba78376b-4e8a-422c-8216-6324c64fd71b', 'managed_option': '/api/cdb/managed_options/44e1d36a-f635-4c70-8cde-53d9f93d81d5'}, 'updated_at': '2026-05-25T08:55:26.657306Z', 'updated_by': 'vstrycek', 'created_at': '2026-03-06T10:13:52.560195Z', 'created_by': 'vstrycek'}})
+ok: [n66hnr93c] => (item={'key': 'action', 'value': 'sync_shared_values'})
+ok: [n66hnr93c] => (item={'key': 'on_failure', 'value': 'hard'})
+[WARNING]: Found variable using reserved name: action
+
+TASK [dxc.xaas.process_common_variables : Parse common variables] **************
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.process_common_variables : Parse custom parameters] *************
+skipping: [n66hnr93c]
+
+TASK [dxc.xaas.process_common_variables : Expose namespaced managed option payload] ***
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.process_common_variables : Display native parameters] ***********
+ok: [n66hnr93c] => {
+    "msg": [
+        "Managed option 'shared_values' on n66hnr93c",
+        "ansible_host: 100.70.7.23",
+        "vm_os_type: linux",
+        "vm_os_full_name: Red Hat® Enterprise Linux® Server 9.6 (64-bit)",
+        "vm_fqdn: n66hnr93c.acmeco.us-central-010.mcloud.entsvcs.com"
+    ]
+}
+
+TASK [dxc.xaas.process_common_variables : Display collected managed option parameters] ***
+ok: [n66hnr93c] => (item={'key': 'step', 'value': 'step1'}) => {
+    "msg": [
+        "step",
+        "step1"
+    ]
+}
+ok: [n66hnr93c] => (item={'key': 'role', 'value': 'shared_values'}) => {
+    "msg": [
+        "role",
+        "shared_values"
+    ]
+}
+ok: [n66hnr93c] => (item={'key': 'managed_option_id', 'value': '44e1d36a-f635-4c70-8cde-53d9f93d81d5'}) => {
+    "msg": [
+        "managed_option_id",
+        "44e1d36a-f635-4c70-8cde-53d9f93d81d5"
+    ]
+}
+ok: [n66hnr93c] => (item={'key': 'type', 'value': 'built_in'}) => {
+    "msg": [
+        "type",
+        "built_in"
+    ]
+}
+ok: [n66hnr93c] => (item={'key': 'dependencies', 'value': []}) => {
+    "msg": [
+        "dependencies",
+        []
+    ]
+}
+ok: [n66hnr93c] => (item={'key': 'software_addon', 'value': {'id': 'ba78376b-4e8a-422c-8216-6324c64fd71b', 'name': 'shared_values_lin', 'managed_option_name': 'shared_values', 'properties': {'status': 'active', 'version': '1.0', 'supporting_os': 'linux'}, 'links': {'_self': '/api/cdb/software_addons/ba78376b-4e8a-422c-8216-6324c64fd71b', 'managed_option': '/api/cdb/managed_options/44e1d36a-f635-4c70-8cde-53d9f93d81d5'}, 'updated_at': '2026-05-25T08:55:26.657306Z', 'updated_by': 'vstrycek', 'created_at': '2026-03-06T10:13:52.560195Z', 'created_by': 'vstrycek'}}) => {
+    "msg": [
+        "software_addon",
+        {
+            "created_at": "2026-03-06T10:13:52.560195Z",
+            "created_by": "vstrycek",
+            "id": "ba78376b-4e8a-422c-8216-6324c64fd71b",
+            "links": {
+                "_self": "/api/cdb/software_addons/ba78376b-4e8a-422c-8216-6324c64fd71b",
+                "managed_option": "/api/cdb/managed_options/44e1d36a-f635-4c70-8cde-53d9f93d81d5"
+            },
+            "managed_option_name": "shared_values",
+            "name": "shared_values_lin",
+            "properties": {
+                "status": "active",
+                "supporting_os": "linux",
+                "version": "1.0"
+            },
+            "updated_at": "2026-05-25T08:55:26.657306Z",
+            "updated_by": "vstrycek"
+        }
+    ]
+}
+ok: [n66hnr93c] => (item={'key': 'action', 'value': 'sync_shared_values'}) => {
+    "msg": [
+        "action",
+        "sync_shared_values"
+    ]
+}
+ok: [n66hnr93c] => (item={'key': 'on_failure', 'value': 'hard'}) => {
+    "msg": [
+        "on_failure",
+        "hard"
+    ]
+}
+
+TASK [dxc.xaas.process_common_variables : Display custom parameters] ***********
+skipping: [n66hnr93c]
+
+TASK [Load dependencies when defined] ******************************************
+skipping: [n66hnr93c]
+
+TASK [Include managed option role] *********************************************
+included: dxc.xaas.shared_values for n66hnr93c
+
+TASK [dxc.xaas.shared_values : Parse shared_values inputs] *********************
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.shared_values : Initialize shared_values result] ****************
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.shared_values : Resolve hypervisor task file] *******************
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.shared_values : Validate supported action] **********************
+ok: [n66hnr93c] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [dxc.xaas.shared_values : Validate supported virtualization backend] ******
+ok: [n66hnr93c] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [dxc.xaas.shared_values : Display shared_values context] ******************
+ok: [n66hnr93c] => {
+    "msg": [
+        "Managed option 'shared_values' on n66hnr93c",
+        "action: sync_shared_values",
+        "hypervisor_type: nutanix_prism_central"
+    ]
+}
+
+TASK [Refresh cloud_target snapshot from live hypervisor] **********************
+included: dxc.xaas.refresh_cloud_target for n66hnr93c
+
+TASK [dxc.xaas.refresh_cloud_target : Resolve hypervisor task file for cloud target refresh] ***
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.refresh_cloud_target : Validate supported hypervisor for cloud target refresh] ***
+ok: [n66hnr93c] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [dxc.xaas.refresh_cloud_target : Query live VM state from hypervisor] *****
+included: /runner/project/ansible_collections/dxc/xaas/roles/refresh_cloud_target/tasks/nutanix.yml for n66hnr93c
+
+TASK [dxc.xaas.refresh_cloud_target : Parse Nutanix connection facts] **********
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.refresh_cloud_target : Validate Nutanix prerequisites for cloud target refresh] ***
+ok: [n66hnr93c] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [dxc.xaas.refresh_cloud_target : Debug Nutanix refresh target] ************
+ok: [n66hnr93c] => {
+    "msg": [
+        "PC: 10.164.247.4",
+        "Target VM: n66hnr93c (ext_id 9a83c77a-0e8e-4179-466f-833d9add057c)"
+    ]
+}
+
+TASK [dxc.xaas.refresh_cloud_target : Query live VM state from Prism Central (v4)] ***
+ok: [n66hnr93c -> localhost(100.70.7.23)]
+
+TASK [dxc.xaas.refresh_cloud_target : Assert VM was found on Prism Central] ****
+ok: [n66hnr93c] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [dxc.xaas.refresh_cloud_target : Build refresh snapshot from Nutanix v4 response] ***
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.refresh_cloud_target : Debug refreshed Nutanix snapshot summary] ***
+ok: [n66hnr93c] => {
+    "msg": [
+        "Refreshed cloud_target.last_snapshot for ext_id 9a83c77a-0e8e-4179-466f-833d9add057c",
+        "name: n66hnr93c",
+        "power_state: ON",
+        "num_sockets: 2",
+        "num_cores_per_socket: 1",
+        "memory_size_bytes: 2147483648",
+        "hw_processor_count (synth): 2",
+        "hw_memtotal_mb (synth): 2048",
+        "cluster: cpt1-pc-cls-01a"
+    ]
+}
+
+TASK [dxc.xaas.refresh_cloud_target : Validate snapshot was populated] *********
+ok: [n66hnr93c] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [dxc.xaas.refresh_cloud_target : Determine CDB patch operation for last_snapshot] ***
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.refresh_cloud_target : Write refreshed snapshot to CDB] *********
+changed: [n66hnr93c -> localhost(100.70.7.23)]
+
+TASK [dxc.xaas.refresh_cloud_target : Update local vm_resource with refreshed snapshot] ***
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.refresh_cloud_target : Log cloud target refresh result] *********
+ok: [n66hnr93c] => {
+    "msg": [
+        "Cloud target snapshot refreshed for resource 'a8b1b15d-0a2b-4703-a3b9-9b6d0f11079c'",
+        "CDB patch operation: replace"
+    ]
+}
+
+TASK [dxc.xaas.shared_values : Load mapping resource from CDB] *****************
+included: /runner/project/ansible_collections/dxc/xaas/roles/shared_values/tasks/load_mapping.yml for n66hnr93c
+
+TASK [dxc.xaas.shared_values : Resolve organization object for shared_values] ***
+ok: [n66hnr93c -> localhost(100.70.7.23)]
+
+TASK [dxc.xaas.shared_values : Resolve mapping resource name from organization properties] ***
+ok: [n66hnr93c -> localhost(100.70.7.23)]
+
+TASK [dxc.xaas.shared_values : Fetch shared_values mapping resource from CDB] ***
+ok: [n66hnr93c -> localhost(100.70.7.23)]
+
+TASK [dxc.xaas.shared_values : Fail if mapping resource is not found in CDB] ***
+ok: [n66hnr93c -> localhost(100.70.7.23)] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [dxc.xaas.shared_values : Load mapping from CDB resource] *****************
+ok: [n66hnr93c -> localhost(100.70.7.23)]
+
+TASK [dxc.xaas.shared_values : Log active mapping] *****************************
+ok: [n66hnr93c -> localhost(100.70.7.23)] => {
+    "msg": [
+        "Mapping resource: shared_values_mapping (id: b572d3bd-5f51-4a63-be54-1b269c47148f)",
+        "Mapping version: 2",
+        "OS normalization patterns: 8",
+        "Platform maps: vmware_vcenter, nutanix_prism_central"
+    ]
+}
+
+TASK [dxc.xaas.shared_values : Run hypervisor specific value extraction] *******
+included: /runner/project/ansible_collections/dxc/xaas/roles/shared_values/tasks/nutanix.yml for n66hnr93c
+
+TASK [dxc.xaas.shared_values : Assert mapping has a platform_maps entry for this hypervisor] ***
+ok: [n66hnr93c] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [dxc.xaas.shared_values : Set field_sources from mapping for nutanix_prism_central] ***
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.shared_values : Extract raw values using mapping spec] **********
+included: /runner/project/ansible_collections/dxc/xaas/roles/shared_values/tasks/extract_raw_values.yml for n66hnr93c
+
+TASK [dxc.xaas.shared_values : Validate field_sources list is present] *********
+ok: [n66hnr93c] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [dxc.xaas.shared_values : Extract path fields] ****************************
+ok: [n66hnr93c] => (item=os_display)
+ok: [n66hnr93c] => (item=os_type)
+ok: [n66hnr93c] => (item=power_state)
+skipping: [n66hnr93c] => (item=memory_mb)
+skipping: [n66hnr93c] => (item=cpu_sockets)
+skipping: [n66hnr93c] => (item=cpu_cores_per_socket)
+ok: [n66hnr93c] => (item=bios_uuid)
+ok: [n66hnr93c] => (item=instance_uuid)
+ok: [n66hnr93c] => (item=cluster_name)
+ok: [n66hnr93c] => (item=hypervisor_host)
+ok: [n66hnr93c] => (item=guest_tools_status)
+ok: [n66hnr93c] => (item=guest_tools_version)
+ok: [n66hnr93c] => (item=serial_number)
+ok: [n66hnr93c] => (item=os_version_detail)
+
+TASK [dxc.xaas.shared_values : Extract path_int fields] ************************
+skipping: [n66hnr93c] => (item=os_display)
+skipping: [n66hnr93c] => (item=os_type)
+skipping: [n66hnr93c] => (item=power_state)
+skipping: [n66hnr93c] => (item=memory_mb)
+ok: [n66hnr93c] => (item=cpu_sockets)
+ok: [n66hnr93c] => (item=cpu_cores_per_socket)
+skipping: [n66hnr93c] => (item=bios_uuid)
+skipping: [n66hnr93c] => (item=instance_uuid)
+skipping: [n66hnr93c] => (item=cluster_name)
+skipping: [n66hnr93c] => (item=hypervisor_host)
+skipping: [n66hnr93c] => (item=guest_tools_status)
+skipping: [n66hnr93c] => (item=guest_tools_version)
+skipping: [n66hnr93c] => (item=serial_number)
+skipping: [n66hnr93c] => (item=os_version_detail)
+
+TASK [dxc.xaas.shared_values : Extract path_bytes_to_mb fields] ****************
+skipping: [n66hnr93c] => (item=os_display)
+skipping: [n66hnr93c] => (item=os_type)
+skipping: [n66hnr93c] => (item=power_state)
+ok: [n66hnr93c] => (item=memory_mb)
+skipping: [n66hnr93c] => (item=cpu_sockets)
+skipping: [n66hnr93c] => (item=cpu_cores_per_socket)
+skipping: [n66hnr93c] => (item=bios_uuid)
+skipping: [n66hnr93c] => (item=instance_uuid)
+skipping: [n66hnr93c] => (item=cluster_name)
+skipping: [n66hnr93c] => (item=hypervisor_host)
+skipping: [n66hnr93c] => (item=guest_tools_status)
+skipping: [n66hnr93c] => (item=guest_tools_version)
+skipping: [n66hnr93c] => (item=serial_number)
+skipping: [n66hnr93c] => (item=os_version_detail)
+
+TASK [dxc.xaas.shared_values : Extract advanced_settings fields] ***************
+skipping: [n66hnr93c] => (item=os_display)
+skipping: [n66hnr93c] => (item=os_type)
+skipping: [n66hnr93c] => (item=power_state)
+skipping: [n66hnr93c] => (item=memory_mb)
+skipping: [n66hnr93c] => (item=cpu_sockets)
+skipping: [n66hnr93c] => (item=cpu_cores_per_socket)
+skipping: [n66hnr93c] => (item=bios_uuid)
+skipping: [n66hnr93c] => (item=instance_uuid)
+skipping: [n66hnr93c] => (item=cluster_name)
+skipping: [n66hnr93c] => (item=hypervisor_host)
+skipping: [n66hnr93c] => (item=guest_tools_status)
+skipping: [n66hnr93c] => (item=guest_tools_version)
+skipping: [n66hnr93c] => (item=serial_number)
+skipping: [n66hnr93c] => (item=os_version_detail)
+skipping: [n66hnr93c]
+
+TASK [dxc.xaas.shared_values : Extract guestinfo_field fields] *****************
+skipping: [n66hnr93c] => (item=os_display)
+skipping: [n66hnr93c] => (item=os_type)
+skipping: [n66hnr93c] => (item=power_state)
+skipping: [n66hnr93c] => (item=memory_mb)
+skipping: [n66hnr93c] => (item=cpu_sockets)
+skipping: [n66hnr93c] => (item=cpu_cores_per_socket)
+skipping: [n66hnr93c] => (item=bios_uuid)
+skipping: [n66hnr93c] => (item=instance_uuid)
+skipping: [n66hnr93c] => (item=cluster_name)
+skipping: [n66hnr93c] => (item=hypervisor_host)
+skipping: [n66hnr93c] => (item=guest_tools_status)
+skipping: [n66hnr93c] => (item=guest_tools_version)
+skipping: [n66hnr93c] => (item=serial_number)
+skipping: [n66hnr93c] => (item=os_version_detail)
+skipping: [n66hnr93c]
+
+TASK [dxc.xaas.shared_values : Extract serial_vmware fields] *******************
+skipping: [n66hnr93c] => (item=os_display)
+skipping: [n66hnr93c] => (item=os_type)
+skipping: [n66hnr93c] => (item=power_state)
+skipping: [n66hnr93c] => (item=memory_mb)
+skipping: [n66hnr93c] => (item=cpu_sockets)
+skipping: [n66hnr93c] => (item=cpu_cores_per_socket)
+skipping: [n66hnr93c] => (item=bios_uuid)
+skipping: [n66hnr93c] => (item=instance_uuid)
+skipping: [n66hnr93c] => (item=cluster_name)
+skipping: [n66hnr93c] => (item=hypervisor_host)
+skipping: [n66hnr93c] => (item=guest_tools_status)
+skipping: [n66hnr93c] => (item=guest_tools_version)
+skipping: [n66hnr93c] => (item=serial_number)
+skipping: [n66hnr93c] => (item=os_version_detail)
+skipping: [n66hnr93c]
+
+TASK [dxc.xaas.shared_values : Extract static fields] **************************
+skipping: [n66hnr93c] => (item=os_display)
+skipping: [n66hnr93c] => (item=os_type)
+skipping: [n66hnr93c] => (item=power_state)
+skipping: [n66hnr93c] => (item=memory_mb)
+skipping: [n66hnr93c] => (item=cpu_sockets)
+skipping: [n66hnr93c] => (item=cpu_cores_per_socket)
+skipping: [n66hnr93c] => (item=bios_uuid)
+skipping: [n66hnr93c] => (item=instance_uuid)
+skipping: [n66hnr93c] => (item=cluster_name)
+skipping: [n66hnr93c] => (item=hypervisor_host)
+skipping: [n66hnr93c] => (item=guest_tools_status)
+skipping: [n66hnr93c] => (item=guest_tools_version)
+skipping: [n66hnr93c] => (item=serial_number)
+skipping: [n66hnr93c] => (item=os_version_detail)
+skipping: [n66hnr93c]
+
+TASK [dxc.xaas.shared_values : Apply configured transforms to extracted fields] ***
+skipping: [n66hnr93c] => (item=os_display)
+skipping: [n66hnr93c] => (item=power_state)
+skipping: [n66hnr93c] => (item=memory_mb)
+skipping: [n66hnr93c] => (item=cpu_sockets)
+skipping: [n66hnr93c] => (item=cpu_cores_per_socket)
+skipping: [n66hnr93c] => (item=bios_uuid)
+skipping: [n66hnr93c] => (item=instance_uuid)
+skipping: [n66hnr93c] => (item=cluster_name)
+skipping: [n66hnr93c] => (item=hypervisor_host)
+skipping: [n66hnr93c] => (item=guest_tools_status)
+skipping: [n66hnr93c] => (item=guest_tools_version)
+skipping: [n66hnr93c] => (item=serial_number)
+skipping: [n66hnr93c] => (item=os_version_detail)
+included: /runner/project/ansible_collections/dxc/xaas/roles/shared_values/tasks/apply_field_transforms.yml for n66hnr93c => (item=os_type)
+
+TASK [dxc.xaas.shared_values : Initialize transform pipeline] ******************
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.shared_values : Validate configured transforms] *****************
+ok: [n66hnr93c] => (item=split_first) => {
+    "ansible_loop_var": "transform_spec",
+    "changed": false,
+    "msg": "All assertions passed",
+    "transform_spec": {
+        "name": "split_first",
+        "separator": ":"
+    }
+}
+ok: [n66hnr93c] => (item=lower) => {
+    "ansible_loop_var": "transform_spec",
+    "changed": false,
+    "msg": "All assertions passed",
+    "transform_spec": "lower"
+}
+
+TASK [dxc.xaas.shared_values : Apply configured transforms] ********************
+ok: [n66hnr93c] => (item=split_first)
+ok: [n66hnr93c] => (item=lower)
+
+TASK [dxc.xaas.shared_values : Persist transformed raw value] ******************
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.shared_values : Promote extracted values to _raw_* facts] *******
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.shared_values : Debug extracted raw values] *********************
+ok: [n66hnr93c] => {
+    "msg": [
+        "_raw_os_display: linux:64:Red Hat Enterprise Linux-9.6",
+        "_raw_power_state: ON",
+        "_raw_memory_mb: 2048",
+        "_raw_cpu_sockets: 2",
+        "_raw_cpu_cores_per_socket: 1",
+        "_raw_serial_number: 9a83c77a-0e8e-4179-466f-833d9add057c",
+        "_raw_os_version_detail: 9.6",
+        "_raw_guest_tools_status: "
+    ]
+}
+
+TASK [dxc.xaas.shared_values : Run platform-agnostic normalization] ************
+included: /runner/project/ansible_collections/dxc/xaas/roles/shared_values/tasks/normalize.yml for n66hnr93c
+
+TASK [dxc.xaas.shared_values : Resolve platform maps for current hypervisor] ***
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.shared_values : Validate platform map exists in mapping resource] ***
+ok: [n66hnr93c] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [dxc.xaas.shared_values : Resolve effective OS display string] ************
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.shared_values : Match OS display string against normalization patterns] ***
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.shared_values : Find first matching OS normalization pattern] ***
+ok: [n66hnr93c] => (item=Red Hat Enterprise Linux)
+skipping: [n66hnr93c] => (item=Oracle Linux)
+skipping: [n66hnr93c] => (item=SUSE Linux Enterprise)
+skipping: [n66hnr93c] => (item=Ubuntu)
+skipping: [n66hnr93c] => (item=CentOS)
+skipping: [n66hnr93c] => (item=Debian)
+skipping: [n66hnr93c] => (item=WindowsServer)
+skipping: [n66hnr93c] => (item=Microsoft Windows Server)
+
+TASK [dxc.xaas.shared_values : Log OS match result] ****************************
+ok: [n66hnr93c] => {
+    "msg": [
+        "OS display: linux:64:Red Hat Enterprise Linux-9.6",
+        "Matched pattern: Red Hat Enterprise Linux",
+        "os_family: redhat"
+    ]
+}
+
+TASK [dxc.xaas.shared_values : Parse OS version from raw data] *****************
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.shared_values : Parse major version] ****************************
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.shared_values : Build pretty OS display name from family + version] ***
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.shared_values : Build ESL and PDXC OS strings] ******************
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.shared_values : Initialise _mapped dict] ************************
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.shared_values : Apply enum_maps to raw values] ******************
+ok: [n66hnr93c] => (item=os_type)
+ok: [n66hnr93c] => (item=power_state)
+ok: [n66hnr93c] => (item=guest_tools_status)
+
+TASK [dxc.xaas.shared_values : Debug enum_maps results] ************************
+ok: [n66hnr93c] => {
+    "msg": "_mapped: {'os_type': 'linux', 'power_state': 'on', 'guest_tools_status': ''}"
+}
+
+TASK [dxc.xaas.shared_values : Calculate total vCPUs] **************************
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.shared_values : Assemble normalized buckets] ********************
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.shared_values : Debug normalized buckets] ***********************
+ok: [n66hnr93c] => {
+    "msg": {
+        "hardware_addendum": {
+            "cores_per_socket": "1",
+            "sockets": "2"
+        },
+        "os": {
+            "display_name": "Red Hat Enterprise Linux 9.6",
+            "esl_mapping": "Linux RedHat EL 9.6",
+            "family": "redhat",
+            "major_version": "9",
+            "pdxc_mapping": "Linux Red Hat Enterprise",
+            "type": "linux",
+            "version": "9.6"
+        },
+        "platform": {
+            "bios_uuid": "9a83c77a-0e8e-4179-466f-833d9add057c",
+            "cluster_name": "cpt1-pc-cls-01a",
+            "hypervisor_host": "fa604158-4d72-4357-a25c-dddd446f196a",
+            "instance_uuid": "9a83c77a-0e8e-4179-466f-833d9add057c",
+            "serial_number": "9a83c77a-0e8e-4179-466f-833d9add057c",
+            "virtualization_role": "guest",
+            "virtualization_type": "nutanix"
+        }
+    }
+}
+
+TASK [dxc.xaas.shared_values : Determine CDB patch operations for buckets] *****
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.shared_values : Write normalized buckets to CDB resource] *******
+changed: [n66hnr93c -> localhost(100.70.7.23)]
+
+TASK [dxc.xaas.shared_values : Refresh vm_resource fact with newly written buckets] ***
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.shared_values : Compose successful result] **********************
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.shared_values : Set managed option CDB resource details] ********
+ok: [n66hnr93c]
+
+TASK [dxc.xaas.shared_values : Fail if shared_values workflow failed] **********
+skipping: [n66hnr93c]
+
+TASK [Define cdb resource operation] *******************************************
+ok: [n66hnr93c]
+
+TASK [Update resource in CDB with managed option details] **********************
+changed: [n66hnr93c -> localhost(100.70.7.23)]
+
+TASK [Surface a non-confirming CDB managed-option write (does not fail the chain)] ***
+skipping: [n66hnr93c]
+
+TASK [Update vm_resource local value with managed option details written to CDB] ***
+ok: [n66hnr93c]
+
+TASK [FINAL RESULT] ************************************************************
+ok: [n66hnr93c] => {
+    "msg": [
+        "Managed option: shared_values",
+        "Action: sync_shared_values",
+        "Summary: Managed option completed",
+        "Success: Yes",
+        "Changed: Yes"
+    ]
+}
+
+TASK [FINAL RESULT - ESL check_ci details] *************************************
+skipping: [n66hnr93c]
+
+TASK [Guard role-published d2a_option_result.status (self-rescue contract)] ****
+ok: [n66hnr93c] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Classify per-step outcome and update accumulator] ************************
+ok: [n66hnr93c]
+
+TASK [Debug outcome for this step] *********************************************
+ok: [n66hnr93c] => {
+    "msg": "step1 (shared_values) → success"
+}
+
+TASK [Raise chain-stop flag on hard_failed / unreachable] **********************
+skipping: [n66hnr93c]
+
+TASK [Publish d2a_run_results to AWX job stats] ********************************
+ok: [n66hnr93c]
+
+PLAY [Cleanup temporary SSH key files] *****************************************
+
+TASK [Remove temporary SSH key files] ******************************************
+changed: [localhost] => (item=/tmp/ansible.n3qngsh2_ssh_key)
+changed: [localhost] => (item=/tmp/ansible.g8ro639o_ssh_cert)
+
+TASK [Clear VM maintenance flag after day2actions completed] *******************
+included: /runner/project/tasks/unset_maintenance.yml for localhost
+
+TASK [Fetch current resource to check in_maintenance state] ********************
+ok: [localhost]
+
+TASK [Set in_maintenance field existence fact] *********************************
+ok: [localhost]
+
+TASK [Set in_maintenance flag back to false in CDB] ****************************
+changed: [localhost]
+
+TASK [Log maintenance flag cleared] ********************************************
+ok: [localhost] => {
+    "msg": "Maintenance flag cleared (in_maintenance=false) for VM resource 'a8b1b15d-0a2b-4703-a3b9-9b6d0f11079c'."
+}
+
+TASK [Send Day2Actions run summary email] **************************************
+included: /runner/project/tasks/send_run_summary.yml for localhost
+
+TASK [Resolve target pseudo-host] **********************************************
+ok: [localhost]
+
+TASK [Skip summary email when target pseudo-host was never registered] *********
+skipping: [localhost]
+
+TASK [Skip summary email when mode=never] **************************************
+skipping: [localhost]
+
+TASK [Compute summary facts] ***************************************************
+ok: [localhost]
+
+TASK [Log email decision] ******************************************************
+ok: [localhost] => {
+    "msg": [
+        "summary email mode: always",
+        "summary email tag:  OK",
+        "summary email send: True",
+        "summary email to:   fixture.user@example.com"
+    ]
+}
+
+TASK [Render summary email body from template] *********************************
+ok: [localhost]
+
+TASK [Build subject line] ******************************************************
+ok: [localhost]
+
+TASK [Resolve effective SMTP configuration] ************************************
+ok: [localhost]
+
+TASK [Log effective SMTP source (no secret)] ***********************************
+ok: [localhost] => {
+    "msg": [
+        "Run-summary SMTP source: launch/default",
+        "host=smtp.svcs.entsvcs.com port=25 secure=never from=fixture.user@example.com"
+    ]
+}
+
+TASK [Dispatch run summary email] **********************************************
+included: dxc.xaas.send_email for localhost => (item=(censored due to no_log))
+
+TASK [dxc.xaas.send_email : Define recipients from CDB notifications group if specified] ***
+skipping: [localhost]
+
+TASK [dxc.xaas.send_email : Debug notifications group name] ********************
+skipping: [localhost]
+
+TASK [dxc.xaas.send_email : Debug extracted email recipients] ******************
+ok: [localhost] => {
+    "msg": "Gathered email receipients from CDB based on notification group '[]':\\fixture.user@example.com\\n"
+}
+
+TASK [dxc.xaas.send_email : Create list of parameters to validate for email notification] ***
+ok: [localhost]
+
+TASK [dxc.xaas.send_email : Validate email inputs are not empty] ***************
+ok: [localhost] => (item={'name': 'email_to', 'value': ['fixture.user@example.com']}) => {
+    "ansible_loop_var": "item",
+    "changed": false,
+    "failed_when_result": false,
+    "item": {
+        "name": "email_to",
+        "value": [
+            "fixture.user@example.com"
+        ]
+    },
+    "msg": "Input parameter 'email_to': ['fixture.user@example.com']"
+}
+ok: [localhost] => (item={'name': 'email_subject', 'value': '[Day2Actions][OK] n66hnr93c.acmeco.us-central-010.mcloud.entsvcs.com — 1 success / 0 soft / 0 hard / 0 skipped / 0 unreachable / 0 not_run / 0 not_configured'}) => {
+    "ansible_loop_var": "item",
+    "changed": false,
+    "failed_when_result": false,
+    "item": {
+        "name": "email_subject",
+        "value": "[Day2Actions][OK] n66hnr93c.acmeco.us-central-010.mcloud.entsvcs.com — 1 success / 0 soft / 0 hard / 0 skipped / 0 unreachable / 0 not_run / 0 not_configured"
+    },
+    "msg": "Input parameter 'email_subject': [Day2Actions][OK] n66hnr93c.acmeco.us-central-010.mcloud.entsvcs.com — 1 success / 0 soft / 0 hard / 0 skipped / 0 unreachable / 0 not_run / 0 not_configured"
+}
+ok: [localhost] => (item={'name': 'email_body', 'value': 'Day2Actions Run Summary\\n=======================\\n\\nVM:           n66hnr93c.acmeco.us-central-010.mcloud.entsvcs.com\\nOrganization: acmeco\\nAWX Job:      Day2Actions_no_survey (id 11178)\\nAWX User:     fixture.user@example.com\\nStarted:      2026-06-03T02:20:30Z\\nEnded:        2026-06-03T02:20:39Z\\n\\nOutcome:      [OK]\\n\\nLaunch parameters\\n-----------------\\nChain source:    template:no_paas_chain\\nCDB resource id: d0c19011-129f-4a59-97e6-47153b008209\\ntargetVM:        n66hnr93c\\norganization:    acmeco\\nWrapper knobs (effective value | source):\\n  managed_options                  <chain dict>  (template)\\n  skip_fqdn_dns_verification       True  (template)\\n  use_vm_maintenance_lock          True  (default)\\n  execute_managed_options_locally  False  (default)\\n  debug_mode                       true  (default)\\n  d2a_connection_use_fqdn          False  (default)\\n  d2a_summary_email_mode           always  (template)\\n  d2a_summary_email_to             [\\'fixture.user@example.com\\']  (default)\\n  d2a_summary_email_from           fixture.user@example.com  (default)\\n  smtp_host                        None  (default)\\n  smtp_port                        None  (default)\\n  secure                           None  (default)\\nEffective chain (step → role):\\n  step1      shared_values                    {"action": "sync_shared_values", "on_failure": "hard"}\\n\\nStatus counts\\n-------------\\n  success            : 1\\n  soft_failed        : 0\\n  hard_failed        : 0\\n  skipped_dependency : 0\\n  unreachable        : 0\\n  not_run            : 0\\n  not_configured     : 0\\n\\nPer-step results\\n----------------\\n\\n[success] step1  (shared_values)\\n    action:   sync_shared_values\\n    started:  2026-06-03T02:20:30Z\\n    ended:    2026-06-03T02:20:37Z\\n    duration: 7s\\n\\nOpen the AWX job (11178) for the full execution log.\\n'}) => {
+    "ansible_loop_var": "item",
+    "changed": false,
+    "failed_when_result": false,
+    "item": {
+        "name": "email_body",
+        "value": "Day2Actions Run Summary\\n=======================\\n\\nVM:           n66hnr93c.acmeco.us-central-010.mcloud.entsvcs.com\\nOrganization: acmeco\\nAWX Job:      Day2Actions_no_survey (id 11178)\\nAWX User:     fixture.user@example.com\\nStarted:      2026-06-03T02:20:30Z\\nEnded:        2026-06-03T02:20:39Z\\n\\nOutcome:      [OK]\\n\\nLaunch parameters\\n-----------------\\nChain source:    template:no_paas_chain\\nCDB resource id: d0c19011-129f-4a59-97e6-47153b008209\\ntargetVM:        n66hnr93c\\norganization:    acmeco\\nWrapper knobs (effective value | source):\\n  managed_options                  <chain dict>  (template)\\n  skip_fqdn_dns_verification       True  (template)\\n  use_vm_maintenance_lock          True  (default)\\n  execute_managed_options_locally  False  (default)\\n  debug_mode                       true  (default)\\n  d2a_connection_use_fqdn          False  (default)\\n  d2a_summary_email_mode           always  (template)\\n  d2a_summary_email_to             ['fixture.user@example.com']  (default)\\n  d2a_summary_email_from           fixture.user@example.com  (default)\\n  smtp_host                        None  (default)\\n  smtp_port                        None  (default)\\n  secure                           None  (default)\\nEffective chain (step → role):\\n  step1      shared_values                    {\\"action\\": \\"sync_shared_values\\", \\"on_failure\\": \\"hard\\"}\\n\\nStatus counts\\n-------------\\n  success            : 1\\n  soft_failed        : 0\\n  hard_failed        : 0\\n  skipped_dependency : 0\\n  unreachable        : 0\\n  not_run            : 0\\n  not_configured     : 0\\n\\nPer-step results\\n----------------\\n\\n[success] step1  (shared_values)\\n    action:   sync_shared_values\\n    started:  2026-06-03T02:20:30Z\\n    ended:    2026-06-03T02:20:37Z\\n    duration: 7s\\n\\nOpen the AWX job (11178) for the full execution log.\\n"
+    },
+    "msg": "Input parameter 'email_body': Day2Actions Run Summary\\n=======================\\n\\nVM:           n66hnr93c.acmeco.us-central-010.mcloud.entsvcs.com\\nOrganization: acmeco\\nAWX Job:      Day2Actions_no_survey (id 11178)\\nAWX User:     fixture.user@example.com\\nStarted:      2026-06-03T02:20:30Z\\nEnded:        2026-06-03T02:20:39Z\\n\\nOutcome:      [OK]\\n\\nLaunch parameters\\n-----------------\\nChain source:    template:no_paas_chain\\nCDB resource id: d0c19011-129f-4a59-97e6-47153b008209\\ntargetVM:        n66hnr93c\\norganization:    acmeco\\nWrapper knobs (effective value | source):\\n  managed_options                  <chain dict>  (template)\\n  skip_fqdn_dns_verification       True  (template)\\n  use_vm_maintenance_lock          True  (default)\\n  execute_managed_options_locally  False  (default)\\n  debug_mode                       true  (default)\\n  d2a_connection_use_fqdn          False  (default)\\n  d2a_summary_email_mode           always  (template)\\n  d2a_summary_email_to             ['fixture.user@example.com']  (default)\\n  d2a_summary_email_from           fixture.user@example.com  (default)\\n  smtp_host                        None  (default)\\n  smtp_port                        None  (default)\\n  secure                           None  (default)\\nEffective chain (step → role):\\n  step1      shared_values                    {\\"action\\": \\"sync_shared_values\\", \\"on_failure\\": \\"hard\\"}\\n\\nStatus counts\\n-------------\\n  success            : 1\\n  soft_failed        : 0\\n  hard_failed        : 0\\n  skipped_dependency : 0\\n  unreachable        : 0\\n  not_run            : 0\\n  not_configured     : 0\\n\\nPer-step results\\n----------------\\n\\n[success] step1  (shared_values)\\n    action:   sync_shared_values\\n    started:  2026-06-03T02:20:30Z\\n    ended:    2026-06-03T02:20:37Z\\n    duration: 7s\\n\\nOpen the AWX job (11178) for the full execution log.\\n"
+}
+
+TASK [dxc.xaas.send_email : Debug email parameters validation results] *********
+ok: [localhost] => {
+    "email_parameters_validation": {
+        "changed": false,
+        "msg": "All items completed",
+        "results": [
+            {
+                "ansible_loop_var": "item",
+                "changed": false,
+                "failed": false,
+                "failed_when_result": false,
+                "item": {
+                    "name": "email_to",
+                    "value": [
+                        "fixture.user@example.com"
+                    ]
+                },
+                "msg": "Input parameter 'email_to': ['fixture.user@example.com']"
+            },
+            {
+                "ansible_loop_var": "item",
+                "changed": false,
+                "failed": false,
+                "failed_when_result": false,
+                "item": {
+                    "name": "email_subject",
+                    "value": "[Day2Actions][OK] n66hnr93c.acmeco.us-central-010.mcloud.entsvcs.com — 1 success / 0 soft / 0 hard / 0 skipped / 0 unreachable / 0 not_run / 0 not_configured"
+                },
+                "msg": "Input parameter 'email_subject': [Day2Actions][OK] n66hnr93c.acmeco.us-central-010.mcloud.entsvcs.com — 1 success / 0 soft / 0 hard / 0 skipped / 0 unreachable / 0 not_run / 0 not_configured"
+            },
+            {
+                "ansible_loop_var": "item",
+                "changed": false,
+                "failed": false,
+                "failed_when_result": false,
+                "item": {
+                    "name": "email_body",
+                    "value": "Day2Actions Run Summary\\n=======================\\n\\nVM:           n66hnr93c.acmeco.us-central-010.mcloud.entsvcs.com\\nOrganization: acmeco\\nAWX Job:      Day2Actions_no_survey (id 11178)\\nAWX User:     fixture.user@example.com\\nStarted:      2026-06-03T02:20:30Z\\nEnded:        2026-06-03T02:20:39Z\\n\\nOutcome:      [OK]\\n\\nLaunch parameters\\n-----------------\\nChain source:    template:no_paas_chain\\nCDB resource id: d0c19011-129f-4a59-97e6-47153b008209\\ntargetVM:        n66hnr93c\\norganization:    acmeco\\nWrapper knobs (effective value | source):\\n  managed_options                  <chain dict>  (template)\\n  skip_fqdn_dns_verification       True  (template)\\n  use_vm_maintenance_lock          True  (default)\\n  execute_managed_options_locally  False  (default)\\n  debug_mode                       true  (default)\\n  d2a_connection_use_fqdn          False  (default)\\n  d2a_summary_email_mode           always  (template)\\n  d2a_summary_email_to             ['fixture.user@example.com']  (default)\\n  d2a_summary_email_from           fixture.user@example.com  (default)\\n  smtp_host                        None  (default)\\n  smtp_port                        None  (default)\\n  secure                           None  (default)\\nEffective chain (step → role):\\n  step1      shared_values                    {\\"action\\": \\"sync_shared_values\\", \\"on_failure\\": \\"hard\\"}\\n\\nStatus counts\\n-------------\\n  success            : 1\\n  soft_failed        : 0\\n  hard_failed        : 0\\n  skipped_dependency : 0\\n  unreachable        : 0\\n  not_run            : 0\\n  not_configured     : 0\\n\\nPer-step results\\n----------------\\n\\n[success] step1  (shared_values)\\n    action:   sync_shared_values\\n    started:  2026-06-03T02:20:30Z\\n    ended:    2026-06-03T02:20:37Z\\n    duration: 7s\\n\\nOpen the AWX job (11178) for the full execution log.\\n"
+                },
+                "msg": "Input parameter 'email_body': Day2Actions Run Summary\\n=======================\\n\\nVM:           n66hnr93c.acmeco.us-central-010.mcloud.entsvcs.com\\nOrganization: acmeco\\nAWX Job:      Day2Actions_no_survey (id 11178)\\nAWX User:     fixture.user@example.com\\nStarted:      2026-06-03T02:20:30Z\\nEnded:        2026-06-03T02:20:39Z\\n\\nOutcome:      [OK]\\n\\nLaunch parameters\\n-----------------\\nChain source:    template:no_paas_chain\\nCDB resource id: d0c19011-129f-4a59-97e6-47153b008209\\ntargetVM:        n66hnr93c\\norganization:    acmeco\\nWrapper knobs (effective value | source):\\n  managed_options                  <chain dict>  (template)\\n  skip_fqdn_dns_verification       True  (template)\\n  use_vm_maintenance_lock          True  (default)\\n  execute_managed_options_locally  False  (default)\\n  debug_mode                       true  (default)\\n  d2a_connection_use_fqdn          False  (default)\\n  d2a_summary_email_mode           always  (template)\\n  d2a_summary_email_to             ['fixture.user@example.com']  (default)\\n  d2a_summary_email_from           fixture.user@example.com  (default)\\n  smtp_host                        None  (default)\\n  smtp_port                        None  (default)\\n  secure                           None  (default)\\nEffective chain (step → role):\\n  step1      shared_values                    {\\"action\\": \\"sync_shared_values\\", \\"on_failure\\": \\"hard\\"}\\n\\nStatus counts\\n-------------\\n  success            : 1\\n  soft_failed        : 0\\n  hard_failed        : 0\\n  skipped_dependency : 0\\n  unreachable        : 0\\n  not_run            : 0\\n  not_configured     : 0\\n\\nPer-step results\\n----------------\\n\\n[success] step1  (shared_values)\\n    action:   sync_shared_values\\n    started:  2026-06-03T02:20:30Z\\n    ended:    2026-06-03T02:20:37Z\\n    duration: 7s\\n\\nOpen the AWX job (11178) for the full execution log.\\n"
+            }
+        ],
+        "skipped": false
+    }
+}
+
+TASK [dxc.xaas.send_email : Determine if any email parameter validation failed] ***
+ok: [localhost]
+
+TASK [dxc.xaas.send_email : Debug email parameters validation failure status] ***
+ok: [localhost] => {
+    "email_parameters_validation_failed": false
+}
+
+TASK [dxc.xaas.send_email : Send email notification] ***************************
+ok: [localhost]
+
+TASK [dxc.xaas.send_email : Assert email was sent successfully] ****************
+ok: [localhost] => {
+    "changed": false,
+    "failed_when_result": false,
+    "msg": "Email notification sent successfully to ['fixture.user@example.com']."
+}
+
+TASK [Display End Time] ********************************************************
+ok: [localhost] => {
+    "msg": [
+        "AWX Job End",
+        "  Job Template Name: Day2Actions_no_survey",
+        "  Job Id:            11178",
+        "  AWX User:          fixture.user@example.com",
+        "  Current Log Time:  2026-06-03 02:20:42 UTC"
+    ]
+}
+
+TASK [Compute final job verdict from d2a_run_results] **************************
+ok: [localhost]
+
+TASK [Fail AWX job when any step hard_failed or was unreachable] ***************
+skipping: [localhost]
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=142  changed=11   unreachable=0    failed=0    skipped=34   rescued=0    ignored=0
+n66hnr93c                  : ok=94   changed=3    unreachable=0    failed=0    skipped=13   rescued=0    ignored=0

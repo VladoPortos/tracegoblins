@@ -1,0 +1,142 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-bookworm
+        env:
+          POSTGRES_USER: tracegoblins
+          POSTGRES_PASSWORD: tracegoblins
+          POSTGRES_DB: tracegoblins_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U tracegoblins -d tracegoblins_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      DATABASE_URL: postgresql+asyncpg://tracegoblins:tracegoblins@localhost:5432/tracegoblins_test
+      TEST_DATABASE_URL: postgresql+asyncpg://tracegoblins:tracegoblins@localhost:5432/tracegoblins_test
+      ENVIRONMENT: test
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv sync --locked
+        working-directory: backend
+      - run: uv run pytest
+        working-directory: backend
+
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "26"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npm audit --audit-level=high
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+
+  contract:
+    name: OpenAPI contract
+    runs-on: ubuntu-latest
+    env:
+      ENVIRONMENT: test
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv sync --locked
+        working-directory: backend
+      - run: uv run python scripts/export_openapi.py ../frontend/openapi.generated.json
+        working-directory: backend
+      - run: diff -u frontend/openapi.json frontend/openapi.generated.json
+
+  image:
+    name: Clean source image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - run: docker build --no-cache -t tracegoblins-ci:${{ github.sha }} .
+
+  e2e:
+    name: Browser E2E
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    env:
+      E2E_BASE_URL: http://localhost:8010
+      POSTGRES_PASSWORD: tracegoblins
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv sync --locked
+        working-directory: backend
+      - run: uv run playwright install --with-deps chromium
+        working-directory: backend
+      - name: Start fresh E2E stack
+        run: |
+          cp .env.example .env
+          docker compose -p tg-e2e-ci -f docker-compose.yml -f docker-compose.e2e.yml -f docker-compose.e2e-port.yml up -d --build
+      - name: Wait for app health
+        run: |
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://localhost:8010/api/health >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose -p tg-e2e-ci -f docker-compose.yml -f docker-compose.e2e.yml -f docker-compose.e2e-port.yml logs
+          exit 1
+      - run: uv run pytest -m e2e --browser chromium -vv
+        working-directory: backend
+      - name: Tear down E2E stack
+        if: always()
+        run: docker compose -p tg-e2e-ci -f docker-compose.yml -f docker-compose.e2e.yml -f docker-compose.e2e-port.yml down -v --remove-orphans
+
+  ci-pass:
+    name: CI pass
+    if: always()
+    needs: [backend, frontend, contract, image]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every PR gate
+        env:
+          BACKEND_RESULT: ${{ needs.backend.result }}
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+          CONTRACT_RESULT: ${{ needs.contract.result }}
+          IMAGE_RESULT: ${{ needs.image.result }}
+        run: |
+          test "$BACKEND_RESULT" = success
+          test "$FRONTEND_RESULT" = success
+          test "$CONTRACT_RESULT" = success
+          test "$IMAGE_RESULT" = success

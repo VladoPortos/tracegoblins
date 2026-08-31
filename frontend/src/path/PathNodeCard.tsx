@@ -43,7 +43,10 @@ export function PathNodeCard({ node: n, selected, onSelect, onEnter, reduced, no
       onDoubleClick={(e) => { if (n.enter_to) { e.stopPropagation(); onEnter(n.enter_to, n.label) } }}>
       <div className="row gap2">
         <span className="mono" style={{ fontSize: isContainer || isLoop || isWhen ? 18 : 13, color: accent }}>{glyph}</span>
-        <span className="mono truncate" style={{ fontSize: 13, fontWeight: 600 }}>{isLoop ? `${n.label} ×${n.item_count ?? '?'}` : n.label}</span>
+        <span className="mono truncate" style={{ fontSize: 13, fontWeight: 600 }}>
+          <span>{n.label}</span>
+          {isLoop && <span aria-hidden="true"> ×{n.item_count ?? '?'}</span>}
+        </span>
       </div>
       <div className="row gap2 dim mono" style={{ fontSize: 11 }}>
         <span className="truncate">{subText}</span>
@@ -61,7 +64,17 @@ export function PathNodeCard({ node: n, selected, onSelect, onEnter, reduced, no
         )}
       </div>
       {isWhen && n.condition && <span className="mono" style={{ fontSize: 11, color: 'var(--included)' }}>{n.condition}</span>}
-      {n.enter_to && <span className="mono" style={{ fontSize: 10.5, color: 'var(--flow)' }}>{isLoop ? `step into ${n.item_count} iterations →` : `enter · ${n.child_count} tasks →`}</span>}
+      {n.enter_to && (
+        <button
+          type="button"
+          className="btn btn-ghost sm"
+          aria-label={`Enter ${n.label}`}
+          onClick={(e) => { e.stopPropagation(); onEnter(n.enter_to!, n.label) }}
+          style={{ alignSelf: 'flex-start', fontSize: 10.5, color: 'var(--flow)' }}
+        >
+          {isLoop ? `Step into ${n.item_count} iterations` : `Enter ${n.child_count} tasks`} →
+        </button>
+      )}
     </div>
   )
 }

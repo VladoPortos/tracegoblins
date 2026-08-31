@@ -18,8 +18,6 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=backend/uv.lock,target=uv.lock \
     uv sync --locked --no-install-project --no-dev
 COPY backend/ ./
-# pyproject.toml references readme = "../README.md" (relative to backend/); copy it to parent path
-COPY README.md /README.md
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev
 

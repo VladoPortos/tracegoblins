@@ -141,7 +141,12 @@ def _dir_size(path: Path) -> int:
     total = 0
     for p in path.rglob("*"):
         if p.is_file():
-            total += p.stat().st_size
+            try:
+                total += p.stat().st_size
+            except FileNotFoundError:
+                # Git creates and atomically removes transient files (for example
+                # packed-refs.new) while the live size monitor is walking the repo.
+                continue
     return total
 
 

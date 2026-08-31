@@ -1,0 +1,17 @@
+---
+- name: install nginx
+  ansible.builtin.apt:
+    name: "{{ pkg }}"
+    state: "{{ desired }}"
+
+- name: windows only path
+  ansible.windows.win_package:
+    path: c:\\nginx.msi
+  when: ansible_os_family == "Windows"
+- name: hardening
+  block:
+    - name: set sysctl
+      ansible.posix.sysctl:
+        name: net.ipv4.ip_forward
+        value: "0"
+  when: enable_hardening | bool

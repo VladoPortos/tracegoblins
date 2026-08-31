@@ -5,7 +5,7 @@ import { PageShell } from '../components/atoms/PageShell'
 import { Badge } from '../components/atoms/Badge'
 import { Glyph } from '../components/atoms/Glyph'
 import { errorMessage } from '../api/client'
-import { useProject, useProjectRuns, useCloneProject } from '../api/projects'
+import { useProject, useProjectRuns, useCloneProject, useRefreshMirror } from '../api/projects'
 import { LinkGitModal } from './LinkGitModal'
 import { UploadDropzone } from './UploadDropzone'
 import { FileBrowser } from './FileBrowser'
@@ -21,6 +21,7 @@ export function ProjectDetail() {
   const project = useProject(id)
   const runs = useProjectRuns(id)
   const clone = useCloneProject(id)
+  const refreshMirror = useRefreshMirror(id)
   const [showLink, setShowLink] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   // Tracks a clone we kicked off, so the "pending" status (also used right after Link git)
@@ -64,6 +65,17 @@ export function ProjectDetail() {
             <Badge status={STATUS_BADGE[p.status] ?? 'skipped'} withLabel={false} />
             <span className="chip" style={{ fontSize: 10.5 }}>{p.status}</span>
             <div className="grow" />
+            <button
+              className="btn btn-ghost sm"
+              onClick={() => {
+                setErr(null)
+                refreshMirror.mutate(undefined, { onError: (e) => setErr(errorMessage(e)) })
+              }}
+              disabled={refreshMirror.isPending}
+            >
+              <Glyph name={refreshMirror.isPending ? 'spinner' : 'chevD'} size={14} />
+              {refreshMirror.isPending ? 'Refreshing metadata…' : 'Refresh metadata'}
+            </button>
             {/* Admin-only: link git (saving auto-starts the clone) */}
             {isAdmin && (
               <button className="btn btn-ghost sm" onClick={() => setShowLink(true)}>

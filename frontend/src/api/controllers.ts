@@ -1,5 +1,7 @@
+import { useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from './client'
+import { projectsKey } from './projects'
 import { runsKey } from './runs'
 
 export interface TeamAssignment { team_id: string; awx_organization_id: number | null }
@@ -28,7 +30,9 @@ export interface TestConnectionResult { ok: boolean; version: string | null; ide
 export const controllersKey = ['controllers'] as const
 
 export function useControllers(options?: { enabled?: boolean }) {
-  return useQuery<Controller[]>({
+  const qc = useQueryClient()
+  const previous = useRef<Map<string, Controller['last_sync_status']>>(new Map())
+  const query = useQuery<Controller[]>({
     queryKey: controllersKey,
     queryFn: () => apiFetch<Controller[]>('/controllers'),
     // Skippable: callers that only need controllers in some states (e.g. RunsList only
@@ -39,6 +43,20 @@ export function useControllers(options?: { enabled?: boolean }) {
     refetchInterval: (query) =>
       (query.state.data ?? []).some((c) => c.last_sync_status === 'running') ? 1500 : false,
   })
+
+  useEffect(() => {
+    const completed = (query.data ?? []).some(
+      (c) => previous.current.get(c.id) === 'running' && c.last_sync_status !== 'running',
+    )
+    previous.current = new Map((query.data ?? []).map((c) => [c.id, c.last_sync_status]))
+    if (completed) {
+      void qc.invalidateQueries({ queryKey: runsKey })
+      void qc.invalidateQueries({ queryKey: projectsKey })
+      void qc.invalidateQueries({ queryKey: ['analytics'] })
+    }
+  }, [qc, query.data])
+
+  return query
 }
 export function useCreateController() {
   const qc = useQueryClient()
@@ -85,7 +103,6 @@ export function useSyncController() {
       qc.setQueryData<Controller[]>(controllersKey, (prev) =>
         prev?.map((c) => (c.id === id ? { ...c, last_sync_status: 'running' } : c)),
       )
-      void qc.invalidateQueries({ queryKey: runsKey })
     },
   })
 }

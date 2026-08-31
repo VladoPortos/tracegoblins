@@ -1,0 +1,42 @@
+# E2E-only override (NOT used in production). Layer with:
+#   docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build
+# Adds a deterministic mock-AWX sidecar (the app image running tests/e2e/mock_awx_server:app)
+# and pins the app for E2E: cookies non-secure (no TLS proxy in test), APScheduler off
+# (sync is driven by the explicit "Sync now" click), a fixed Fernet TOKEN_ENC_KEY.
+services:
+  app:
+    environment:
+      COOKIE_SECURE: "false"
+      SCHEDULER_ENABLED: "false"
+      # E2E logs in as the seeded admin and expects the app shell; don't force admin 2FA
+      # enrolment in the suite (the 2FA flows are exercised explicitly by test_2fa.py).
+      MFA_ADMIN_REQUIRED: "false"
+      # Valid Fernet key (32 url-safe base64 bytes) so AWX controller tokens encrypt in E2E.
+      TOKEN_ENC_KEY: "z-tvGySUh9vJ8B8Uw6DaNHLxMkpLrlHKOKqmkvHZCus="
+      SECRET_KEY: "e2e-only-secret-key-not-for-production-use-0123456789abcdef"
+      POSTGRES_PASSWORD: "tracegoblins"
+      DATABASE_URL: "postgresql+asyncpg://tracegoblins:tracegoblins@db:5432/tracegoblins"
+    depends_on:
+      db:
+        condition: service_healthy
+      mock-awx:
+        condition: service_started
+
+  db:
+    environment:
+      POSTGRES_PASSWORD: "tracegoblins"
+
+  mock-awx:
+    build: { context: ., dockerfile: Dockerfile }
+    # Bypass the app entrypoint (docker-entrypoint.sh runs `alembic upgrade head`):
+    # the mock-AWX sidecar has no DB and the backend code lives at WORKDIR /app
+    # (the image copies backend/ -> /app), so import root is /app, not /app/backend.
+    entrypoint: []
+    command: ["uvicorn", "tests.e2e.mock_awx_server:app", "--host", "0.0.0.0", "--port", "9100"]
+    working_dir: /app
+    # The runtime image excludes backend/tests/ (.dockerignore, remote-hygiene policy);
+    # mount the local tests dir read-only so the mock-AWX module is importable.
+    volumes:
+      - ./backend/tests:/app/tests:ro
+    expose: ["9100"]
+    restart: unless-stopped

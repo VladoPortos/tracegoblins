@@ -192,6 +192,7 @@ async def sync_controller(db: AsyncSession, controller: AwxController) -> SyncRe
                     template_name=job.name,
                     awx_user=job.created_by_username,
                     log_time=_parse_iso(job.finished),
+                    awx_job_status=job.status,
                     controller_id=controller.id,
                     awx_job_id=str(job.id),
                     awx_job_url=_abs_url(controller.base_url, job.url),

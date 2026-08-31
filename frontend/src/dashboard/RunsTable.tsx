@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import type { RunCard } from '../api/client'
 import type { SortKey, SortDir } from './useLogsState'
 import { Badge } from '../components/atoms/Badge'
@@ -48,11 +48,22 @@ export function RunsTable({ items, scope, sort, dir, onSort }: {
                   key={c.key}
                   role="columnheader"
                   aria-sort={active ? (dir === 'asc' ? 'ascending' : 'descending') : undefined}
-                  onClick={c.sort ? () => onSort(c.sort!) : undefined}
-                  style={{ ...th, textAlign: c.align === 'right' ? 'right' : 'left', cursor: c.sort ? 'pointer' : 'default' }}
+                  style={{ ...th, textAlign: c.align === 'right' ? 'right' : 'left' }}
                 >
-                  {c.label}
-                  {active && <span style={{ marginLeft: 4 }}>{dir === 'asc' ? '▲' : '▼'}</span>}
+                  {c.sort ? (
+                    <button
+                      type="button"
+                      className="table-sort"
+                      onClick={() => onSort(c.sort!)}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4, padding: 0,
+                        border: 0, background: 'transparent', color: 'inherit', font: 'inherit', cursor: 'pointer',
+                      }}
+                    >
+                      {c.label}
+                      {active && <span aria-hidden="true">{dir === 'asc' ? '▲' : '▼'}</span>}
+                    </button>
+                  ) : c.label}
                 </th>
               )
             })}
@@ -75,7 +86,13 @@ export function RunsTable({ items, scope, sort, dir, onSort }: {
                   <Badge status={r.status} />
                 </td>
                 <td style={{ ...td, maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {r.template_name || 'Run'}
+                  <Link
+                    to={`/runs/${r.id}`}
+                    className="table-run-link"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {r.template_name || 'Run'}
+                  </Link>
                 </td>
                 <td className="mono dim" style={{ ...td }}>{r.job_id ? '#' + r.job_id : '—'}</td>
                 <td style={{ ...td }}>{isAwx ? (r.controller_name || 'AWX') : 'Uploaded'}</td>

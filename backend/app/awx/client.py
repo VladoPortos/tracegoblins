@@ -1,21 +1,17 @@
 from __future__ import annotations
 
 import json
-import logging
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
 import httpx
 
-logger = logging.getLogger(__name__)
-
 DEFAULT_TIMEOUT = httpx.Timeout(30.0, connect=10.0)
 PAGE_SIZE = 200
 FINISHED_FILTER = "&not__status=running&not__status=pending&not__status=waiting&not__status=new"
-# Safety backstop: never accumulate more than this many job_events for a single job. A normal
-# job has hundreds-to-low-thousands of events; a pathological/hostile job could otherwise OOM
-# the worker. On overflow we stop paging and log (the parse is best-effort from what we have).
+# Safety backstop: never import a partial event stream for a single job. A normal job has
+# hundreds-to-low-thousands of events; a pathological/hostile job could otherwise OOM the worker.
 MAX_JOB_EVENTS = 200_000
 
 _DEFAULT_PORTS = {"http": 80, "https": 443}
@@ -57,6 +53,10 @@ class AwxError(Exception):
     def __init__(self, message: str, *, status: int | None = None):
         super().__init__(message)
         self.status = status
+
+
+class AwxEventsLimitError(AwxError):
+    """A job event stream exceeded the import safety limit and was not imported."""
 
 
 @dataclass(frozen=True)
@@ -256,13 +256,12 @@ class AwxClient:
         while url is not None:
             data = await self._get_json(url)
             events.extend(data.get("results") or [])
-            if len(events) >= MAX_JOB_EVENTS:
-                logger.warning(
-                    "job %s exceeded MAX_JOB_EVENTS (%d); truncating event stream",
-                    job_id, MAX_JOB_EVENTS,
+            has_more = bool(data.get("next"))
+            if len(events) > MAX_JOB_EVENTS or (len(events) == MAX_JOB_EVENTS and has_more):
+                raise AwxEventsLimitError(
+                    f"AWX job {job_id} exceeds the {MAX_JOB_EVENTS} event safety limit; "
+                    "no partial run was imported"
                 )
-                del events[MAX_JOB_EVENTS:]
-                break
             url = _safe_next(self._base, data.get("next"))
         return events
 

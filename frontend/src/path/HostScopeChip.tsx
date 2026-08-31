@@ -59,8 +59,11 @@ export function HostScopeChip({ recap, value, onPick }: { recap: HostRecap[]; va
   return (
     <div ref={wrapRef} style={{ position: 'relative' }}>
       <button
+        type="button"
         data-testid="host-scope-chip"
         onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        aria-controls="host-scope-options"
         style={{
           display: 'flex', alignItems: 'center', gap: 8,
           height: 32, padding: '0 11px', borderRadius: 8,
@@ -101,15 +104,34 @@ export function HostScopeChip({ recap, value, onPick }: { recap: HostRecap[]; va
               }}
             />
           )}
-          <div style={{ maxHeight: 320, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+          <div
+            id="host-scope-options"
+            role="listbox"
+            aria-label="Host scope"
+            style={{ maxHeight: 320, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}
+          >
             {/* 'All hosts' aggregate stays pinned and is never filtered out */}
             {[allOption, ...filtered].map(h => (
-              <div
+              <button
+                type="button"
+                role="option"
+                aria-selected={value === h.id}
                 key={h.id}
                 data-testid={`host-option-${h.id}`}
                 onClick={() => { onPick(h.id); setOpen(false) }}
+                onKeyDown={(e) => {
+                  if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+                  e.preventDefault()
+                  const options = Array.from(
+                    e.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? [],
+                  )
+                  const index = options.indexOf(e.currentTarget)
+                  const direction = e.key === 'ArrowDown' ? 1 : -1
+                  options[(index + direction + options.length) % options.length]?.focus()
+                }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 8,
+                  width: '100%', textAlign: 'left', font: 'inherit',
                   padding: '8px 10px', borderRadius: 7, cursor: 'pointer',
                   color: 'var(--text)',
                   background: value === h.id ? 'var(--flow-soft, rgba(99,179,237,.12))' : 'transparent',
@@ -120,7 +142,7 @@ export function HostScopeChip({ recap, value, onPick }: { recap: HostRecap[]; va
                 <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontFeatureSettings: '"zero"' }}>{h.label}</span>
                 <span className={h.status ? 'st-' + h.status : undefined}
                       style={{ fontSize: 11, color: h.status ? 'var(--c)' : 'var(--dim)', marginLeft: 'auto' }}>{h.tag}</span>
-              </div>
+              </button>
             ))}
             {showFilter && filtered.length === 0 && (
               <div style={{ padding: '8px 10px', fontSize: 11, color: 'var(--dim)', fontFamily: "'IBM Plex Mono', monospace" }}>

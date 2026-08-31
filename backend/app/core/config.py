@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import ClassVar, Literal
 
+from cryptography.fernet import Fernet
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -82,7 +83,11 @@ class Settings(BaseSettings):
         return self.token_enc_key.get_secret_value()
 
 
-_INSECURE_SECRET_KEY = "change-me-in-prod"
+_INSECURE_SECRET_KEYS = frozenset({
+    "change-me-in-prod",
+    "replace-with-64-byte-urlsafe-token",
+})
+_INSECURE_TOKEN_KEYS = frozenset({"", "replace-with-fernet-key"})
 
 
 def validate_runtime_secrets(s: "Settings") -> None:
@@ -102,10 +107,15 @@ def validate_runtime_secrets(s: "Settings") -> None:
     if s.environment != "production":
         return
     problems: list[str] = []
-    if not s.secret or s.secret == _INSECURE_SECRET_KEY:
+    if not s.secret or s.secret in _INSECURE_SECRET_KEYS:
         problems.append("SECRET_KEY must be set to a strong random value")
-    if not s.token_enc:
-        problems.append("TOKEN_ENC_KEY must be set (a Fernet key) to encrypt AWX tokens")
+    if s.token_enc in _INSECURE_TOKEN_KEYS:
+        problems.append("TOKEN_ENC_KEY must be set to a valid Fernet key")
+    else:
+        try:
+            Fernet(s.token_enc.encode("ascii"))
+        except (ValueError, TypeError, UnicodeEncodeError):
+            problems.append("TOKEN_ENC_KEY must be set to a valid Fernet key")
     if problems:
         raise RuntimeError(
             "Refusing to start with an insecure production configuration: "

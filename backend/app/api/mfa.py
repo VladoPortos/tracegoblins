@@ -60,10 +60,18 @@ def _active_secret(user) -> str:
 
 @router.post("/enable", response_model=RecoveryOut)
 async def enable(data: CodeIn, request: Request, user: CurrentUser, db: DbSession):
+    if user.totp_enabled:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="2FA already enabled; disable it first")
+    keys = _mfa_mgmt_keys(request, user)
+    decision = await mfa_verify_limiter.check(*keys)
+    if not decision.allowed:
+        raise too_many_attempts(decision)
     secret = _active_secret(user)
     step = totp.verify_totp(secret, data.code)
     if step is None:
+        await mfa_verify_limiter.record_failure(*keys)
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Invalid code")
+    await mfa_verify_limiter.reset(*keys)
     user.totp_enabled = True
     user.totp_confirmed_at = utcnow()
     # Burn the enrollment code's timestep into the replay guard so it can't be reused at the

@@ -317,6 +317,7 @@ export interface PathDrawerProps {
   hostScope: HostScopeId
   reduced: boolean
   onClose: () => void
+  onEnter: (target: { type: 'container' | 'loop'; id: string }, label?: string) => void
   onViewSource?: (node: PathNode) => void
 }
 
@@ -352,7 +353,7 @@ function CodeTab({ node, args, onViewSource }: { node: PathNode; args: ArgRow[];
   )
 }
 
-export function PathDrawer({ runId, node, iter, hostScope, reduced, onClose, onViewSource }: PathDrawerProps) {
+export function PathDrawer({ runId, node, iter, hostScope, reduced, onClose, onEnter, onViewSource }: PathDrawerProps) {
   // Loop leaves (item/result) carry per-iteration detail; fetch via the data seam.
   // Their ids are synthetic ("item"/"result"), so query the REAL loop node_id carried in
   // result_node_id (FE2) — otherwise no RunNodeResult matches and the output never renders.
@@ -439,6 +440,18 @@ export function PathDrawer({ runId, node, iter, hostScope, reduced, onClose, onV
               <StatusPill status={d.status} />
               <span className="mono" style={{ fontSize: 11.5, color: 'var(--dim)' }}>{d.hostText}</span>
             </div>
+
+            {node.enter_to && (
+              <button
+                type="button"
+                className="btn btn-ghost sm"
+                aria-label={`Enter ${node.label}`}
+                onClick={() => onEnter(node.enter_to!, node.label)}
+                style={{ alignSelf: 'flex-start', color: 'var(--flow)' }}
+              >
+                Enter {node.label} →
+              </button>
+            )}
 
             {/* Args table */}
             {d.args.length > 0 && <ArgsTable rows={d.args} />}

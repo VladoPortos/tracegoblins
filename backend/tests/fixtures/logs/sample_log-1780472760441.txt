@@ -1,0 +1,1295 @@
+Identity added: /runner/artifacts/11184/ssh_key_data (cloudauto@ntnx-awx-01b)
+[DEPRECATION WARNING]: ANSIBLE_COLLECTIONS_PATHS option, does not fit var
+naming standard, use the singular form ANSIBLE_COLLECTIONS_PATH instead. This
+feature will be removed from ansible-core in version 2.19. Deprecation warnings
+ can be disabled by setting deprecation_warnings=False in ansible.cfg.
+SSH password:
+
+PLAY [Get Hosts from CLI] ******************************************************
+
+TASK [Include post deployment setup task] **************************************
+included: /runner/project/tasks/include_postDeployVM_inputs.yml for localhost
+
+TASK [Query cloud organization] ************************************************
+skipping: [localhost]
+
+TASK [debug] *******************************************************************
+ok: [localhost] => {
+    "cloud_org_details": {
+        "changed": false,
+        "count": 1,
+        "failed": false,
+        "metadata": {},
+        "organization": {
+            "associations": {
+                "hypervisor_clusters": []
+            },
+            "created_at": "2025-11-14T14:05:15.922000Z",
+            "created_by": null,
+            "deleted": false,
+            "id": "69c15357-fa95-4f56-b004-b5a680a44b54",
+            "links": {
+                "_self": "/api/cdb/organizations/69c15357-fa95-4f56-b004-b5a680a44b54"
+            },
+            "name": "Acme Corporation",
+            "properties": {
+                "active_toolset": {
+                    "default": "native",
+                    "os_backup": "netbackup",
+                    "os_monitoring": "edgex2",
+                    "os_patching": "mfsa"
+                },
+                "ad_join_data": {
+                    "ad_domains": {
+                        "ACMECO-AWX": {
+                            "ad_join_account": {
+                                "account_ad_domain": "testdomain1.com",
+                                "username": "testdomain1_join"
+                            },
+                            "ad_service_account": {
+                                "account_ad_domain": "testdomain1.com",
+                                "username": "testdomain1_sa"
+                            },
+                            "additional_vm_join_ou": [
+                                "OU=Linux,OU=Servers,OU=testdomain1,DC=testdomain1,DC=com",
+                                "OU=Admins,OU=testdomain1,DC=testdomain1,DC=com",
+                                "OU=Workstations,OU=testdomain1,DC=testdomain1,DC=com",
+                                "OU=Windows,OU=Servers,OU=testdomain1,DC=testdomain1,DC=com",
+                                "OU=Windows2,OU=Servers,OU=testdomain1,DC=testdomain1,DC=com",
+                                "OU=Linux2,OU=Servers,OU=testdomain1,DC=testdomain1,DC=com",
+                                "OU=Groups,OU=testdomain1,DC=testdomain1,DC=com"
+                            ],
+                            "auth_method_domain_default": "credssp",
+                            "customer_disallows_local_accounts": false,
+                            "default_vm_join_ou": [
+                                "OU=Servers",
+                                "OU=testdomain1",
+                                "DC=testdomain1",
+                                "DC=com"
+                            ],
+                            "linux_ad_gpo_access_control": "permissive",
+                            "linux_root_access_ad_groups": [
+                                "domain admins",
+                                "enterprise admins"
+                            ],
+                            "name": "testdomain1.com",
+                            "win_configure_access_groups": false,
+                            "win_remove_computer_from_ad": true,
+                            "windows_administrative_access_ad_groups": [
+                                "testdomain1\\\\tanzu1",
+                                "testdomain1\\\\tanzu2",
+                                "testdomain1\\\\tanzu3"
+                            ],
+                            "xcustomer_disallows_local_accounts": true,
+                            "xwin_configure_access_groups": true
+                        }
+                    }
+                },
+                "ansible_winrm_transport": "ntlm,credssp",
+                "auth": {
+                    "os_service_account": {
+                        "description": "Cloud Automation Service Account",
+                        "password": {
+                            "vault_path": "organization.69c15357-fa95-4f56-b004-b5a680a44b54.properties.auth.os_service_account.password",
+                            "vault_value": "[REDACTED_TEST_VALUE]"
+                        },
+                        "username": "cloudauto"
+                    }
+                },
+                "customer_type": "Internal",
+                "delivery_accounts": {
+                    "account_count": 1,
+                    "name": "delivery"
+                },
+                "dns_configure": true,
+                "dns_list": {
+                    "ACMECO-AWX": {
+                        "name": "ACMECO-AWX",
+                        "sites": {
+                            "siteA": {
+                                "dns": [
+                                    "192.168.0.13",
+                                    "192.168.1.13"
+                                ],
+                                "dns_search_domain": [
+                                    "testdomain1.com"
+                                ],
+                                "name": "siteA"
+                            }
+                        }
+                    }
+                },
+                "duplicate_vm_name": "true",
+                "edgex2_list": {
+                    "ACMECO-AWX": {
+                        "dt_activegate_description": "public",
+                        "dt_activegate_location": "https://dxcdynatrace-activegate.dev.platform.dxc.com:443",
+                        "dt_env_activegate_addr_1": "ease2ag1a.us-central-010.mcloud.entsvcs.com",
+                        "dt_env_activegate_addr_2": "ease2ag2a.us-central-010.mcloud.entsvcs.com",
+                        "dt_env_activegate_group": "MSVXDEV",
+                        "dt_envid": "ed22bf11-1936-43e6-8a2b-eed66e6ea4aa",
+                        "dt_envname": "MSVXDEV",
+                        "dt_parent": "dxcdynatrace.dev.platform.dxc.com",
+                        "dt_token": {
+                            "vault_path": "organization.69c15357-fa95-4f56-b004-b5a680a44b54.properties.edgex2_list.ACMECO-AWX.dt_token",
+                            "vault_value": "[REDACTED_TEST_VALUE]"
+                        },
+                        "edge_id": "MSVX-DEV-01",
+                        "files_repository": "/opt/custom_ee_share/files-repository/HPC_standard",
+                        "name": "ACMECO-AWX",
+                        "proxy": "http://138.35.86.205:8088",
+                        "supported_monitoring_app": [
+                            "paas_tomcat",
+                            "paas_mssql",
+                            "mc_paas_apache",
+                            "paas_apache",
+                            "paas_postgresql",
+                            "paas_iis"
+                        ],
+                        "toolset": "edgex2"
+                    }
+                },
+                "environments": {
+                    "ACMECO-AWX": {
+                        "dns_list": "ACMECO-AWX",
+                        "edgex2_list": "ACMECO-AWX",
+                        "kms_list": "ACMECO-AWX",
+                        "name": "ACMECO-AWX",
+                        "ntp_list": "ACMECO-AWX"
+                    },
+                    "ACMECO-TEST": {
+                        "dns_list": "ACMECO-AWX",
+                        "edgex2_list": "ACMECO-AWX",
+                        "kms_list": "ACMECO-AWX",
+                        "name": "ACMECO-TEST",
+                        "ntp_list": "ACMECO-AWX"
+                    }
+                },
+                "esl": {
+                    "active": true,
+                    "active_esl_template": "esl_template_acmeco",
+                    "api_url": "https://esl-t-app-02.svcs.entsvcs.net:8443",
+                    "auth": {
+                        "api_password": {
+                            "vault_path": "organization.69c15357-fa95-4f56-b004-b5a680a44b54.properties.esl.auth.api_password",
+                            "vault_value": "[REDACTED_TEST_VALUE]"
+                        },
+                        "api_user": "esl"
+                    },
+                    "ci_states": {
+                        "decom": "deinstalled",
+                        "maintenance": "in maintenance",
+                        "new": "in production",
+                        "production": "in production"
+                    }
+                },
+                "friendly_name": "acmeco",
+                "kms_configure": true,
+                "kms_list": {
+                    "ACMECO-AWX": {
+                        "name": "ACMECO-AWX",
+                        "sites": {
+                            "siteA": {
+                                "kms": [
+                                    "192.168.0.13"
+                                ],
+                                "name": "siteA"
+                            }
+                        }
+                    }
+                },
+                "linux_time_service": {
+                    "dont_touch_at_onboarding": true,
+                    "global": "chrony",
+                    "overrides": {
+                        "oraclelinux": {
+                            "8": "chrony",
+                            "9": "chrony"
+                        },
+                        "redhat": {
+                            "7": "ntp",
+                            "8": "chrony",
+                            "9": "chrony"
+                        },
+                        "sles": {
+                            "12": "ntp",
+                            "15": "chrony"
+                        }
+                    }
+                },
+                "localization_language": "en_US",
+                "management_domain": "acmeco.us-central-010.mcloud.entsvcs.com",
+                "mfsa_list": {
+                    "ACMECO-AWX": {
+                        "customer_id": "470001",
+                        "customer_name": "Multicloud_acmeco",
+                        "linux_baseline": [
+                            {
+                                "baseline": "3Q2025.1",
+                                "supporting_os": "OracleLinux 8"
+                            },
+                            {
+                                "baseline": "3Q2025.1",
+                                "supporting_os": "OracleLinux 9"
+                            },
+                            {
+                                "baseline": "1Q2026.2",
+                                "supporting_os": "RedHat 9"
+                            }
+                        ],
+                        "mfsa_api_path_overwrite_default": "/opt/opsware_api",
+                        "mfsa_auth": {
+                            "password": {
+                                "vault_path": "organization.69c15357-fa95-4f56-b004-b5a680a44b54.properties.mfsa_list.ACMECO-AWX.mfsa_auth.password",
+                                "vault_value": "[REDACTED_TEST_VALUE]"
+                            },
+                            "username": "api_automation_vrouser"
+                        },
+                        "mfsa_mesh_server": "205.239.19.162:443",
+                        "name": "ACMECO-AWX",
+                        "opsw_gw_addr": "10.164.244.23:3001",
+                        "server_automation_version": "2018.08",
+                        "toolset": "mfsa"
+                    }
+                },
+                "netbackup_list": {
+                    "0": {
+                        "name": "prod",
+                        "netbackup_media_servers": [
+                            {
+                                "fqdn": "netbckp-media.us-central-010.mcloud.entsvcs.com",
+                                "ip": "192.168.200.9"
+                            },
+                            {
+                                "fqdn": "netbckp-medib.us-central-010.mcloud.entsvcs.com",
+                                "ip": "192.168.203.9"
+                            },
+                            {
+                                "fqdn": "netbckp-medic.us-central-010.mcloud.entsvcs.com",
+                                "ip": "192.168.209.9"
+                            }
+                        ],
+                        "netbackup_policy_prefix": "hpc_acmeco",
+                        "netbackup_primary_server_fqdn": "netbckp-primary.us-central-010.mcloud.entsvcs.com",
+                        "netbackup_primary_server_ip": "10.164.244.44"
+                    }
+                },
+                "notifications": {
+                    "generic": [
+                        "fixture.user@example.com",
+                        "fixture.user@example.com"
+                    ],
+                    "os_monitoring": [
+                        "fixture.user@example.com"
+                    ],
+                    "security_antivirus": [
+                        "fixture.user@example.com"
+                    ],
+                    "security_compliance": [
+                        "fixture.user@example.com"
+                    ],
+                    "security_vulnerability": [
+                        "fixture.user@example.com"
+                    ]
+                },
+                "ntp_list": {
+                    "ACMECO-AWX": {
+                        "name": "ACMECO-AWX",
+                        "sites": {
+                            "siteA": {
+                                "name": "siteA",
+                                "ntp": [
+                                    "192.168.0.13"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "os_licenses": [
+                    "DXC",
+                    "Customer"
+                ],
+                "paas_db": {
+                    "paas_mssql": {
+                        "edition": {
+                            "enterprise": {
+                                "collation": [
+                                    "SQL_Latin1_General_CP1_CI_AS",
+                                    "Latin1_General_CI_AS"
+                                ]
+                            },
+                            "standard": {
+                                "collation": [
+                                    "SQL_Latin1_General_CP1_CI_AS",
+                                    "Latin1_General_CI_AS"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "primary_site": {
+                    "name": "SiteA"
+                },
+                "security": {
+                    "services": {
+                        "antivirus": "CrowdStrike",
+                        "compliance": "Netwrix",
+                        "vulnerability": "Qualys"
+                    },
+                    "toolset": {
+                        "CrowdStrike": {
+                            "AntivirusExternalPDL": [
+                                "fixture.user@example.com"
+                            ],
+                            "CrowdStrikeCustomerID": "[REDACTED_TEST_ID]",
+                            "CrowdStrikeGroupTags": "MSVx",
+                            "CrowdStrikeProxyIP": "138.35.24.153",
+                            "CrowdStrikeProxyPort": "8088",
+                            "InternalNotificationsGroup": "security_CrowdStrike"
+                        },
+                        "Netwrix": {
+                            "ComplianceExternalPDL": [
+                                "fixture.user@example.com"
+                            ],
+                            "InternalNotificationsGroup": "security_Netwrix",
+                            "NetwrixAgentPassword": "[REDACTED_TEST_VALUE]",
+                            "NetwrixAgentPrefix": "TCM26-001_",
+                            "NetwrixAgentProxy": "http://138.35.24.153:8088",
+                            "NetwrixAgentSuffix": "TEST",
+                            "NetwrixAgentUser": "TCM26-001",
+                            "NetwrixHubHost": "https://dxcus.nntwsct.com/api"
+                        },
+                        "Qualys": {
+                            "InternalNotificationsGroup": "security_Qualys",
+                            "QualysActivationID": "[REDACTED_TEST_ID]",
+                            "QualysCustomerID": "[REDACTED_TEST_ID]",
+                            "QualysProxy": "138.35.24.153:8088",
+                            "QualysWebserviceUrl": "https://qagpublic.qg2.apps.qualys.eu/CloudAgent/",
+                            "VulnerabilityExternalPDL": [
+                                "fixture.user@example.com"
+                            ]
+                        }
+                    }
+                },
+                "shared_values": {
+                    "mapping_resource": "shared_values_mapping"
+                },
+                "windows": {
+                    "1": "50 1 * * 4 1",
+                    "1st Thu @1:01": "1 1 * * 4 1",
+                    "2": "40 6 * * 4 *",
+                    "8PM_Monday": "0 20 * * 1 *"
+                }
+            },
+            "updated_at": "2026-05-28T15:20:53.871708Z",
+            "updated_by": "pnouza"
+        },
+        "organizations": [],
+        "pages_fetched": 0,
+        "status_code": 200,
+        "total_count": 0
+    }
+}
+
+TASK [Capture organization properties] *****************************************
+ok: [localhost]
+
+TASK [debug] *******************************************************************
+ok: [localhost] => {
+    "org_properties": {
+        "active_toolset": {
+            "default": "native",
+            "os_backup": "netbackup",
+            "os_monitoring": "edgex2",
+            "os_patching": "mfsa"
+        },
+        "ad_join_data": {
+            "ad_domains": {
+                "ACMECO-AWX": {
+                    "ad_join_account": {
+                        "account_ad_domain": "testdomain1.com",
+                        "username": "testdomain1_join"
+                    },
+                    "ad_service_account": {
+                        "account_ad_domain": "testdomain1.com",
+                        "username": "testdomain1_sa"
+                    },
+                    "additional_vm_join_ou": [
+                        "OU=Linux,OU=Servers,OU=testdomain1,DC=testdomain1,DC=com",
+                        "OU=Admins,OU=testdomain1,DC=testdomain1,DC=com",
+                        "OU=Workstations,OU=testdomain1,DC=testdomain1,DC=com",
+                        "OU=Windows,OU=Servers,OU=testdomain1,DC=testdomain1,DC=com",
+                        "OU=Windows2,OU=Servers,OU=testdomain1,DC=testdomain1,DC=com",
+                        "OU=Linux2,OU=Servers,OU=testdomain1,DC=testdomain1,DC=com",
+                        "OU=Groups,OU=testdomain1,DC=testdomain1,DC=com"
+                    ],
+                    "auth_method_domain_default": "credssp",
+                    "customer_disallows_local_accounts": false,
+                    "default_vm_join_ou": [
+                        "OU=Servers",
+                        "OU=testdomain1",
+                        "DC=testdomain1",
+                        "DC=com"
+                    ],
+                    "linux_ad_gpo_access_control": "permissive",
+                    "linux_root_access_ad_groups": [
+                        "domain admins",
+                        "enterprise admins"
+                    ],
+                    "name": "testdomain1.com",
+                    "win_configure_access_groups": false,
+                    "win_remove_computer_from_ad": true,
+                    "windows_administrative_access_ad_groups": [
+                        "testdomain1\\\\tanzu1",
+                        "testdomain1\\\\tanzu2",
+                        "testdomain1\\\\tanzu3"
+                    ],
+                    "xcustomer_disallows_local_accounts": true,
+                    "xwin_configure_access_groups": true
+                }
+            }
+        },
+        "ansible_winrm_transport": "ntlm,credssp",
+        "auth": {
+            "os_service_account": {
+                "description": "Cloud Automation Service Account",
+                "password": {
+                    "vault_path": "organization.69c15357-fa95-4f56-b004-b5a680a44b54.properties.auth.os_service_account.password",
+                    "vault_value": "[REDACTED_TEST_VALUE]"
+                },
+                "username": "cloudauto"
+            }
+        },
+        "customer_type": "Internal",
+        "delivery_accounts": {
+            "account_count": 1,
+            "name": "delivery"
+        },
+        "dns_configure": true,
+        "dns_list": {
+            "ACMECO-AWX": {
+                "name": "ACMECO-AWX",
+                "sites": {
+                    "siteA": {
+                        "dns": [
+                            "192.168.0.13",
+                            "192.168.1.13"
+                        ],
+                        "dns_search_domain": [
+                            "testdomain1.com"
+                        ],
+                        "name": "siteA"
+                    }
+                }
+            }
+        },
+        "duplicate_vm_name": "true",
+        "edgex2_list": {
+            "ACMECO-AWX": {
+                "dt_activegate_description": "public",
+                "dt_activegate_location": "https://dxcdynatrace-activegate.dev.platform.dxc.com:443",
+                "dt_env_activegate_addr_1": "ease2ag1a.us-central-010.mcloud.entsvcs.com",
+                "dt_env_activegate_addr_2": "ease2ag2a.us-central-010.mcloud.entsvcs.com",
+                "dt_env_activegate_group": "MSVXDEV",
+                "dt_envid": "ed22bf11-1936-43e6-8a2b-eed66e6ea4aa",
+                "dt_envname": "MSVXDEV",
+                "dt_parent": "dxcdynatrace.dev.platform.dxc.com",
+                "dt_token": {
+                    "vault_path": "organization.69c15357-fa95-4f56-b004-b5a680a44b54.properties.edgex2_list.ACMECO-AWX.dt_token",
+                    "vault_value": "[REDACTED_TEST_VALUE]"
+                },
+                "edge_id": "MSVX-DEV-01",
+                "files_repository": "/opt/custom_ee_share/files-repository/HPC_standard",
+                "name": "ACMECO-AWX",
+                "proxy": "http://138.35.86.205:8088",
+                "supported_monitoring_app": [
+                    "paas_tomcat",
+                    "paas_mssql",
+                    "mc_paas_apache",
+                    "paas_apache",
+                    "paas_postgresql",
+                    "paas_iis"
+                ],
+                "toolset": "edgex2"
+            }
+        },
+        "environments": {
+            "ACMECO-AWX": {
+                "dns_list": "ACMECO-AWX",
+                "edgex2_list": "ACMECO-AWX",
+                "kms_list": "ACMECO-AWX",
+                "name": "ACMECO-AWX",
+                "ntp_list": "ACMECO-AWX"
+            },
+            "ACMECO-TEST": {
+                "dns_list": "ACMECO-AWX",
+                "edgex2_list": "ACMECO-AWX",
+                "kms_list": "ACMECO-AWX",
+                "name": "ACMECO-TEST",
+                "ntp_list": "ACMECO-AWX"
+            }
+        },
+        "esl": {
+            "active": true,
+            "active_esl_template": "esl_template_acmeco",
+            "api_url": "https://esl-t-app-02.svcs.entsvcs.net:8443",
+            "auth": {
+                "api_password": {
+                    "vault_path": "organization.69c15357-fa95-4f56-b004-b5a680a44b54.properties.esl.auth.api_password",
+                    "vault_value": "[REDACTED_TEST_VALUE]"
+                },
+                "api_user": "esl"
+            },
+            "ci_states": {
+                "decom": "deinstalled",
+                "maintenance": "in maintenance",
+                "new": "in production",
+                "production": "in production"
+            }
+        },
+        "friendly_name": "acmeco",
+        "kms_configure": true,
+        "kms_list": {
+            "ACMECO-AWX": {
+                "name": "ACMECO-AWX",
+                "sites": {
+                    "siteA": {
+                        "kms": [
+                            "192.168.0.13"
+                        ],
+                        "name": "siteA"
+                    }
+                }
+            }
+        },
+        "linux_time_service": {
+            "dont_touch_at_onboarding": true,
+            "global": "chrony",
+            "overrides": {
+                "oraclelinux": {
+                    "8": "chrony",
+                    "9": "chrony"
+                },
+                "redhat": {
+                    "7": "ntp",
+                    "8": "chrony",
+                    "9": "chrony"
+                },
+                "sles": {
+                    "12": "ntp",
+                    "15": "chrony"
+                }
+            }
+        },
+        "localization_language": "en_US",
+        "management_domain": "acmeco.us-central-010.mcloud.entsvcs.com",
+        "mfsa_list": {
+            "ACMECO-AWX": {
+                "customer_id": "470001",
+                "customer_name": "Multicloud_acmeco",
+                "linux_baseline": [
+                    {
+                        "baseline": "3Q2025.1",
+                        "supporting_os": "OracleLinux 8"
+                    },
+                    {
+                        "baseline": "3Q2025.1",
+                        "supporting_os": "OracleLinux 9"
+                    },
+                    {
+                        "baseline": "1Q2026.2",
+                        "supporting_os": "RedHat 9"
+                    }
+                ],
+                "mfsa_api_path_overwrite_default": "/opt/opsware_api",
+                "mfsa_auth": {
+                    "password": {
+                        "vault_path": "organization.69c15357-fa95-4f56-b004-b5a680a44b54.properties.mfsa_list.ACMECO-AWX.mfsa_auth.password",
+                        "vault_value": "[REDACTED_TEST_VALUE]"
+                    },
+                    "username": "api_automation_vrouser"
+                },
+                "mfsa_mesh_server": "205.239.19.162:443",
+                "name": "ACMECO-AWX",
+                "opsw_gw_addr": "10.164.244.23:3001",
+                "server_automation_version": "2018.08",
+                "toolset": "mfsa"
+            }
+        },
+        "netbackup_list": {
+            "0": {
+                "name": "prod",
+                "netbackup_media_servers": [
+                    {
+                        "fqdn": "netbckp-media.us-central-010.mcloud.entsvcs.com",
+                        "ip": "192.168.200.9"
+                    },
+                    {
+                        "fqdn": "netbckp-medib.us-central-010.mcloud.entsvcs.com",
+                        "ip": "192.168.203.9"
+                    },
+                    {
+                        "fqdn": "netbckp-medic.us-central-010.mcloud.entsvcs.com",
+                        "ip": "192.168.209.9"
+                    }
+                ],
+                "netbackup_policy_prefix": "hpc_acmeco",
+                "netbackup_primary_server_fqdn": "netbckp-primary.us-central-010.mcloud.entsvcs.com",
+                "netbackup_primary_server_ip": "10.164.244.44"
+            }
+        },
+        "notifications": {
+            "generic": [
+                "fixture.user@example.com",
+                "fixture.user@example.com"
+            ],
+            "os_monitoring": [
+                "fixture.user@example.com"
+            ],
+            "security_antivirus": [
+                "fixture.user@example.com"
+            ],
+            "security_compliance": [
+                "fixture.user@example.com"
+            ],
+            "security_vulnerability": [
+                "fixture.user@example.com"
+            ]
+        },
+        "ntp_list": {
+            "ACMECO-AWX": {
+                "name": "ACMECO-AWX",
+                "sites": {
+                    "siteA": {
+                        "name": "siteA",
+                        "ntp": [
+                            "192.168.0.13"
+                        ]
+                    }
+                }
+            }
+        },
+        "os_licenses": [
+            "DXC",
+            "Customer"
+        ],
+        "paas_db": {
+            "paas_mssql": {
+                "edition": {
+                    "enterprise": {
+                        "collation": [
+                            "SQL_Latin1_General_CP1_CI_AS",
+                            "Latin1_General_CI_AS"
+                        ]
+                    },
+                    "standard": {
+                        "collation": [
+                            "SQL_Latin1_General_CP1_CI_AS",
+                            "Latin1_General_CI_AS"
+                        ]
+                    }
+                }
+            }
+        },
+        "primary_site": {
+            "name": "SiteA"
+        },
+        "security": {
+            "services": {
+                "antivirus": "CrowdStrike",
+                "compliance": "Netwrix",
+                "vulnerability": "Qualys"
+            },
+            "toolset": {
+                "CrowdStrike": {
+                    "AntivirusExternalPDL": [
+                        "fixture.user@example.com"
+                    ],
+                    "CrowdStrikeCustomerID": "[REDACTED_TEST_ID]",
+                    "CrowdStrikeGroupTags": "MSVx",
+                    "CrowdStrikeProxyIP": "138.35.24.153",
+                    "CrowdStrikeProxyPort": "8088",
+                    "InternalNotificationsGroup": "security_CrowdStrike"
+                },
+                "Netwrix": {
+                    "ComplianceExternalPDL": [
+                        "fixture.user@example.com"
+                    ],
+                    "InternalNotificationsGroup": "security_Netwrix",
+                    "NetwrixAgentPassword": "[REDACTED_TEST_VALUE]",
+                    "NetwrixAgentPrefix": "TCM26-001_",
+                    "NetwrixAgentProxy": "http://138.35.24.153:8088",
+                    "NetwrixAgentSuffix": "TEST",
+                    "NetwrixAgentUser": "TCM26-001",
+                    "NetwrixHubHost": "https://dxcus.nntwsct.com/api"
+                },
+                "Qualys": {
+                    "InternalNotificationsGroup": "security_Qualys",
+                    "QualysActivationID": "[REDACTED_TEST_ID]",
+                    "QualysCustomerID": "[REDACTED_TEST_ID]",
+                    "QualysProxy": "138.35.24.153:8088",
+                    "QualysWebserviceUrl": "https://qagpublic.qg2.apps.qualys.eu/CloudAgent/",
+                    "VulnerabilityExternalPDL": [
+                        "fixture.user@example.com"
+                    ]
+                }
+            }
+        },
+        "shared_values": {
+            "mapping_resource": "shared_values_mapping"
+        },
+        "windows": {
+            "1": "50 1 * * 4 1",
+            "1st Thu @1:01": "1 1 * * 4 1",
+            "2": "40 6 * * 4 *",
+            "8PM_Monday": "0 20 * * 1 *"
+        }
+    }
+}
+
+TASK [Derive organization network references] **********************************
+ok: [localhost]
+
+TASK [fail] ********************************************************************
+skipping: [localhost]
+
+TASK [debug] *******************************************************************
+ok: [localhost] => {
+    "org_environment": {
+        "dns_list": "ACMECO-AWX",
+        "edgex2_list": "ACMECO-AWX",
+        "kms_list": "ACMECO-AWX",
+        "name": "ACMECO-AWX",
+        "ntp_list": "ACMECO-AWX"
+    }
+}
+
+TASK [Extract environment lists for ACMECO-AWX] ********************************
+ok: [localhost]
+
+TASK [Debug vm_resource_id] ****************************************************
+ok: [localhost] => {
+    "vm_resource_id": "fd48db0f-26d1-41fc-bd1c-b9c9206f4f7e"
+}
+
+TASK [Get resource by ID] ******************************************************
+ok: [localhost]
+
+TASK [Set organization customer network info defaults] *************************
+ok: [localhost]
+
+TASK [Set variables] ***********************************************************
+ok: [localhost]
+
+TASK [debug] *******************************************************************
+ok: [localhost] => (item={'name': 'customer_network_info', 'value': {'dns_data': {'dns_info': {'dns': ['192.168.0.13', '192.168.1.13'], 'name': 'siteA', 'dns_search_domain': ['testdomain1.com']}, 'customer_network_address': '100.70.17.17', 'dns_configure': True, 'environment': 'ACMECO-AWX'}, 'vm_onboarded': False, 'customer_network_details': {'overall_network_count': 1, 'customer_primary_network_ip': '100.70.17.17'}}}) => {
+    "msg": {
+        "variable_name": "customer_network_info",
+        "variable_value": {
+            "customer_network_details": {
+                "customer_primary_network_ip": "100.70.17.17",
+                "overall_network_count": 1
+            },
+            "dns_data": {
+                "customer_network_address": "100.70.17.17",
+                "dns_configure": true,
+                "dns_info": {
+                    "dns": [
+                        "192.168.0.13",
+                        "192.168.1.13"
+                    ],
+                    "dns_search_domain": [
+                        "testdomain1.com"
+                    ],
+                    "name": "siteA"
+                },
+                "environment": "ACMECO-AWX"
+            },
+            "vm_onboarded": false
+        }
+    }
+}
+ok: [localhost] => (item={'name': 'variable_host', 'value': '100.70.7.24'}) => {
+    "msg": {
+        "variable_name": "variable_host",
+        "variable_value": "100.70.7.24"
+    }
+}
+ok: [localhost] => (item={'name': 'kms_configure', 'value': True}) => {
+    "msg": {
+        "variable_name": "kms_configure",
+        "variable_value": true
+    }
+}
+ok: [localhost] => (item={'name': 'variable_kms', 'value': ['192.168.0.13']}) => {
+    "msg": {
+        "variable_name": "variable_kms",
+        "variable_value": [
+            "192.168.0.13"
+        ]
+    }
+}
+ok: [localhost] => (item={'name': 'dns_configure', 'value': True}) => {
+    "msg": {
+        "variable_name": "dns_configure",
+        "variable_value": true
+    }
+}
+ok: [localhost] => (item={'name': 'variable_ntp', 'value': ['192.168.0.13']}) => {
+    "msg": {
+        "variable_name": "variable_ntp",
+        "variable_value": [
+            "192.168.0.13"
+        ]
+    }
+}
+ok: [localhost] => (item={'name': 'fqdn', 'value': 'n66hnw22c32.acmeco.us-central-010.mcloud.entsvcs.com'}) => {
+    "msg": {
+        "variable_name": "fqdn",
+        "variable_value": "n66hnw22c32.acmeco.us-central-010.mcloud.entsvcs.com"
+    }
+}
+
+TASK [Set default vars for Support Accounts] ***********************************
+ok: [localhost]
+
+TASK [Display account count] ***************************************************
+ok: [localhost] => {
+    "serviceAccountCount": "1"
+}
+
+TASK [Adjust Support Account max count if over 100] ****************************
+skipping: [localhost]
+
+TASK [Define empty support_accounts] *******************************************
+ok: [localhost]
+
+TASK [Login to Vault using AppRole] ********************************************
+changed: [localhost]
+
+TASK [Store vault token into variable] *****************************************
+ok: [localhost]
+
+TASK [Generate Service Account credentials and store in vault] *****************
+included: /runner/project/tasks/include_postDeployVM_serviceAccountCredentials.yml for localhost => (item=delivery1)
+
+TASK [Generate password for delivery1] *****************************************
+ok: [localhost]
+
+TASK [Prepare variables for vault] *********************************************
+ok: [localhost]
+
+TASK [debug] *******************************************************************
+skipping: [localhost]
+
+TASK [Login to Vault using AppRole] ********************************************
+skipping: [localhost]
+
+TASK [Store vault token into variable] *****************************************
+skipping: [localhost]
+
+TASK [Write password for delivery1 to Vault under host/username path] **********
+changed: [localhost]
+
+TASK [Add credentials to dict] *************************************************
+ok: [localhost]
+
+TASK [debug] *******************************************************************
+skipping: [localhost]
+
+TASK [Encode support_accounts with base64] *************************************
+ok: [localhost]
+
+TASK [debug] *******************************************************************
+skipping: [localhost]
+
+TASK [Get resource by ID] ******************************************************
+ok: [localhost]
+
+TASK [debug] *******************************************************************
+ok: [localhost] => {
+    "resource": {
+        "changed": false,
+        "count": 1,
+        "failed": false,
+        "history": [],
+        "metadata": {},
+        "pages_fetched": 0,
+        "resource": {
+            "created_at": "2026-06-03T05:41:19.788925Z",
+            "created_by": "core_jenkins",
+            "deleted": false,
+            "deployment": null,
+            "hypervisor_cluster": null,
+            "id": "fd48db0f-26d1-41fc-bd1c-b9c9206f4f7e",
+            "links": {
+                "_self": "/api/cdb/resources/fd48db0f-26d1-41fc-bd1c-b9c9206f4f7e",
+                "organization": "/api/cdb/organizations/69c15357-fa95-4f56-b004-b5a680a44b54",
+                "pod": "/api/cdb/pods/56d03fd4-8b0a-4860-851e-f6b5d9ad3a7c"
+            },
+            "name": "n66hnw22c32",
+            "organization": "69c15357-fa95-4f56-b004-b5a680a44b54",
+            "organization_friendly_name": "acmeco",
+            "organization_name": "Acme Corporation",
+            "parent_resource": null,
+            "parent_vcenter": null,
+            "pod": "56d03fd4-8b0a-4860-851e-f6b5d9ad3a7c",
+            "pod_name": "mypod",
+            "properties": {
+                "cloud_target": {
+                    "id": "981be296-3148-4d02-a95d-88f7a57f0e76",
+                    "image": "windows_2022",
+                    "last_snapshot": {
+                        "apc_config": {
+                            "cpu_model": null,
+                            "is_apc_enabled": false
+                        },
+                        "availability_zone": null,
+                        "bios_uuid": "294182d2-4aa0-4270-710c-1a9c86324cd9",
+                        "boot_config": {
+                            "boot_device": null,
+                            "boot_order": [
+                                "CDROM",
+                                "DISK",
+                                "NETWORK"
+                            ],
+                            "is_secure_boot_enabled": false,
+                            "nvram_device": {
+                                "backing_storage_info": {
+                                    "data_source": null,
+                                    "disk_ext_id": "6880a4eb-8882-458c-9a72-9e077b35224d",
+                                    "disk_size_bytes": null,
+                                    "is_migration_in_progress": null,
+                                    "storage_config": null,
+                                    "storage_container": {
+                                        "ext_id": "0f4bc039-c2a6-410c-9848-8242b157c2c1"
+                                    },
+                                    "vm_disk_hydration_info": null
+                                }
+                            }
+                        },
+                        "categories": [
+                            {
+                                "ext_id": "8f428320-26e7-454f-576b-5d3a3c5cf529"
+                            }
+                        ],
+                        "cd_roms": [
+                            {
+                                "backing_info": {
+                                    "data_source": null,
+                                    "disk_ext_id": "1f606a18-d5e9-4d7f-bfd0-8d62130005b0",
+                                    "disk_size_bytes": 1411072,
+                                    "is_migration_in_progress": false,
+                                    "storage_config": null,
+                                    "storage_container": {
+                                        "ext_id": "8a95bf86-ce10-4f0e-956d-f440d2fc84dd"
+                                    },
+                                    "vm_disk_hydration_info": null
+                                },
+                                "disk_address": {
+                                    "bus_type": "SATA",
+                                    "index": 0
+                                },
+                                "ext_id": "1f606a18-d5e9-4d7f-bfd0-8d62130005b0",
+                                "iso_type": "GUEST_TOOLS",
+                                "links": null,
+                                "tenant_id": null
+                            },
+                            {
+                                "backing_info": {
+                                    "data_source": null,
+                                    "disk_ext_id": "90d205eb-ffcc-4721-b953-03fc52c89c6c",
+                                    "disk_size_bytes": 380928,
+                                    "is_migration_in_progress": false,
+                                    "storage_config": {
+                                        "is_flash_mode_enabled": true
+                                    },
+                                    "storage_container": {
+                                        "ext_id": "0f4bc039-c2a6-410c-9848-8242b157c2c1"
+                                    },
+                                    "vm_disk_hydration_info": null
+                                },
+                                "disk_address": {
+                                    "bus_type": "IDE",
+                                    "index": 0
+                                },
+                                "ext_id": "90d205eb-ffcc-4721-b953-03fc52c89c6c",
+                                "iso_type": "GUEST_CUSTOMIZATION",
+                                "links": null,
+                                "tenant_id": null
+                            }
+                        ],
+                        "cluster": {
+                            "ext_id": "00065022-446a-d0e3-4276-405b7f511c60"
+                        },
+                        "create_time": "2026-06-03T05:34:59.110062+00:00",
+                        "custom_attributes": null,
+                        "description": null,
+                        "disks": [
+                            {
+                                "backing_info": {
+                                    "data_source": null,
+                                    "disk_ext_id": "d6448d80-5e04-463d-b6e1-b7b6b7266624",
+                                    "disk_size_bytes": 85899345920,
+                                    "is_migration_in_progress": false,
+                                    "storage_config": {
+                                        "is_flash_mode_enabled": true
+                                    },
+                                    "storage_container": {
+                                        "ext_id": "8a95bf86-ce10-4f0e-956d-f440d2fc84dd"
+                                    },
+                                    "vm_disk_hydration_info": null
+                                },
+                                "custom_attributes": null,
+                                "disk_address": {
+                                    "bus_type": "SCSI",
+                                    "index": 0
+                                },
+                                "ext_id": "d6448d80-5e04-463d-b6e1-b7b6b7266624",
+                                "links": null,
+                                "tenant_id": null
+                            }
+                        ],
+                        "enabled_cpu_features": null,
+                        "ext_id": "294182d2-4aa0-4270-710c-1a9c86324cd9",
+                        "generation_uuid": "3d784f96-6f8a-4b8f-bb98-44be87e46836",
+                        "gpus": null,
+                        "guest_customization": null,
+                        "guest_tools": {
+                            "available_version": "4.5.1",
+                            "capabilities": [
+                                "SELF_SERVICE_RESTORE",
+                                "VSS_SNAPSHOT"
+                            ],
+                            "guest_info": {
+                                "dns_name": {
+                                    "value": "WIN-JGHQLKEC0K3.CoREWORKGROUP"
+                                },
+                                "guest_os_build_number": "20348",
+                                "guest_os_full_name": "windows:64:WindowsServer2022Standard",
+                                "installed_virt_io_version": "1.2.5.2",
+                                "is_vm_mobility_drivers_installed": null,
+                                "last_boot_up_time": null
+                            },
+                            "guest_os_version": "windows:64:WindowsServer2022Standard",
+                            "is_communication_active_over_serial_port": true,
+                            "is_enabled": true,
+                            "is_installed": true,
+                            "is_iso_inserted": true,
+                            "is_reachable": true,
+                            "is_vm_mobility_drivers_installed": null,
+                            "is_vss_snapshot_capable": null,
+                            "version": "4.5.1"
+                        },
+                        "hardware_clock_timezone": "America/Chicago",
+                        "host": {
+                            "ext_id": "7fa6db19-e81a-4b8c-80c3-8895d6cdf7d8"
+                        },
+                        "is_agent_vm": false,
+                        "is_branding_enabled": true,
+                        "is_cpu_hotplug_enabled": true,
+                        "is_cpu_passthrough_enabled": false,
+                        "is_cross_cluster_migration_in_progress": false,
+                        "is_gpu_console_enabled": false,
+                        "is_live_migrate_capable": true,
+                        "is_memory_overcommit_enabled": false,
+                        "is_scsi_controller_enabled": true,
+                        "is_vcpu_hard_pinning_enabled": false,
+                        "is_vga_console_enabled": true,
+                        "links": null,
+                        "machine_type": "PC",
+                        "memory_size_bytes": 8589934592,
+                        "name": "n66hnw22c32",
+                        "nics": [
+                            {
+                                "backing_info": {
+                                    "is_connected": true,
+                                    "mac_address": "50:6b:8d:90:6e:e3",
+                                    "model": null,
+                                    "num_queues": 1
+                                },
+                                "ext_id": "be43ab77-6045-4aa7-951d-32b1694fd3a5",
+                                "links": null,
+                                "network_info": {
+                                    "ipv4_config": null,
+                                    "ipv4_info": {
+                                        "learned_ip_addresses": [
+                                            {
+                                                "prefix_length": 32,
+                                                "value": "100.70.7.24"
+                                            }
+                                        ]
+                                    },
+                                    "network_function_chain": null,
+                                    "network_function_nic_type": null,
+                                    "nic_type": "NORMAL_NIC",
+                                    "should_allow_unknown_macs": null,
+                                    "subnet": {
+                                        "ext_id": "fd946ad3-755e-422a-8c1c-22c0ba0a676d"
+                                    },
+                                    "trunked_vlans": null,
+                                    "vlan_mode": "ACCESS"
+                                },
+                                "nic_backing_info": {
+                                    "is_connected": true,
+                                    "mac_address": "50:6b:8d:90:6e:e3",
+                                    "model": null,
+                                    "num_queues": 1
+                                },
+                                "nic_network_info": {
+                                    "ipv4_config": null,
+                                    "ipv4_info": {
+                                        "learned_ip_addresses": [
+                                            {
+                                                "prefix_length": 32,
+                                                "value": "100.70.7.24"
+                                            }
+                                        ]
+                                    },
+                                    "ipv6_info": null,
+                                    "network_function_chain": null,
+                                    "network_function_nic_type": null,
+                                    "nic_type": "NORMAL_NIC",
+                                    "should_allow_unknown_macs": null,
+                                    "subnet": {
+                                        "ext_id": "fd946ad3-755e-422a-8c1c-22c0ba0a676d"
+                                    },
+                                    "trunked_vlans": null,
+                                    "vlan_mode": "ACCESS"
+                                },
+                                "tenant_id": null
+                            },
+                            {
+                                "backing_info": {
+                                    "is_connected": true,
+                                    "mac_address": "50:6b:8d:bc:6f:f4",
+                                    "model": null,
+                                    "num_queues": 1
+                                },
+                                "ext_id": "16549054-2ec9-4fc9-bdb3-cf0cecab7876",
+                                "links": null,
+                                "network_info": {
+                                    "ipv4_config": null,
+                                    "ipv4_info": {
+                                        "learned_ip_addresses": [
+                                            {
+                                                "prefix_length": 32,
+                                                "value": "100.70.17.17"
+                                            }
+                                        ]
+                                    },
+                                    "network_function_chain": null,
+                                    "network_function_nic_type": null,
+                                    "nic_type": "NORMAL_NIC",
+                                    "should_allow_unknown_macs": null,
+                                    "subnet": {
+                                        "ext_id": "e5cfd045-68c6-4228-af7b-908204b0153f"
+                                    },
+                                    "trunked_vlans": null,
+                                    "vlan_mode": "ACCESS"
+                                },
+                                "nic_backing_info": {
+                                    "is_connected": true,
+                                    "mac_address": "50:6b:8d:bc:6f:f4",
+                                    "model": null,
+                                    "num_queues": 1
+                                },
+                                "nic_network_info": {
+                                    "ipv4_config": null,
+                                    "ipv4_info": {
+                                        "learned_ip_addresses": [
+                                            {
+                                                "prefix_length": 32,
+                                                "value": "100.70.17.17"
+                                            }
+                                        ]
+                                    },
+                                    "ipv6_info": null,
+                                    "network_function_chain": null,
+                                    "network_function_nic_type": null,
+                                    "nic_type": "NORMAL_NIC",
+                                    "should_allow_unknown_macs": null,
+                                    "subnet": {
+                                        "ext_id": "e5cfd045-68c6-4228-af7b-908204b0153f"
+                                    },
+                                    "trunked_vlans": null,
+                                    "vlan_mode": "ACCESS"
+                                },
+                                "tenant_id": null
+                            }
+                        ],
+                        "num_cores_per_socket": 1,
+                        "num_numa_nodes": 0,
+                        "num_sockets": 4,
+                        "num_threads_per_core": 1,
+                        "ownership_info": {
+                            "owner": {
+                                "ext_id": "072e5ac3-fc6b-510c-aa01-fd09afc0af5a"
+                            }
+                        },
+                        "pcie_devices": null,
+                        "power_state": "ON",
+                        "project": {
+                            "ext_id": "20a4e3c8-0b5e-470d-819a-12a3ccbf2136"
+                        },
+                        "protection_policy_state": null,
+                        "protection_type": "UNPROTECTED",
+                        "serial_ports": null,
+                        "source": null,
+                        "storage_config": {
+                            "hydration_info": null,
+                            "is_flash_mode_enabled": true,
+                            "qos_config": null,
+                            "storage_location_info": null
+                        },
+                        "tenant_id": null,
+                        "update_time": "2026-06-03T05:39:34.933868+00:00",
+                        "vm_guest_customization_status": null,
+                        "vtpm_config": {
+                            "is_vtpm_enabled": false,
+                            "version": null,
+                            "vtpm_device": null
+                        }
+                    },
+                    "name": "dev_pc-cpt1-01a",
+                    "vm_id": "294182d2-4aa0-4270-710c-1a9c86324cd9"
+                },
+                "customer_primary_ip_address": "100.70.17.17",
+                "fqdn": "n66hnw22c32.acmeco.us-central-010.mcloud.entsvcs.com",
+                "hardware": {
+                    "memory_mb": "8192",
+                    "num_cpu_cores_per_socket": "1",
+                    "num_cpu_sockets": "4",
+                    "num_cpus": "4"
+                },
+                "management_ip_address": "100.70.7.24",
+                "os_type": "windows",
+                "roles": [
+                    "customer_vm"
+                ],
+                "type": "Cloud.Machine"
+            },
+            "status": "active",
+            "updated_at": "2026-06-03T05:41:19.788940Z",
+            "updated_by": "core_jenkins"
+        },
+        "resources": [],
+        "status_code": 200,
+        "total_count": 0
+    }
+}
+
+TASK [Set stats for deployed VM resource] **************************************
+ok: [localhost]
+
+TASK [Add a host to in memory hosts] *******************************************
+changed: [localhost]
+
+PLAY [Run OS-specific post deployment playbook] ********************************
+
+TASK [Gathering Facts] *********************************************************
+fatal: [100.70.7.24]: UNREACHABLE! => {"changed": false, "msg": "ntlm: HTTPSConnectionPool(host='100.70.7.24', port=5986): Max retries exceeded with url: /wsman (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x7fc18f7eaa50>: Failed to establish a new connection: [Errno 113] No route to host'))", "unreachable": true}
+
+PLAY RECAP *********************************************************************
+100.70.7.24                : ok=0    changed=0    unreachable=1    failed=0    skipped=0    rescued=0    ignored=0
+localhost                  : ok=27   changed=3    unreachable=0    failed=0    skipped=8    rescued=0    ignored=0

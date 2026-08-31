@@ -355,6 +355,7 @@ export function PathView() {
             hostScope={hostScope}
             reduced={reduced}
             onClose={() => setSelectedId(null)}
+            onEnter={enter}
             onViewSource={(n) => setSourceNodeId(n.id)}
           />
         )}

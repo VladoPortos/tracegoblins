@@ -54,6 +54,7 @@ def build_run_from_parsed(
     template_name: str | None,
     awx_user: str | None,
     log_time: datetime | None,
+    awx_job_status: str | None = None,
     controller_id: uuid.UUID | None = None,
     awx_job_id: str | None = None,
     awx_job_url: str | None = None,
@@ -91,6 +92,8 @@ def build_run_from_parsed(
     run_status = next(
         (s for s in ("unreachable", "failed", "changed", "ok") if s in task_statuses), "ok"
     )
+    if awx_job_status in {"failed", "error", "canceled"} and run_status in {"ok", "changed"}:
+        run_status = "failed"
 
     run = Run(
         source=source,
