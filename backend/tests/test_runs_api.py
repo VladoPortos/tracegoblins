@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from sqlalchemy import select
+
+from app.core.config import settings
+from app.models import Run, User
+
 ROOT = Path(__file__).resolve().parents[2]
 UPLOADS = ROOT / "backend/tests/fixtures/logs"
 
@@ -18,6 +23,66 @@ async def test_create_run_from_paste(authed_client):
     assert d["job_id"] == "11140" and d["status"] == "unreachable"
     assert d["task_count"] == 178 and d["host_count"] == 2
     assert d["counts"]["unreachable"] == 1 and d["counts"]["ok"] == 126
+
+
+async def test_uploaded_run_records_original_byte_size(authed_client, db):
+    text = (UPLOADS / "job_11140.txt").read_text(encoding="utf-8")
+    response = await authed_client.post("/api/runs", json={"text": text})
+
+    assert response.status_code == 201
+    run = await db.get(Run, response.json()["id"])
+    assert run.upload_size_bytes == len(text.encode("utf-8"))
+
+
+async def test_upload_run_count_quota_is_enforced(authed_client, db, monkeypatch):
+    user = await db.scalar(select(User).where(User.email == "member@example.com"))
+    db.add(Run(
+        source="upload",
+        owner_user_id=user.id,
+        status="ok",
+        upload_size_bytes=1,
+    ))
+    await db.flush()
+    monkeypatch.setattr(settings, "user_upload_max_runs", 1)
+    monkeypatch.setattr(settings, "user_upload_max_bytes", 1024 * 1024 * 1024)
+
+    text = (UPLOADS / "job_11140.txt").read_text(encoding="utf-8")
+    response = await authed_client.post("/api/runs", json={"text": text})
+
+    assert response.status_code == 429
+    assert "quota" in response.json()["detail"].lower()
+
+
+async def test_upload_byte_quota_is_enforced(authed_client, monkeypatch):
+    text = (UPLOADS / "job_11140.txt").read_text(encoding="utf-8")
+    monkeypatch.setattr(settings, "user_upload_max_runs", 200)
+    monkeypatch.setattr(settings, "user_upload_max_bytes", len(text.encode("utf-8")) - 1)
+
+    response = await authed_client.post("/api/runs", json={"text": text})
+
+    assert response.status_code == 429
+    assert "quota" in response.json()["detail"].lower()
+
+
+async def test_deleting_upload_releases_quota(authed_client, db, monkeypatch):
+    user = await db.scalar(select(User).where(User.email == "member@example.com"))
+    existing = Run(
+        source="upload",
+        owner_user_id=user.id,
+        status="ok",
+        upload_size_bytes=1,
+    )
+    db.add(existing)
+    await db.flush()
+    monkeypatch.setattr(settings, "user_upload_max_runs", 1)
+    monkeypatch.setattr(settings, "user_upload_max_bytes", 1024 * 1024 * 1024)
+
+    deleted = await authed_client.delete(f"/api/runs/{existing.id}")
+    text = (UPLOADS / "job_11140.txt").read_text(encoding="utf-8")
+    uploaded = await authed_client.post("/api/runs", json={"text": text})
+
+    assert deleted.status_code == 204
+    assert uploaded.status_code == 201
 
 
 async def test_create_run_from_file(authed_client):

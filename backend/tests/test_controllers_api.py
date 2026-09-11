@@ -202,6 +202,44 @@ async def test_patch_controller_omitted_token_unchanged(admin_client, db):
     assert decrypt_token(row.auth_token_encrypted) == "awx_pat_keepme7777"  # unchanged
 
 
+async def test_patch_controller_origin_change_requires_new_token(admin_client, db):
+    cr = await admin_client.post("/api/controllers", json={
+        "name": f"origin-{uuid.uuid4().hex[:6]}",
+        "base_url": "https://awx.example/old-path",
+        "token": "awx_pat_keepme7777",
+    })
+    cid = cr.json()["id"]
+
+    r = await admin_client.patch(
+        f"/api/controllers/{cid}",
+        json={"base_url": "https://attacker.example/new-path"},
+    )
+
+    assert r.status_code == 422
+    row = await db.get(AwxController, uuid.UUID(cid))
+    await db.refresh(row)
+    assert row.base_url == "https://awx.example/old-path"
+    assert decrypt_token(row.auth_token_encrypted) == "awx_pat_keepme7777"
+
+
+async def test_patch_controller_same_origin_path_change_keeps_token(admin_client, db):
+    cr = await admin_client.post("/api/controllers", json={
+        "name": f"same-origin-{uuid.uuid4().hex[:6]}",
+        "base_url": "https://awx.example/old-path",
+        "token": "awx_pat_keepme7777",
+    })
+    cid = cr.json()["id"]
+
+    r = await admin_client.patch(
+        f"/api/controllers/{cid}",
+        json={"base_url": "https://awx.example/new-path"},
+    )
+
+    assert r.status_code == 200
+    row = await db.get(AwxController, uuid.UUID(cid))
+    assert decrypt_token(row.auth_token_encrypted) == "awx_pat_keepme7777"
+
+
 async def test_patch_controller_replaces_assignments(admin_client, db):
     team1 = Team(name="T1", slug=f"t1-{uuid.uuid4().hex[:6]}")
     team2 = Team(name="T2", slug=f"t2-{uuid.uuid4().hex[:6]}")
@@ -341,6 +379,28 @@ async def test_test_connection_bad_base_url_scheme_422(admin_client):
     r = await admin_client.post(f"/api/controllers/{cid}/test",
                                 json={"base_url": "file:///etc/passwd"})
     assert r.status_code == 422
+
+
+@respx.mock
+async def test_test_connection_origin_override_requires_explicit_token(admin_client):
+    cr = await admin_client.post("/api/controllers", json={
+        "name": f"rebind-{uuid.uuid4().hex[:6]}",
+        "base_url": "https://awx.example",
+        "token": "awx_pat_secret1234",
+        "verify_ssl": False,
+    })
+    cid = cr.json()["id"]
+    attacker = respx.get("https://attacker.example/api/v2/ping/").mock(
+        return_value=httpx.Response(200, json={"version": "1"})
+    )
+
+    r = await admin_client.post(
+        f"/api/controllers/{cid}/test",
+        json={"base_url": "https://attacker.example"},
+    )
+
+    assert r.status_code == 422
+    assert attacker.called is False
 
 
 async def test_test_connection_non_admin_403(authed_client, db):

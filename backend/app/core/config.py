@@ -50,11 +50,20 @@ class Settings(BaseSettings):
     # Headers
     csp_report_only: bool = False
 
+    # Raw request-body limits, enforced before FastAPI parses JSON or multipart input.
+    request_body_max_bytes: int = Field(1 * 1024 * 1024, gt=0)
+    run_request_body_max_bytes: int = Field(9 * 1024 * 1024, gt=0)
+    project_upload_request_body_max_bytes: int = Field(52 * 1024 * 1024, gt=0)
+
     # Background scheduler (M4) — APScheduler in-process; one leader per cluster.
     scheduler_enabled: bool = True
 
     # Retention (M4) — delete source='awx' runs older than N days. 0 disables the sweep.
     retention_days: int = 90
+
+    # Per-user uploaded/pasted-run quotas. AWX-synced runs do not consume these limits.
+    user_upload_max_runs: int = Field(200, gt=0)
+    user_upload_max_bytes: int = Field(512 * 1024 * 1024, gt=0)
 
     # Knowledge base (M5) — fuzzy pg_trgm match cutoff for KB signature matching.
     # Exact signature_key always wins; fuzzy hits below this similarity are ignored.

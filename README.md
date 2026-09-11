@@ -147,6 +147,11 @@ is its actual job run time, or its import time when AWX didn't report one. Manua
 pasted runs are never touched. The default is 90 days; set `RETENTION_DAYS=0` to turn the sweep
 off.
 
+### Backup and restore
+
+Back up PostgreSQL, the persistent app-data volume, and the encryption keys together. The
+step-by-step operational procedure is in [BACKUP_AND_RESTORE.md](BACKUP_AND_RESTORE.md).
+
 ### Local development (hot reload)
 
 ```bash

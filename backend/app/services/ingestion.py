@@ -136,6 +136,7 @@ async def ingest_upload(
         log_time=_parse_log_time(parsed.meta.log_time),
         awx_job_id=parsed.meta.job_id,
     )
+    run.upload_size_bytes = len(raw_bytes)
 
     db.add(run)
     await db.flush()  # assign run.id before referencing it

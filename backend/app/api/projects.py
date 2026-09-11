@@ -22,6 +22,7 @@ from app.projects import uploads as uploadsmod
 from app.projects.git import is_clonable_git_url
 from app.projects.storage import project_repo_path, project_uploads_path
 from app.projects.worker import run_clone
+from app.security.urls import http_origin
 from app.services.audit import write_audit
 from app.services.projects_query import linked_runs_cond, project_to_out
 from app.services.runs_query import run_to_card
@@ -138,13 +139,27 @@ async def set_project_git(
     request: Request, db: DbSession, user: AdminUser,
 ):
     """Admin: link/update the project's git source + write-only secret. Sets status=pending."""
+    old_effective_url = project.git_url_override or project.scm_url
     if payload.git_url_override:
         if not is_clonable_git_url(payload.git_url_override):
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
                                 detail="git_url_override must be an https URL (no SSH/http)")
-        project.git_url_override = payload.git_url_override.strip()
+        new_override = payload.git_url_override.strip()
     else:
-        project.git_url_override = None
+        new_override = None
+    new_effective_url = new_override or project.scm_url
+
+    if (
+        project.git_secret_encrypted is not None
+        and http_origin(new_effective_url) != http_origin(old_effective_url)
+        and payload.secret in {None, UNCHANGED_SECRET}
+    ):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="secret must be replaced or explicitly cleared when the git origin changes",
+        )
+
+    project.git_url_override = new_override
 
     project.git_auth_type = payload.auth_type
     project.git_username = payload.username or None

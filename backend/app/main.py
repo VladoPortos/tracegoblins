@@ -88,8 +88,15 @@ def create_app() -> FastAPI:
     mount_spa(app, settings.app_static_dir)
 
     from app.security.csrf import CSRFMiddleware
+    from app.security.body_limit import RequestBodyLimitMiddleware
     from app.security.headers import SecurityHeadersMiddleware
 
+    app.add_middleware(
+        RequestBodyLimitMiddleware,
+        default_max_bytes=settings.request_body_max_bytes,
+        run_max_bytes=settings.run_request_body_max_bytes,
+        project_upload_max_bytes=settings.project_upload_request_body_max_bytes,
+    )
     app.add_middleware(CSRFMiddleware)  # inner
     app.add_middleware(SecurityHeadersMiddleware, report_only=settings.csp_report_only)  # outermost
     return app

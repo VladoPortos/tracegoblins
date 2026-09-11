@@ -18,6 +18,8 @@ def test_retention_and_scheduler_defaults():
     s = Settings()
     assert s.retention_days == 90
     assert s.scheduler_enabled is True
+    assert s.user_upload_max_runs == 200
+    assert s.user_upload_max_bytes == 512 * 1024 * 1024
 
 
 def test_scheduler_enabled_reads_env(monkeypatch):

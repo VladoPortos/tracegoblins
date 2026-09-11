@@ -61,6 +61,50 @@ async def test_put_git_rejects_non_https_override(admin_client, db):
     assert r.status_code == 422
 
 
+async def test_put_git_origin_change_requires_explicit_secret(admin_client, db):
+    gen = await _general(db)
+    _c, p = await _project_for(db, gen.id)
+    first = await admin_client.put(f"/api/projects/{p.id}/git", json={
+        "git_url_override": "https://git-one.example/d.git",
+        "auth_type": "token",
+        "secret": "first-secret",
+    })
+    assert first.status_code == 200
+    await db.refresh(p)
+    old_ciphertext = p.git_secret_encrypted
+
+    changed = await admin_client.put(f"/api/projects/{p.id}/git", json={
+        "git_url_override": "https://git-two.example/d.git",
+        "auth_type": "token",
+    })
+
+    assert changed.status_code == 422
+    await db.refresh(p)
+    assert p.git_url_override == "https://git-one.example/d.git"
+    assert p.git_secret_encrypted == old_ciphertext
+
+
+async def test_put_git_origin_change_accepts_replacement_secret(admin_client, db):
+    gen = await _general(db)
+    _c, p = await _project_for(db, gen.id)
+    first = await admin_client.put(f"/api/projects/{p.id}/git", json={
+        "git_url_override": "https://git-one.example/d.git",
+        "auth_type": "token",
+        "secret": "first-secret",
+    })
+    assert first.status_code == 200
+
+    changed = await admin_client.put(f"/api/projects/{p.id}/git", json={
+        "git_url_override": "https://git-two.example/d.git",
+        "auth_type": "token",
+        "secret": "replacement-secret",
+    })
+
+    assert changed.status_code == 200
+    await db.refresh(p)
+    assert p.git_url_override == "https://git-two.example/d.git"
+
+
 async def test_put_git_requires_admin(authed_client, db):
     gen = await _general(db)
     c, p = await _project_for(db, gen.id)

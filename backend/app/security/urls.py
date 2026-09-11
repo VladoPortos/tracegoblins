@@ -32,3 +32,16 @@ def is_http_url(value: str) -> bool:
     except ValueError:
         return False
     return parts.scheme in {"http", "https"} and bool(parts.netloc)
+
+
+def http_origin(value: str) -> tuple[str, str, int] | None:
+    """Return a normalized HTTP origin for credential-binding comparisons."""
+    if not is_http_url(value):
+        return None
+    parts = urlsplit(value.strip())
+    hostname = parts.hostname
+    if hostname is None:
+        return None
+    scheme = parts.scheme.lower()
+    port = parts.port or (443 if scheme == "https" else 80)
+    return scheme, hostname.lower(), port

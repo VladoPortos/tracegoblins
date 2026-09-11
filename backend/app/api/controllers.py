@@ -25,7 +25,7 @@ from app.core.crypto import TokenCryptoError, decrypt_token, encrypt_token
 from app.db.session import SessionLocal
 from app.models import AwxController, ControllerTeam
 from app.scheduler import reconcile_controller
-from app.security.urls import is_http_url
+from app.security.urls import http_origin, is_http_url
 from app.services.audit import write_audit
 from app.services.controllers_query import controller_to_out
 from app.services.visibility import my_team_ids
@@ -181,6 +181,14 @@ async def update_controller(
         if not is_http_url(payload.base_url):
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
                                 detail="base_url must be an http(s) URL")
+        if (
+            http_origin(payload.base_url) != http_origin(controller.base_url)
+            and payload.token is None
+        ):
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="token is required when the controller origin changes",
+            )
         controller.base_url = payload.base_url.strip()
     if payload.name is not None:
         controller.name = payload.name
@@ -275,6 +283,15 @@ async def test_connection(
     if not is_http_url(base_url):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
                             detail="base_url must be an http(s) URL")
+    if (
+        payload.base_url is not None
+        and http_origin(base_url) != http_origin(controller.base_url)
+        and payload.token is None
+    ):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="token is required when testing a different controller origin",
+        )
     verify_ssl = payload.verify_ssl if payload.verify_ssl is not None else controller.verify_ssl
     try:
         token = (

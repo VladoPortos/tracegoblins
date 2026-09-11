@@ -3,7 +3,8 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import (
-    DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, Uuid, func,
+    BigInteger, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, Uuid,
+    func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -41,6 +42,7 @@ class Run(Base):
     host_count: Mapped[int] = mapped_column(Integer, default=0)
     task_count: Mapped[int] = mapped_column(Integer, default=0)
     warnings_count: Mapped[int] = mapped_column(Integer, default=0)
+    upload_size_bytes: Mapped[int] = mapped_column(BigInteger, default=0)
     elapsed: Mapped[float | None] = mapped_column(Float, default=None)
     recap: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list)
     # Path Explorer inputs (M1) — captured from GET /jobs/{id}/. project_id/scm_revision

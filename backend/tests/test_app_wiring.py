@@ -45,6 +45,7 @@ def test_middleware_order_csrf_inside_headers():
     names = [m.cls.__name__ for m in app.user_middleware]
     # Starlette stores user_middleware outermost-first; SecurityHeaders must be outermost.
     assert names.index("SecurityHeadersMiddleware") < names.index("CSRFMiddleware")
+    assert names.index("CSRFMiddleware") < names.index("RequestBodyLimitMiddleware")
 
 
 def test_openapi_includes_meout():

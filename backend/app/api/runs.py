@@ -28,6 +28,7 @@ from app.services.collab_query import annotation_to_out, comment_to_out, resolve
 from app.services.collab_validate import validate_links, validate_tags
 from app.services.visibility import is_run_visible, kb_visibility_cond, my_team_ids
 from app.services.ingestion import MAX_UPLOAD_BYTES, ingest_upload
+from app.services.upload_quotas import enforce_upload_quota
 from app.services.run_diff import diff_tasks, find_baseline, recap_newly_unreachable
 from app.services.run_time import run_when_expr
 from app.services.runs_query import run_to_card, run_to_detail, task_to_full, task_to_lean
@@ -157,6 +158,7 @@ async def create_run(
         if await db.get(TeamMember, (target_team_id, user.id)) is None:
             raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Not a member of that team")
 
+    await enforce_upload_quota(db, user_id=user.id, incoming_bytes=len(raw_bytes))
     run = await ingest_upload(db, owner=user, raw_bytes=raw_bytes, template_override=tmpl,
                               team_id=target_team_id, ip=client_ip(request))
     await db.commit()
